@@ -1,0 +1,63 @@
+projects:
+  energy:
+    display_name: "理财｜能源账户项目"
+    allow_full_detail: true
+    instruments:
+      - symbol: "00883.HK"
+        name: "中海油H"
+        market: "HK"
+        core: true
+        provider: "mock"
+      - symbol: "601899.SH"
+        name: "紫金矿业A"
+        market: "CN"
+        core: true
+        provider: "mock"
+      - symbol: "601985.SH"
+        name: "中国核电"
+        market: "CN"
+        core: true
+        provider: "mock"
+      - symbol: "003816.SZ"
+        name: "中国广核"
+        market: "CN"
+        core: true
+        provider: "mock"
+  tech:
+    display_name: "理财｜科技账户项目"
+    allow_full_detail: true
+    instruments:
+      - symbol: "159632.SZ"
+        name: "纳指相关ETF"
+        market: "CN"
+        core: true
+        provider: "mock"
+      - symbol: "513300.SH"
+        name: "纳指ETF"
+        market: "CN"
+        core: true
+        provider: "mock"
+      - symbol: "GOLD_CNY"
+        name: "黄金持仓参考价"
+        market: "MANUAL"
+        core: true
+        provider: "manual"
+  controller:
+    display_name: "理财｜投资咨询/总控项目"
+    allow_full_detail: false
+    instruments:
+      - symbol: "USD_CNY"
+        name: "美元兑人民币"
+        market: "FX"
+        core: true
+        provider: "mock"
+      - symbol: "HKD_CNY"
+        name: "港币兑人民币"
+        market: "FX"
+        core: true
+        provider: "mock"
+      - symbol: "IXIC"
+        name: "纳斯达克综合指数"
+        market: "US"
+        core: true
+        provider: "mock"
