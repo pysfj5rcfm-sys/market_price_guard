@@ -217,7 +217,7 @@ def test_akshare_failed_yfinance_success_selected_and_not_blocking():
             "yfinance": _provider(_raw("00883.HK", "yfinance", 21.35)),
             "mock": _provider(_raw("00883.HK", "mock", 21.0)),
         },
-        RouterConfig(provider_mode="live"),
+        RouterConfig(provider_mode="live", provider_policy="conservative"),
     )
     record = _record(raw, required=True)
 
@@ -234,7 +234,7 @@ def test_a_share_akshare_failed_yfinance_success_selected(symbol="601899.SH"):
             "yfinance": _provider(_raw(symbol, "yfinance", 18.42, currency="CNY")),
             "mock": _provider(_raw(symbol, "mock", 18.0, currency="CNY")),
         },
-        RouterConfig(provider_mode="live"),
+        RouterConfig(provider_mode="live", provider_policy="conservative"),
     )
     record = _record(raw, required=True, market="CN")
 
@@ -259,7 +259,7 @@ def test_yfinance_failed_continues_to_mock_fallback_not_usable():
             "yfinance": _provider(_raw("00883.HK", "yfinance", None, ["provider_error"])),
             "mock": _provider(_raw("00883.HK", "mock", 21.0)),
         },
-        RouterConfig(provider_mode="live"),
+        RouterConfig(provider_mode="live", provider_policy="conservative"),
     )
 
     assert raw.source == "mock_fallback"
@@ -274,7 +274,7 @@ def test_a_share_yfinance_failed_continues_to_mock_fallback_not_usable():
             "yfinance": _provider(_raw("601899.SH", "yfinance", None, ["provider_error"], currency="CNY")),
             "mock": _provider(_raw("601899.SH", "mock", 18.0, currency="CNY")),
         },
-        RouterConfig(provider_mode="live"),
+        RouterConfig(provider_mode="live", provider_policy="conservative"),
     )
 
     assert raw.source == "mock_fallback"
@@ -288,7 +288,7 @@ def test_provider_reports_show_yfinance_secondary_success():
             "akshare": _provider(_raw("00883.HK", "akshare", None, ["provider_error"])),
             "yfinance": _provider(_raw("00883.HK", "yfinance", 21.35)),
         },
-        RouterConfig(provider_mode="live"),
+        RouterConfig(provider_mode="live", provider_policy="conservative"),
     )
     record = _record(raw, required=True)
 

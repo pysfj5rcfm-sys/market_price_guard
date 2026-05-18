@@ -24,6 +24,8 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
             return True, f"akshare_not_installed: AKShare 未安装，不可用于具体操作建议；{issue_text}"
         if "provider_error" in raw.quality_issues:
             return True, f"provider_error: 行情源调用失败，不可用于具体操作建议；{issue_text}"
+        if "provider_timeout" in raw.quality_issues:
+            return True, f"provider_timeout: 行情源调用超过单次预算且未返回可用结果，不可用于具体操作建议；{issue_text}"
         if "symbol_not_found" in raw.quality_issues:
             return True, f"symbol_not_found: 行情源未返回该标的，不可用于具体操作建议；{issue_text}"
         if "invalid_price" in raw.quality_issues:

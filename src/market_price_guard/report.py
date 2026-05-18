@@ -127,11 +127,12 @@ def records_to_dataframe(records: list[PriceRecord]) -> pd.DataFrame:
     return pd.DataFrame([record.output_dict() for record in records], columns=OUTPUT_COLUMNS)
 
 
-def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: str = "mock") -> None:
+def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: str = "mock", runtime: dict[str, Any] | None = None) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     df = records_to_dataframe(records)
     df.to_csv(output_dir / "prices_snapshot.csv", index=False, encoding="utf-8-sig")
-    (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records), encoding="utf-8")
+    (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records, runtime=runtime), encoding="utf-8")
+    (output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics_report(records, runtime or {}), encoding="utf-8")
     (output_dir / "provider_health_report.md").write_text(
         build_provider_health_report(records, provider_mode=provider_mode),
         encoding="utf-8",
@@ -141,7 +142,7 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
     (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
 
 
-def build_completeness_report(records: list[PriceRecord]) -> str:
+def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
     summary = build_completeness_summary(records)
     usable_text = "是" if summary.usable_for_operation else "否"
     lines = [
@@ -160,6 +161,8 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
     lines.extend(_provider_diagnostics_lines(summary.akshare_records))
     lines.extend(["", "## Provider routing notes"])
     lines.extend(_provider_routing_note_lines(records))
+    lines.extend(["", "## Runtime freshness diagnostics"])
+    lines.extend(_runtime_freshness_lines(runtime or {}))
     lines.extend(["", "## AKShare price records"])
     lines.extend(_record_lines(summary.akshare_records))
     lines.extend(["", "## AKShare quote freshness details"])
@@ -201,11 +204,16 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
 
 
 def build_provider_health_report(records: list[PriceRecord], provider_mode: str = "mock") -> str:
+    provider_policy = _provider_policy_from_records(records)
     lines = [
         "# Provider Health Report",
         "",
         "行情源健康报告仅用于解释价格事实、接口状态和数据完整度，不提供买卖建议，不做自动交易。",
+        "",
+        f"- provider_policy={provider_policy}",
     ]
+    if provider_policy == "diagnostic":
+        lines.append("- diagnostic mode active: provider diagnostics may run slower than fast mode.")
     lines.extend(["", "## AKShare ETF"])
     lines.extend(_akshare_health_group(records, "ETF", ["fund_etf_spot_em"]))
     lines.extend(["", "## AKShare A股"])
@@ -227,6 +235,60 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
         lines.extend(_mock_health_group(records))
     lines.extend(["", "## Provider attempts by symbol"])
     lines.extend(_provider_attempts_by_symbol(records))
+    return "\n".join(lines) + "\n"
+
+
+def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
+    attempts = _all_provider_attempts(records)
+    per_provider = _per_provider_elapsed(attempts)
+    slow_attempts = [attempt for attempt in attempts if attempt.get("slow_provider_attempt")]
+    quote_times = [record.quote_time for record in records if record.quote_time is not None]
+    lines = [
+        "# Runtime Diagnostics",
+        "",
+        f"- run_start_time_utc: {runtime.get('run_start_time_utc', '')}",
+        f"- run_end_time_utc: {runtime.get('run_end_time_utc', '')}",
+        f"- total_elapsed_seconds: {runtime.get('total_elapsed_seconds', '')}",
+        f"- profile: {runtime.get('profile', '')}",
+        f"- provider_mode: {runtime.get('provider_mode', '')}",
+        f"- provider_policy: {runtime.get('provider_policy', '')}",
+        f"- strict: {runtime.get('strict', '')}",
+        f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+        f"- max_run_seconds: {runtime.get('max_run_seconds', '')}",
+        f"- max_data_lag_seconds: {runtime.get('max_data_lag_seconds', '')}",
+        f"- max_quote_lag_seconds: {runtime.get('max_quote_lag_seconds', '')}",
+        f"- oldest_quote_time: {min(quote_times).isoformat() if quote_times else ''}",
+        f"- newest_quote_time: {max(quote_times).isoformat() if quote_times else ''}",
+        "",
+        "## per_provider_elapsed_seconds",
+    ]
+    if per_provider:
+        lines.extend([f"- {provider}: {elapsed}" for provider, elapsed in per_provider.items()])
+    else:
+        lines.append("- 无")
+    lines.extend(["", "## per_symbol_elapsed_seconds"])
+    symbol_elapsed = _per_symbol_elapsed(records)
+    if symbol_elapsed:
+        lines.extend([f"- {symbol}: {elapsed}" for symbol, elapsed in symbol_elapsed.items()])
+    else:
+        lines.append("- 无")
+    lines.extend(["", "## slow_provider_attempts"])
+    if slow_attempts:
+        for attempt in slow_attempts:
+            lines.append(
+                "- symbol={symbol}, provider={provider}, function_name={function_name}, elapsed_seconds={elapsed_seconds}, timeout_seconds={timeout_seconds}, reason={reason}".format(
+                    symbol=attempt.get("symbol", ""),
+                    provider=attempt.get("provider", ""),
+                    function_name=attempt.get("function_name", ""),
+                    elapsed_seconds=attempt.get("elapsed_seconds", ""),
+                    timeout_seconds=attempt.get("timeout_seconds", ""),
+                    reason=attempt.get("reason", "slow_provider_attempt"),
+                )
+            )
+    else:
+        lines.append("- 无")
+    if runtime.get("provider_policy") == "diagnostic":
+        lines.extend(["", "## provider_policy_note", "- diagnostic mode active: may run slower than fast mode."])
     return "\n".join(lines) + "\n"
 
 
@@ -292,6 +354,8 @@ def _blocking_reason(record: PriceRecord) -> str:
     issues = set(record.quality_issues)
     if "provider_error" in issues or "akshare_not_installed" in issues:
         return "provider_error"
+    if "provider_timeout" in issues:
+        return "provider_timeout"
     if "symbol_not_found" in issues:
         return "symbol_not_found"
     if record.price is None or "invalid_price" in issues:
@@ -476,7 +540,9 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
         diagnostic = record.provider_diagnostics
         attempts = diagnostic.get("provider_attempts", [])
         lines.append(f"### {record.symbol}")
-        lines.append(f"- provider_priority_chain: {_format_symbols(diagnostic.get('provider_priority', []))}")
+        lines.append(f"- provider_policy: {diagnostic.get('provider_policy', '')}")
+        lines.append(f"- configured_provider_priority: {_format_symbols(diagnostic.get('configured_provider_priority', []))}")
+        lines.append(f"- effective_provider_chain: {_format_symbols(diagnostic.get('effective_provider_chain', diagnostic.get('provider_priority', [])))}")
         lines.append(f"- selected_provider: {diagnostic.get('selected_provider', record.source)}")
         lines.append(f"- selected_source: {diagnostic.get('selected_source', record.source)}")
         lines.append(f"- fallback_used: {diagnostic.get('fallback_used', False)}")
@@ -492,13 +558,15 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
             if not isinstance(attempt, dict):
                 continue
             lines.append(
-                "  - provider={provider}, function_name={function_name}, status={status}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
+                "  - provider={provider}, function_name={function_name}, status={status}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
                     provider=attempt.get("provider", ""),
                     function_name=attempt.get("function_name", ""),
                     status=attempt.get("status", ""),
                     price=attempt.get("price", ""),
                     quote_time=attempt.get("quote_time", ""),
                     usable_for_operation=attempt.get("usable_for_operation", ""),
+                    elapsed_seconds=attempt.get("elapsed_seconds", ""),
+                    slow_provider_attempt=attempt.get("slow_provider_attempt", ""),
                     reason=attempt.get("reason", ""),
                     exception_type=attempt.get("exception_type", ""),
                     exception_message=attempt.get("exception_message", ""),
@@ -507,10 +575,56 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
     return lines
 
 
+def _runtime_freshness_lines(runtime: dict[str, Any]) -> list[str]:
+    lines = [
+        "- 详见 runtime_diagnostics.md",
+        f"- provider_policy: {runtime.get('provider_policy', '')}",
+        f"- total_elapsed_seconds: {runtime.get('total_elapsed_seconds', '')}",
+        f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+        f"- max_quote_lag_seconds: {runtime.get('max_quote_lag_seconds', '')}",
+        f"- max_data_lag_seconds: {runtime.get('max_data_lag_seconds', '')}",
+    ]
+    if runtime.get("run_time_budget_exceeded"):
+        lines.append("- 本轮刷新耗时超过预算，价格不宜用于盘中精确做T或高频操作。")
+    return lines
+
+
+def _all_provider_attempts(records: list[PriceRecord]) -> list[dict[str, object]]:
+    attempts: list[dict[str, object]] = []
+    for record in records:
+        for attempt in record.provider_diagnostics.get("provider_attempts", []) or []:
+            if isinstance(attempt, dict):
+                attempts.append(attempt)
+    return attempts
+
+
+def _per_provider_elapsed(attempts: list[dict[str, object]]) -> dict[str, float]:
+    elapsed: dict[str, float] = {}
+    for attempt in attempts:
+        provider = str(attempt.get("provider", ""))
+        if not provider:
+            continue
+        elapsed[provider] = round(elapsed.get(provider, 0.0) + float(attempt.get("elapsed_seconds") or 0.0), 3)
+    return elapsed
+
+
+def _per_symbol_elapsed(records: list[PriceRecord]) -> dict[str, float]:
+    elapsed: dict[str, float] = {}
+    for record in records:
+        total = 0.0
+        for attempt in record.provider_diagnostics.get("provider_attempts", []) or []:
+            if isinstance(attempt, dict):
+                total += float(attempt.get("elapsed_seconds") or 0.0)
+        elapsed[record.symbol] = round(total, 3)
+    return elapsed
+
+
 def _provider_routing_note_lines(records: list[PriceRecord]) -> list[str]:
     notes: list[str] = []
     for record in records:
         diagnostics = record.provider_diagnostics
+        if diagnostics.get("provider_policy"):
+            notes.append(f"- {record.symbol}: provider_policy={diagnostics.get('provider_policy')}")
         if diagnostics.get("fallback_used"):
             notes.append(
                 f"- {record.symbol}: primary failed but fallback selected; selected_provider={diagnostics.get('selected_provider', '')}; selection_reason={diagnostics.get('selection_reason', '')}"
@@ -538,6 +652,14 @@ def _provider_health_status(diagnostic: dict[str, object]) -> str:
     if status == "success":
         return "success"
     return status or "unknown"
+
+
+def _provider_policy_from_records(records: list[PriceRecord]) -> str:
+    for record in records:
+        policy = record.provider_diagnostics.get("provider_policy")
+        if policy:
+            return str(policy)
+    return ""
 
 
 def _records_status(records: list[PriceRecord]) -> str:

@@ -27,11 +27,93 @@ def test_provider_priority_only_akshare_matches_live_path():
     raw = _raw("601899.SH", "akshare", 18.42)
     instrument = _instrument("601899.SH", provider_priority=["akshare"])
 
-    selected = route_symbol(instrument, {"akshare": StaticProvider(raw)}, RouterConfig(provider_mode="live"))
+    selected = route_symbol(instrument, {"akshare": StaticProvider(raw)}, RouterConfig(provider_mode="live", provider_policy="diagnostic"))
 
     assert selected.source == "akshare"
     assert selected.provider_diagnostics["selected_provider"] == "akshare"
     assert selected.provider_diagnostics["fallback_used"] is False
+
+
+def test_fast_policy_a_share_effective_chain_yfinance_first():
+    raw = route_symbol(
+        _instrument("601899.SH", provider_priority=["akshare", "yfinance", "mock"]),
+        {"yfinance": StaticProvider(_raw("601899.SH", "yfinance", 18.42)), "akshare": StaticProvider(_raw("601899.SH", "akshare", 18.0))},
+        RouterConfig(provider_mode="live", provider_policy="fast"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["yfinance", "akshare", "mock"]
+    assert raw.provider_diagnostics["selected_provider"] == "yfinance"
+    assert any(attempt["provider"] == "akshare" and attempt["status"] == "skipped" for attempt in raw.provider_diagnostics["provider_attempts"])
+
+
+def test_fast_policy_hk_effective_chain_yfinance_first():
+    raw = route_symbol(
+        _instrument("00883.HK", provider_priority=["akshare", "yfinance", "mock"], market="HK"),
+        {"yfinance": StaticProvider(_raw("00883.HK", "yfinance", 21.35)), "akshare": StaticProvider(_raw("00883.HK", "akshare", 21.0))},
+        RouterConfig(provider_mode="live", provider_policy="fast"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["yfinance", "akshare", "mock"]
+    assert raw.provider_diagnostics["selected_provider"] == "yfinance"
+
+
+def test_fast_policy_etf_keeps_akshare_first():
+    raw = route_symbol(
+        _instrument("159819.SZ", provider_priority=["akshare", "mock"]),
+        {"akshare": StaticProvider(_raw("159819.SZ", "akshare", 0.921)), "yfinance": StaticProvider(exc=AssertionError("no yfinance"))},
+        RouterConfig(provider_mode="live", provider_policy="fast"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["akshare", "mock"]
+    assert raw.provider_diagnostics["selected_provider"] == "akshare"
+
+
+def test_fast_policy_gold_keeps_manual():
+    raw = route_symbol(
+        _instrument("GOLD_CNY", provider="manual", provider_priority=["manual"], market="MANUAL"),
+        {"manual": StaticProvider(_raw("GOLD_CNY", "manual", 1040.0, market_status="manual")), "yfinance": StaticProvider(exc=AssertionError("no yfinance"))},
+        RouterConfig(provider_mode="live", provider_policy="fast"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["manual"]
+    assert raw.provider_diagnostics["selected_provider"] == "manual"
+
+
+def test_conservative_policy_stock_akshare_first_then_yfinance():
+    raw = route_symbol(
+        _instrument("601899.SH", provider_priority=["yfinance", "akshare", "mock"]),
+        {"akshare": StaticProvider(_raw("601899.SH", "akshare", 18.42)), "yfinance": StaticProvider(_raw("601899.SH", "yfinance", 18.0))},
+        RouterConfig(provider_mode="live", provider_policy="conservative"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["akshare", "yfinance", "mock"]
+    assert raw.provider_diagnostics["selected_provider"] == "akshare"
+
+
+def test_conservative_policy_akshare_failed_then_yfinance():
+    raw = route_symbol(
+        _instrument("00883.HK", provider_priority=["akshare", "yfinance", "mock"], market="HK"),
+        {
+            "akshare": StaticProvider(_raw("00883.HK", "akshare", None, quality_issues=["provider_error"])),
+            "yfinance": StaticProvider(_raw("00883.HK", "yfinance", 21.35)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="conservative"),
+    )
+
+    assert raw.provider_diagnostics["selected_provider"] == "yfinance"
+    assert raw.provider_diagnostics["fallback_used"] is True
+
+
+def test_diagnostic_policy_marks_report_mode_active():
+    raw = route_symbol(
+        _instrument("601899.SH", provider_priority=["akshare", "yfinance", "mock"]),
+        {"akshare": StaticProvider(_raw("601899.SH", "akshare", 18.42))},
+        RouterConfig(provider_mode="live", provider_policy="diagnostic"),
+    )
+    report = build_provider_health_report([_record(raw)], provider_mode="live")
+
+    assert "provider_policy=diagnostic" in report
+    assert "diagnostic mode active" in report
 
 
 def test_provider_priority_akshare_to_mock_tries_mock_after_failure():
@@ -41,7 +123,7 @@ def test_provider_priority_akshare_to_mock_tries_mock_after_failure():
         "mock": StaticProvider(_raw("601899.SH", "mock", 18.42)),
     }
 
-    selected = route_symbol(instrument, providers, RouterConfig(provider_mode="live"))
+    selected = route_symbol(instrument, providers, RouterConfig(provider_mode="live", provider_policy="diagnostic"))
 
     assert selected.source == "mock_fallback"
     assert selected.price == 18.42
@@ -60,7 +142,7 @@ def test_allow_mock_fallback_for_operation_makes_mock_fallback_usable():
         "mock": StaticProvider(_raw("601899.SH", "mock", 18.42)),
     }
 
-    selected = route_symbol(instrument, providers, RouterConfig(provider_mode="live"))
+    selected = route_symbol(instrument, providers, RouterConfig(provider_mode="live", provider_policy="diagnostic"))
 
     assert selected.source == "mock"
     assert "mock_fallback_not_allowed" not in selected.quality_issues
@@ -105,7 +187,7 @@ def test_all_attempts_fail_final_record_contains_attempts():
         "mock": StaticProvider(),
     }
 
-    selected = route_symbol(instrument, providers, RouterConfig(provider_mode="live"))
+    selected = route_symbol(instrument, providers, RouterConfig(provider_mode="live", provider_policy="diagnostic"))
 
     assert "provider_error" in selected.quality_issues or "symbol_not_found" in selected.quality_issues
     assert selected.provider_diagnostics["selected_attempt_status"] == "failed"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -15,6 +16,8 @@ class Provider(Protocol):
 @dataclass(frozen=True)
 class RouterConfig:
     provider_mode: str = "mock"
+    provider_policy: str = "fast"
+    timeout_seconds: float = 8.0
 
 
 def collect_routed_prices(
@@ -30,20 +33,23 @@ def collect_routed_prices(
 
 
 def route_symbol(instrument: Instrument, providers: dict[str, Provider], config: RouterConfig) -> RawPrice:
-    priority = _effective_priority(instrument, config.provider_mode)
+    configured_priority = [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
+    priority = _effective_priority(instrument, config.provider_mode, config.provider_policy)
     attempts: list[dict[str, object]] = []
     last_raw: RawPrice | None = None
 
     for provider_name in priority:
         provider = providers.get(provider_name)
         if provider is None:
-            attempts.append(_attempt(instrument.symbol, provider_name, "skipped", reason="provider_not_configured"))
+            attempts.append(_attempt(instrument.symbol, provider_name, "skipped", reason="provider_not_configured", elapsed_seconds=0.0))
             continue
 
+        start = time.perf_counter()
         try:
             fetched = provider.fetch([instrument.symbol])
             raw = fetched.get(instrument.symbol)
         except Exception as exc:
+            elapsed = time.perf_counter() - start
             attempts.append(
                 _attempt(
                     instrument.symbol,
@@ -51,32 +57,57 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
                     "failed",
                     exception_type=type(exc).__name__,
                     exception_message=str(exc),
-                    reason="provider_exception",
+                    reason="provider_timeout" if elapsed > config.timeout_seconds else "provider_exception",
+                    elapsed_seconds=elapsed,
+                    timeout_seconds=config.timeout_seconds,
                 )
             )
             continue
+        elapsed = time.perf_counter() - start
 
         if raw is None:
-            attempts.append(_attempt(instrument.symbol, provider_name, "failed", reason="symbol_not_found"))
+            attempts.append(
+                _attempt(
+                    instrument.symbol,
+                    provider_name,
+                    "failed",
+                    reason="provider_timeout" if elapsed > config.timeout_seconds else "symbol_not_found",
+                    elapsed_seconds=elapsed,
+                    timeout_seconds=config.timeout_seconds,
+                )
+            )
             last_raw = _missing_raw(instrument, provider_name, attempts)
             continue
 
         provider_attempts = _provider_attempts(raw)
-        attempts.extend(provider_attempts or [_raw_attempt(raw, provider_name)])
+        stamped_attempts = _stamp_elapsed(provider_attempts or [_raw_attempt(raw, provider_name)], elapsed, config.timeout_seconds)
+        if elapsed > config.timeout_seconds and not _raw_usable_for_selection(raw):
+            raw.quality_issues = list(dict.fromkeys([*raw.quality_issues, "provider_timeout", "provider_error"]))
+            stamped_attempts = [
+                {**attempt, "status": "failed", "reason": "provider_timeout"}
+                for attempt in stamped_attempts
+            ]
+        attempts.extend(stamped_attempts)
         last_raw = raw
         if _raw_usable_for_selection(raw):
-            return _selected_raw(instrument, raw, provider_name, priority, attempts)
+            return _selected_raw(instrument, raw, provider_name, priority, configured_priority, config.provider_policy, attempts)
 
-    return _final_failed_raw(instrument, last_raw, priority, attempts)
+    return _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, attempts)
 
 
-def _effective_priority(instrument: Instrument, provider_mode: str) -> list[str]:
+def _effective_priority(instrument: Instrument, provider_mode: str, provider_policy: str) -> list[str]:
     configured = instrument.provider_priority or [instrument.provider]
     priority = [provider for provider in configured if provider != "disabled"]
     if provider_mode == "mock":
         if "manual" in priority:
             return ["manual"]
         return ["mock"]
+    if provider_policy == "fast":
+        return _policy_priority(instrument, ["yfinance", "akshare", "mock"])
+    if provider_policy == "conservative":
+        return _policy_priority(instrument, ["akshare", "yfinance", "mock"])
+    if provider_policy == "diagnostic":
+        return priority or _policy_priority(instrument, ["akshare", "yfinance", "mock"])
     return priority or [instrument.provider]
 
 
@@ -85,12 +116,18 @@ def _selected_raw(
     raw: RawPrice,
     selected_provider: str,
     priority: list[str],
+    configured_priority: list[str],
+    provider_policy: str,
     attempts: list[dict[str, object]],
 ) -> RawPrice:
     fallback_used = bool(priority and selected_provider != priority[0])
+    attempts = [*attempts, *_skipped_after_success(raw.symbol, priority, selected_provider, provider_policy)]
     raw.provider_diagnostics = {
         **raw.provider_diagnostics,
+        "configured_provider_priority": configured_priority,
         "provider_priority": priority,
+        "effective_provider_chain": priority,
+        "provider_policy": provider_policy,
         "provider_attempts": attempts,
         "selected_provider": selected_provider,
         "selected_source": raw.source,
@@ -119,6 +156,8 @@ def _final_failed_raw(
     instrument: Instrument,
     last_raw: RawPrice | None,
     priority: list[str],
+    configured_priority: list[str],
+    provider_policy: str,
     attempts: list[dict[str, object]],
 ) -> RawPrice:
     raw = last_raw or _missing_raw(instrument, priority[-1] if priority else instrument.provider, attempts)
@@ -128,7 +167,10 @@ def _final_failed_raw(
     raw.quality_issues = list(dict.fromkeys(issues))
     raw.provider_diagnostics = {
         **raw.provider_diagnostics,
+        "configured_provider_priority": configured_priority,
         "provider_priority": priority,
+        "effective_provider_chain": priority,
+        "provider_policy": provider_policy,
         "provider_attempts": attempts,
         "selected_provider": "",
         "selected_source": raw.source,
@@ -151,6 +193,7 @@ def _raw_usable_for_selection(raw: RawPrice) -> bool:
         "invalid_price",
         "invalid_quote_time",
         "quote_time_missing",
+        "provider_timeout",
     }
     return raw.price is not None and raw.quote_time is not None and not (set(raw.quality_issues) & blocking_issues)
 
@@ -204,7 +247,11 @@ def _attempt(
     quote_time: str = "",
     usable_for_operation: bool = False,
     reason: str = "",
+    elapsed_seconds: float | None = None,
+    timeout_seconds: float | None = None,
 ) -> dict[str, object]:
+    elapsed = round(elapsed_seconds or 0.0, 3)
+    timeout = float(timeout_seconds or 0.0)
     return {
         "symbol": symbol,
         "provider": provider,
@@ -216,7 +263,23 @@ def _attempt(
         "quote_time": quote_time,
         "usable_for_operation": usable_for_operation,
         "reason": reason,
+        "elapsed_seconds": elapsed,
+        "timeout_seconds": timeout,
+        "slow_provider_attempt": bool(timeout and elapsed > timeout),
     }
+
+
+def _stamp_elapsed(attempts: list[dict[str, object]], elapsed_seconds: float, timeout_seconds: float) -> list[dict[str, object]]:
+    elapsed = round(elapsed_seconds, 3)
+    return [
+        {
+            **attempt,
+            "elapsed_seconds": elapsed,
+            "timeout_seconds": timeout_seconds,
+            "slow_provider_attempt": elapsed_seconds > timeout_seconds,
+        }
+        for attempt in attempts
+    ]
 
 
 def _missing_raw(instrument: Instrument, provider_name: str, attempts: list[dict[str, object]]) -> RawPrice:
@@ -233,3 +296,28 @@ def _missing_raw(instrument: Instrument, provider_name: str, attempts: list[dict
         quality_issues=["symbol_not_found"],
         provider_diagnostics={"provider_attempts": attempts},
     )
+
+
+def _policy_priority(instrument: Instrument, stock_chain: list[str]) -> list[str]:
+    if instrument.symbol == "GOLD_CNY" or instrument.provider == "manual":
+        return ["manual"]
+    if instrument.symbol in {"601899.SH", "601985.SH", "003816.SZ", "00883.HK"}:
+        return stock_chain
+    if instrument.symbol in {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}:
+        return ["akshare", "mock"]
+    return [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
+
+
+def _skipped_after_success(symbol: str, priority: list[str], selected_provider: str, provider_policy: str) -> list[dict[str, object]]:
+    if selected_provider not in priority:
+        return []
+    return [
+        _attempt(
+            symbol,
+            provider,
+            "skipped",
+            reason=f"selected_provider_success_policy_skip:{provider_policy}",
+            elapsed_seconds=0.0,
+        )
+        for provider in priority[priority.index(selected_provider) + 1 :]
+    ]

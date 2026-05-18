@@ -37,6 +37,24 @@ provider_priority:
 
 `00883.HK` 支持 yfinance secondary provider，内部映射为 Yahoo Finance ticker `0883.HK`。yfinance 是 Yahoo Finance public API wrapper，适合研究/教育用途，不是官方交易所行情源。
 
+## Provider Policy
+
+`--provider-policy` 支持 `fast`、`conservative`、`diagnostic`，默认 `fast`。
+
+- `fast`：A股 / 港股股票优先 `yfinance -> akshare -> mock`，ETF 仍为 `akshare -> mock`，GOLD_CNY 仍为 `manual`。
+- `conservative`：A股 / 港股股票优先 `akshare -> yfinance -> mock`，适合对比国内行情源与 yfinance。
+- `diagnostic`：按配置链路运行并在报告中标注 diagnostic mode active，适合排查 provider 问题，可能慢于 fast。
+
+常用命令：
+
+```bash
+python -m market_price_guard.main --profile energy --provider-mode live --provider-policy fast --strict --output-dir outputs_energy_latest
+python -m market_price_guard.main --profile tech --provider-mode live --provider-policy fast --strict --output-dir outputs_tech_latest
+python -m market_price_guard.main --profile all --provider-mode live --provider-policy fast --strict --output-dir outputs_all_latest
+python -m market_price_guard.main --profile all --provider-mode live --provider-policy conservative --strict --output-dir outputs_conservative
+python -m market_price_guard.main --profile all --provider-mode live --provider-policy diagnostic --output-dir outputs_diagnostic
+```
+
 ## AKShare
 
 live 模式下：

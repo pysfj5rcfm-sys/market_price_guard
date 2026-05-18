@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from .normalize import load_watchlist, load_yaml, normalize_records
 from .provider_router import RouterConfig, collect_routed_prices
+from .models import WatchProject, Watchlist
 from .providers.akshare_provider import AkshareProvider
 from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
@@ -31,6 +33,7 @@ class PipelineResult:
     strict: bool
     completeness: CompletenessSummary
     exit_code: int
+    runtime: dict
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -41,19 +44,36 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--manual-prices", type=Path, default=MANUAL_PRICES_PATH)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     parser.add_argument("--provider-mode", choices=["mock", "live"], default="mock")
+    parser.add_argument("--provider-policy", choices=["fast", "conservative", "diagnostic"], default="fast")
+    parser.add_argument("--profile", choices=["all", "energy", "tech", "controller"], default="all")
+    parser.add_argument("--timeout-seconds", type=float, default=8.0)
+    parser.add_argument("--max-run-seconds", type=float, default=30.0)
+    parser.add_argument("--max-data-lag-seconds", type=float, default=300.0)
     parser.add_argument("--strict", action="store_true", help="Return exit code 2 when required price data is unusable.")
     return parser.parse_args(argv)
 
 
-def collect_prices(watchlist_path: Path, mock_prices_path: Path, manual_prices_path: Path, provider_mode: str = "mock") -> dict:
-    watchlist = load_watchlist(watchlist_path)
+def collect_prices(
+    watchlist_path: Path,
+    mock_prices_path: Path,
+    manual_prices_path: Path,
+    provider_mode: str = "mock",
+    profile: str = "all",
+    timeout_seconds: float = 8.0,
+    provider_policy: str = "fast",
+) -> dict:
+    watchlist = _filter_watchlist(load_watchlist(watchlist_path), profile)
     providers = {
         "mock": MockProvider(mock_prices_path),
         "manual": ManualProvider(manual_prices_path),
         "akshare": AkshareProvider(),
         "yfinance": YFinanceProvider(),
     }
-    prices = collect_routed_prices(watchlist, providers, RouterConfig(provider_mode=provider_mode))
+    prices = collect_routed_prices(
+        watchlist,
+        providers,
+        RouterConfig(provider_mode=provider_mode, provider_policy=provider_policy, timeout_seconds=timeout_seconds),
+    )
     return {"watchlist": watchlist, "prices": prices}
 
 
@@ -65,11 +85,30 @@ def run_pipeline(
     output_dir: Path = OUTPUT_DIR,
     provider_mode: str = "mock",
     strict: bool = False,
+    profile: str = "all",
+    timeout_seconds: float = 8.0,
+    provider_policy: str = "fast",
+    max_run_seconds: float = 30.0,
+    max_data_lag_seconds: float = 300.0,
 ) -> PipelineResult:
-    collected = collect_prices(watchlist_path, mock_prices_path, manual_prices_path, provider_mode)
+    perf_start = time.perf_counter()
+    run_start = _utc_now_iso()
+    collected = collect_prices(watchlist_path, mock_prices_path, manual_prices_path, provider_mode, profile, timeout_seconds, provider_policy)
     rules = load_yaml(stale_rules_path)
     records = normalize_records(collected["watchlist"], collected["prices"], rules)
-    write_outputs(records, output_dir, provider_mode=provider_mode)
+    elapsed = time.perf_counter() - perf_start
+    runtime = _runtime_diagnostics(
+        records=records,
+        run_start_time_utc=run_start,
+        total_elapsed_seconds=elapsed,
+        profile=profile,
+        provider_mode=provider_mode,
+        provider_policy=provider_policy,
+        strict=strict,
+        max_run_seconds=max_run_seconds,
+        max_data_lag_seconds=max_data_lag_seconds,
+    )
+    write_outputs(records, output_dir, provider_mode=provider_mode, runtime=runtime)
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
     return PipelineResult(
@@ -78,6 +117,7 @@ def run_pipeline(
         strict=strict,
         completeness=completeness,
         exit_code=exit_code,
+        runtime=runtime,
     )
 
 
@@ -91,7 +131,12 @@ def main(argv: list[str] | None = None) -> int:
             manual_prices_path=args.manual_prices,
             output_dir=args.output_dir,
             provider_mode=args.provider_mode,
+            provider_policy=args.provider_policy,
             strict=args.strict,
+            profile=args.profile,
+            timeout_seconds=args.timeout_seconds,
+            max_run_seconds=args.max_run_seconds,
+            max_data_lag_seconds=args.max_data_lag_seconds,
         )
     except Exception as exc:
         print(f"market_price_guard failed: {exc}", file=sys.stderr)
@@ -108,6 +153,53 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("Price guard completed without strict blocking records.")
     return result.exit_code
+
+
+def _filter_watchlist(watchlist: Watchlist, profile: str) -> Watchlist:
+    if profile == "all":
+        return watchlist
+    if profile in watchlist.projects:
+        project = watchlist.projects[profile]
+        return Watchlist(projects={profile: WatchProject(**project.model_dump())})
+    return Watchlist(projects={})
+
+
+def _runtime_diagnostics(
+    records,
+    run_start_time_utc: str,
+    total_elapsed_seconds: float,
+    profile: str,
+    provider_mode: str,
+    provider_policy: str,
+    strict: bool,
+    max_run_seconds: float,
+    max_data_lag_seconds: float,
+) -> dict:
+    from datetime import datetime, timezone
+
+    run_end = datetime.now(timezone.utc)
+    quote_times = [record.quote_time.astimezone(timezone.utc) for record in records if record.quote_time is not None]
+    quote_lags = [(run_end - quote_time).total_seconds() for quote_time in quote_times]
+    max_quote_lag = max(quote_lags) if quote_lags else None
+    return {
+        "run_start_time_utc": run_start_time_utc,
+        "run_end_time_utc": run_end.isoformat(),
+        "total_elapsed_seconds": round(total_elapsed_seconds, 3),
+        "profile": profile,
+        "provider_mode": provider_mode,
+        "provider_policy": provider_policy,
+        "strict": strict,
+        "max_run_seconds": max_run_seconds,
+        "max_data_lag_seconds": max_data_lag_seconds,
+        "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,
+        "max_quote_lag_seconds": "" if max_quote_lag is None else round(max_quote_lag, 3),
+    }
+
+
+def _utc_now_iso() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
 
 
 if __name__ == "__main__":

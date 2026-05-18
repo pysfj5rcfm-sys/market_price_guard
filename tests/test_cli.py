@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import pandas as pd
+import time
 
 from market_price_guard.main import EXIT_OK, EXIT_STRICT_BLOCKED, PROJECT_ROOT, main, run_pipeline
 from market_price_guard.providers.akshare_provider import AkshareProvider
+from market_price_guard.providers.mock_provider import MockProvider
 
 
 def test_default_arguments_can_run(tmp_path):
@@ -21,6 +23,7 @@ def test_custom_output_dir_generates_files(tmp_path):
     assert result.exit_code == EXIT_OK
     assert (output_dir / "data_completeness_report.md").exists()
     assert (output_dir / "provider_health_report.md").exists()
+    assert (output_dir / "runtime_diagnostics.md").exists()
     assert (output_dir / "controller_price_summary.md").exists()
 
 
@@ -195,7 +198,7 @@ def test_provider_mode_live_can_be_monkeypatched_without_network(monkeypatch, tm
 
     monkeypatch.setattr(AkshareProvider, "fetch", fake_fetch)
 
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="live", strict=True)
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="live", provider_policy="conservative", strict=True)
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
@@ -255,6 +258,104 @@ def test_provider_health_report_does_not_change_strict_exit_code(tmp_path):
 
     assert result.exit_code == EXIT_STRICT_BLOCKED
     assert (tmp_path / "out" / "provider_health_report.md").exists()
+
+
+def test_profile_tech_only_contains_tech_symbols(tmp_path):
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True)
+    df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
+
+    assert result.exit_code == EXIT_OK
+    assert set(df["symbol"]) == {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH", "GOLD_CNY"}
+
+
+def test_profile_energy_only_contains_energy_symbols(tmp_path):
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy", strict=True)
+    df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
+
+    assert result.exit_code == EXIT_OK
+    assert set(df["symbol"]) == {"00883.HK", "601899.SH", "601985.SH", "003816.SZ"}
+
+
+def test_profile_all_keeps_full_watchlist(tmp_path):
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="all")
+    df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
+
+    assert result.exit_code == EXIT_OK
+    assert len(df) == 13
+
+
+def test_runtime_diagnostics_contains_core_fields(tmp_path):
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="controller")
+    report = (tmp_path / "out" / "runtime_diagnostics.md").read_text(encoding="utf-8")
+
+    assert result.exit_code == EXIT_OK
+    assert "total_elapsed_seconds" in report
+    assert "profile: controller" in report
+    assert "provider_mode: mock" in report
+    assert "provider_policy: fast" in report
+
+
+def test_reports_include_provider_policy(tmp_path):
+    run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", provider_policy="diagnostic", profile="controller")
+    health = (tmp_path / "out" / "provider_health_report.md").read_text(encoding="utf-8")
+    completeness = (tmp_path / "out" / "data_completeness_report.md").read_text(encoding="utf-8")
+    runtime = (tmp_path / "out" / "runtime_diagnostics.md").read_text(encoding="utf-8")
+
+    assert "provider_policy=diagnostic" in health
+    assert "provider_policy: diagnostic" in completeness
+    assert "provider_policy: diagnostic" in runtime
+
+
+def test_provider_health_report_attempts_include_elapsed_seconds(tmp_path):
+    run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy")
+    report = (tmp_path / "out" / "provider_health_report.md").read_text(encoding="utf-8")
+
+    assert "elapsed_seconds=" in report
+
+
+def test_slow_provider_attempt_is_reported(monkeypatch, tmp_path):
+    original_fetch = MockProvider.fetch
+
+    def slow_fetch(self, symbols):
+        time.sleep(0.02)
+        return original_fetch(self, symbols)
+
+    monkeypatch.setattr(MockProvider, "fetch", slow_fetch)
+
+    run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy", timeout_seconds=0.001)
+    runtime_report = (tmp_path / "out" / "runtime_diagnostics.md").read_text(encoding="utf-8")
+    health_report = (tmp_path / "out" / "provider_health_report.md").read_text(encoding="utf-8")
+
+    assert "slow_provider_attempts" in runtime_report
+    assert "slow_provider_attempt=True" in health_report
+
+
+def test_run_time_budget_exceeded_appears_in_completeness_report(tmp_path):
+    run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="controller", max_run_seconds=0)
+    report = (tmp_path / "out" / "data_completeness_report.md").read_text(encoding="utf-8")
+
+    assert "run_time_budget_exceeded: True" in report
+    assert "本轮刷新耗时超过预算" in report
+
+
+def test_profile_tech_ignores_energy_strict_failures(monkeypatch, tmp_path):
+    def fail_fetch(self, symbols):
+        raise AssertionError("AKShare should not be called for energy in tech profile")
+
+    monkeypatch.setattr(AkshareProvider, "fetch", fail_fetch)
+
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True)
+
+    assert result.exit_code == EXIT_OK
+
+
+def test_profile_energy_ignores_tech_strict_failures(tmp_path):
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy", strict=True)
+    df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
+
+    assert result.exit_code == EXIT_OK
+    assert "GOLD_CNY" not in set(df["symbol"])
+    assert "159819.SZ" not in set(df["symbol"])
 
 
 def _write_stale_rules(tmp_path, default_max_age: int, manual_max_age: int):
