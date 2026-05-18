@@ -40,6 +40,7 @@ def normalize_records(
                     quote_time=None,
                     fetch_time=current_time,
                     market_status="unknown",
+                    quality_issues=["missing_price"],
                 )
 
             is_stale, stale_reason = assess_freshness(raw, instrument.market, rules, now=current_time)
@@ -47,7 +48,7 @@ def normalize_records(
                 PriceRecord(
                     project=project_key,
                     symbol=instrument.symbol,
-                    name=instrument.name,
+                    name=raw.name or instrument.name,
                     market=instrument.market,
                     price=raw.price,
                     currency=raw.currency,
@@ -58,7 +59,16 @@ def normalize_records(
                     is_stale=is_stale,
                     stale_reason=stale_reason,
                     core=instrument.core,
-                    required_for_operation=instrument.required_for_operation,
+                    required_for_operation=raw.required_for_operation
+                    if raw.required_for_operation is not None
+                    else instrument.required_for_operation,
+                    source_note=raw.source_note,
+                    product_type=raw.product_type,
+                    price_type=raw.price_type,
+                    tradable=raw.tradable,
+                    fee_note=raw.fee_note,
+                    asset_role=raw.asset_role or instrument.asset_role,
+                    quality_issues=raw.quality_issues,
                 )
             )
     return records

@@ -3,6 +3,8 @@ default:
   max_age_seconds_closed: 86400
 manual:
   max_age_seconds: 604800
+MANUAL:
+  max_age_seconds: 604800
 markets:
   CN:
     max_age_seconds_open: 900

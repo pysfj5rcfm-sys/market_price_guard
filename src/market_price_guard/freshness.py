@@ -13,10 +13,19 @@ def now_utc() -> datetime:
 def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: datetime | None = None) -> tuple[bool, str]:
     current_time = now or now_utc()
 
+    if raw.quality_issues:
+        issue_text = ", ".join(raw.quality_issues)
+        if "invalid_price" in raw.quality_issues:
+            return True, f"invalid_price: 手工价格缺失或不是正数，不可用于具体操作建议；{issue_text}"
+        if "invalid_quote_time" in raw.quality_issues:
+            return True, f"invalid_quote_time: quote_time 解析失败，不可用于具体操作建议；{issue_text}"
+        if "quote_time_missing" in raw.quality_issues:
+            return True, f"quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；{issue_text}"
+
     if raw.price is None:
         return True, "价格缺失，不可用于具体操作建议"
     if raw.quote_time is None:
-        return True, "quote_time 缺失，数据质量不足，不可用于具体操作建议"
+        return True, "quote_time_missing: quote_time 缺失，数据质量不足，不可用于具体操作建议"
 
     reference_time = raw.entry_time if raw.source == "manual" and raw.entry_time else raw.quote_time
     age_seconds = (current_time - reference_time).total_seconds()
@@ -24,10 +33,11 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
     if age_seconds < 0:
         return True, "时间戳晚于当前时间，数据质量不足"
 
-    if raw.source == "manual":
-        max_age = int(rules.get("manual", {}).get("max_age_seconds", 0))
+    if raw.source == "manual" or market == "MANUAL":
+        manual_rules = rules.get("MANUAL", rules.get("manual", {}))
+        max_age = int(manual_rules.get("max_age_seconds", 0))
         if age_seconds > max_age:
-            return True, "manual 价格超过允许录入时间，不可用于具体操作建议"
+            return True, "manual 价格超过允许录入时间（MANUAL max_age_seconds），不可用于具体操作建议"
         return False, "manual 价格，已显示录入时间"
 
     market_rules = rules.get("markets", {}).get(market, rules.get("default", {}))

@@ -32,16 +32,20 @@ projects:
         market: "CN"
         core: true
         provider: "mock"
+        asset_role: "tech_equity"
       - symbol: "513300.SH"
         name: "纳指ETF"
         market: "CN"
         core: true
         provider: "mock"
+        asset_role: "tech_equity"
       - symbol: "GOLD_CNY"
         name: "黄金持仓参考价"
         market: "MANUAL"
         core: true
         provider: "manual"
+        required_for_operation: true
+        asset_role: "defense_or_potential_tech_funding"
   controller:
     display_name: "理财｜投资咨询/总控项目"
     allow_full_detail: false

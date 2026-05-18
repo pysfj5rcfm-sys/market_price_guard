@@ -16,6 +16,7 @@ class Instrument(BaseModel):
     core: bool = True
     provider: str = "mock"
     required_for_operation: bool = False
+    asset_role: str | None = None
 
 
 class WatchProject(BaseModel):
@@ -33,10 +34,21 @@ class RawPrice(BaseModel):
     price: float | None = None
     currency: str = ""
     source: str
+    name: str | None = None
+    market: str | None = None
     quote_time: datetime | None = None
     fetch_time: datetime | None = None
     market_status: MarketStatus = "unknown"
     entry_time: datetime | None = None
+    source_note: str | None = None
+    product_type: str | None = None
+    price_type: str | None = None
+    tradable: bool | None = None
+    fee_note: str | None = None
+    project: str | None = None
+    asset_role: str | None = None
+    required_for_operation: bool | None = None
+    quality_issues: list[str] = Field(default_factory=list)
 
     @field_validator("price")
     @classmethod
@@ -63,8 +75,23 @@ class PriceRecord(BaseModel):
     stale_reason: str = Field(default="")
     core: bool = True
     required_for_operation: bool = False
+    source_note: str | None = None
+    product_type: str | None = None
+    price_type: str | None = None
+    tradable: bool | None = None
+    fee_note: str | None = None
+    asset_role: str | None = None
+    quality_issues: list[str] = Field(default_factory=list)
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()
         data.pop("core", None)
+        data.pop("required_for_operation", None)
+        data.pop("source_note", None)
+        data.pop("product_type", None)
+        data.pop("price_type", None)
+        data.pop("tradable", None)
+        data.pop("fee_note", None)
+        data.pop("asset_role", None)
+        data.pop("quality_issues", None)
         return data

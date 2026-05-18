@@ -8,12 +8,13 @@ from pathlib import Path
 from .normalize import load_watchlist, load_yaml, normalize_records
 from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
-from .report import CompletenessSummary, build_completeness_summary, write_outputs
+from .report import CompletenessSummary, build_completeness_summary, format_blocking_record, write_outputs
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = PROJECT_ROOT / "config"
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
+MANUAL_PRICES_PATH = CONFIG_DIR / "manual_prices.yaml"
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -34,15 +35,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--watchlist", type=Path, default=CONFIG_DIR / "watchlist.yaml")
     parser.add_argument("--stale-rules", type=Path, default=CONFIG_DIR / "stale_rules.yaml")
     parser.add_argument("--mock-prices", type=Path, default=CONFIG_DIR / "mock_prices.yaml")
+    parser.add_argument("--manual-prices", type=Path, default=MANUAL_PRICES_PATH)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     parser.add_argument("--strict", action="store_true", help="Return exit code 2 when required price data is unusable.")
     return parser.parse_args(argv)
 
 
-def collect_prices(watchlist_path: Path, mock_prices_path: Path) -> dict:
+def collect_prices(watchlist_path: Path, mock_prices_path: Path, manual_prices_path: Path) -> dict:
     watchlist = load_watchlist(watchlist_path)
     mock_provider = MockProvider(mock_prices_path)
-    manual_provider = ManualProvider(mock_prices_path)
+    manual_provider = ManualProvider(manual_prices_path)
 
     mock_symbols: list[str] = []
     manual_symbols: list[str] = []
@@ -55,6 +57,7 @@ def collect_prices(watchlist_path: Path, mock_prices_path: Path) -> dict:
 
     prices = {}
     prices.update(mock_provider.fetch(mock_symbols))
+    # Manual records intentionally override mock values for the same symbol.
     prices.update(manual_provider.fetch(manual_symbols))
     return {"watchlist": watchlist, "prices": prices}
 
@@ -63,10 +66,11 @@ def run_pipeline(
     watchlist_path: Path = CONFIG_DIR / "watchlist.yaml",
     stale_rules_path: Path = CONFIG_DIR / "stale_rules.yaml",
     mock_prices_path: Path = CONFIG_DIR / "mock_prices.yaml",
+    manual_prices_path: Path = MANUAL_PRICES_PATH,
     output_dir: Path = OUTPUT_DIR,
     strict: bool = False,
 ) -> PipelineResult:
-    collected = collect_prices(watchlist_path, mock_prices_path)
+    collected = collect_prices(watchlist_path, mock_prices_path, manual_prices_path)
     rules = load_yaml(stale_rules_path)
     records = normalize_records(collected["watchlist"], collected["prices"], rules)
     write_outputs(records, output_dir)
@@ -88,6 +92,7 @@ def main(argv: list[str] | None = None) -> int:
             watchlist_path=args.watchlist,
             stale_rules_path=args.stale_rules,
             mock_prices_path=args.mock_prices,
+            manual_prices_path=args.manual_prices,
             output_dir=args.output_dir,
             strict=args.strict,
         )
@@ -97,7 +102,12 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Generated {result.records_count} price records in {result.output_dir}")
     if result.exit_code == EXIT_STRICT_BLOCKED:
-        print("Strict mode blocked operation: required price data is missing, stale, or lacks quote_time.", file=sys.stderr)
+        print(
+            "Strict mode blocked operation because the following required prices are not usable:",
+            file=sys.stderr,
+        )
+        for record in result.completeness.strict_blockers:
+            print(format_blocking_record(record), file=sys.stderr)
     return result.exit_code
 
 
