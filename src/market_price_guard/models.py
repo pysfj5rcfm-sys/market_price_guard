@@ -49,6 +49,7 @@ class RawPrice(BaseModel):
     asset_role: str | None = None
     required_for_operation: bool | None = None
     quality_issues: list[str] = Field(default_factory=list)
+    provider_diagnostics: dict[str, object] = Field(default_factory=dict)
 
     @field_validator("price")
     @classmethod
@@ -82,6 +83,7 @@ class PriceRecord(BaseModel):
     fee_note: str | None = None
     asset_role: str | None = None
     quality_issues: list[str] = Field(default_factory=list)
+    provider_diagnostics: dict[str, object] = Field(default_factory=dict)
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()
@@ -94,4 +96,5 @@ class PriceRecord(BaseModel):
         data.pop("fee_note", None)
         data.pop("asset_role", None)
         data.pop("quality_issues", None)
+        data.pop("provider_diagnostics", None)
         return data

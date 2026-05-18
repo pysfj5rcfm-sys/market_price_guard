@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pandas as pd
+
 from market_price_guard.main import EXIT_OK, EXIT_STRICT_BLOCKED, PROJECT_ROOT, main, run_pipeline
+from market_price_guard.providers.akshare_provider import AkshareProvider
 
 
 def test_default_arguments_can_run(tmp_path):
@@ -123,14 +126,80 @@ def test_gold_stale_strict_returns_exit_code_2(tmp_path):
 
 
 def test_non_required_stale_record_does_not_cause_exit_code_2(tmp_path):
+    watchlist = tmp_path / "watchlist.yaml"
+    mock_prices = tmp_path / "mock_prices.yaml"
     stale_rules = _write_stale_rules(tmp_path, default_max_age=1, manual_max_age=604800)
+    watchlist.write_text(
+        """
+projects:
+  tech:
+    display_name: "tech"
+    allow_full_detail: true
+    instruments:
+      - symbol: "510300.SH"
+        name: "沪深300ETF"
+        market: "CN"
+        core: false
+        provider: "mock"
+        required_for_operation: false
+        asset_role: "non_tech_broad_base_etf"
+""".strip(),
+        encoding="utf-8",
+    )
+    mock_prices.write_text(
+        """
+prices:
+  - symbol: "510300.SH"
+    price: 3.921
+    currency: "CNY"
+    source: "mock"
+    quote_time: "2026-05-18T12:45:00+08:00"
+    fetch_time: "2026-05-18T12:50:00+08:00"
+    market_status: "closed"
+""".strip(),
+        encoding="utf-8",
+    )
 
-    result = run_pipeline(stale_rules_path=stale_rules, output_dir=tmp_path / "out", strict=True)
+    result = run_pipeline(
+        watchlist_path=watchlist,
+        mock_prices_path=mock_prices,
+        stale_rules_path=stale_rules,
+        output_dir=tmp_path / "out",
+        strict=True,
+    )
     report = (tmp_path / "out" / "data_completeness_report.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
-    assert result.completeness.strict_blockers == []
+    assert not any(record["symbol"] == "510300.SH" for record in result.completeness.strict_blockers)
     assert "warning" in report
+
+
+def test_provider_mode_mock_does_not_call_akshare(monkeypatch, tmp_path):
+    def fail_fetch(self, symbols):
+        raise AssertionError("AKShare should not be called in mock mode")
+
+    monkeypatch.setattr(AkshareProvider, "fetch", fail_fetch)
+
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock")
+
+    assert result.exit_code == EXIT_OK
+
+
+def test_provider_mode_live_can_be_monkeypatched_without_network(monkeypatch, tmp_path):
+    def fake_fetch(self, symbols):
+        return {
+            symbol: _fake_akshare_raw(symbol, price=1.0 + index)
+            for index, symbol in enumerate(symbols)
+        }
+
+    monkeypatch.setattr(AkshareProvider, "fetch", fake_fetch)
+
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="live", strict=True)
+    df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
+
+    assert result.exit_code == EXIT_OK
+    assert set(df[df["symbol"].isin(["601899.SH", "159819.SZ"])]["source"]) == {"akshare"}
+    assert df[df["symbol"] == "GOLD_CNY"]["source"].iloc[0] == "manual"
 
 
 def test_gold_quote_time_missing_is_reported(tmp_path):
@@ -216,3 +285,19 @@ manual_prices:
     is_core: true
     required_for_operation: true
 """.strip()
+
+
+def _fake_akshare_raw(symbol: str, price: float):
+    from market_price_guard.freshness import now_utc
+    from market_price_guard.models import RawPrice
+
+    now = now_utc()
+    return RawPrice(
+        symbol=symbol,
+        price=price,
+        currency="HKD" if symbol.endswith(".HK") else "CNY",
+        source="akshare",
+        quote_time=now,
+        fetch_time=now,
+        market_status="open",
+    )

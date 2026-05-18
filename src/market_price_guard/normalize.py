@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +44,8 @@ def normalize_records(
                 )
 
             is_stale, stale_reason = assess_freshness(raw, instrument.market, rules, now=current_time)
+            provider_diagnostics = dict(raw.provider_diagnostics)
+            provider_diagnostics.update(_freshness_diagnostics(raw, instrument.market, rules, current_time))
             records.append(
                 PriceRecord(
                     project=project_key,
@@ -69,6 +71,36 @@ def normalize_records(
                     fee_note=raw.fee_note,
                     asset_role=raw.asset_role or instrument.asset_role,
                     quality_issues=raw.quality_issues,
+                    provider_diagnostics=provider_diagnostics,
                 )
             )
     return records
+
+
+def _freshness_diagnostics(raw: RawPrice, market: str, rules: dict[str, Any], current_time: datetime) -> dict[str, object]:
+    diagnostics: dict[str, object] = {
+        "fetch_time_utc": _to_utc(raw.fetch_time or current_time).isoformat(),
+    }
+    max_age = _max_age_seconds(raw, market, rules)
+    if max_age is not None:
+        diagnostics["max_age_seconds"] = max_age
+    if raw.quote_time is not None:
+        quote_utc = _to_utc(raw.quote_time)
+        diagnostics["quote_time_utc"] = quote_utc.isoformat()
+        diagnostics["age_seconds"] = max(0, int((_to_utc(current_time) - quote_utc).total_seconds()))
+    return diagnostics
+
+
+def _max_age_seconds(raw: RawPrice, market: str, rules: dict[str, Any]) -> int | None:
+    if raw.source == "manual" or market == "MANUAL":
+        return int(rules.get("MANUAL", rules.get("manual", {})).get("max_age_seconds", 0))
+    market_rules = rules.get("markets", {}).get(market, rules.get("default", {}))
+    if raw.market_status == "closed":
+        return int(market_rules.get("max_age_seconds_closed", rules.get("default", {}).get("max_age_seconds_closed", 0)))
+    return int(market_rules.get("max_age_seconds_open", rules.get("default", {}).get("max_age_seconds_open", 0)))
+
+
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)

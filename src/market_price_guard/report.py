@@ -29,6 +29,16 @@ GOLD_NOTE = (
     "用于科技账户防守仓/潜在转科技资金的参考，实际操作前需核对账户内可卖价、手续费、点差和到账规则。"
 )
 
+TECH_GROUPS = [
+    ("纳指 / 海外科技ETF", "nasdaq_or_overseas_tech_etf"),
+    ("AI / 人工智能ETF", "ai_tech_equity"),
+    ("通信 / 科技ETF", "communication_tech_equity"),
+    ("黄金防守仓 / 潜在转科技资金", "defense_or_potential_tech_funding"),
+    ("非科技宽基单独列示", "non_tech_broad_base_etf"),
+]
+
+AKSHARE_FUNCTIONS = ["stock_zh_a_spot_em", "stock_hk_spot_em", "fund_etf_spot_em"]
+
 
 @dataclass(frozen=True)
 class CompletenessSummary:
@@ -39,6 +49,8 @@ class CompletenessSummary:
     quote_time_missing: list[PriceRecord]
     strict_blockers: list[dict[str, Any]]
     manual_records: list[PriceRecord]
+    akshare_records: list[PriceRecord]
+    warnings: list[str]
 
 
 def get_blocking_records(records: list[PriceRecord]) -> list[dict[str, Any]]:
@@ -48,6 +60,7 @@ def get_blocking_records(records: list[PriceRecord]) -> list[dict[str, Any]]:
             continue
         blocking_reason = _blocking_reason(record)
         if blocking_reason:
+            diagnostics = record.provider_diagnostics
             blocking_records.append(
                 {
                     "project": record.project,
@@ -58,6 +71,8 @@ def get_blocking_records(records: list[PriceRecord]) -> list[dict[str, Any]]:
                     "is_stale": record.is_stale,
                     "stale_reason": record.stale_reason,
                     "blocking_reason": blocking_reason,
+                    "function_name": diagnostics.get("function_name", ""),
+                    "exception_type": diagnostics.get("exception_type", ""),
                 }
             )
     return blocking_records
@@ -71,6 +86,12 @@ def build_completeness_summary(records: list[PriceRecord]) -> CompletenessSummar
     stale_prices = [record for record in records if record.is_stale and record.price is not None]
     strict_blockers = get_blocking_records(records)
     manual_records = [record for record in records if record.source == "manual"]
+    akshare_records = [record for record in records if record.source == "akshare"]
+    warnings = [
+        f"{record.project} {record.symbol} {record.name}: {record.stale_reason}"
+        for record in records
+        if not record.required_for_operation and (record.is_stale or record.price is None or record.quality_issues)
+    ]
 
     reasons: list[str] = []
     if missing_prices:
@@ -88,6 +109,8 @@ def build_completeness_summary(records: list[PriceRecord]) -> CompletenessSummar
         quote_time_missing=quote_time_missing,
         strict_blockers=strict_blockers,
         manual_records=manual_records,
+        akshare_records=akshare_records,
+        warnings=warnings,
     )
 
 
@@ -118,15 +141,15 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
         "## Strict blocking records",
     ]
     lines.extend(_blocking_record_lines(summary.strict_blockers))
-    lines.extend(
-        [
-            "",
-            "## 黄金手工价说明",
-            GOLD_NOTE,
-            "",
-            "## 如果为否，原因",
-        ]
-    )
+    lines.extend(["", "## Provider diagnostics"])
+    lines.extend(_provider_diagnostics_lines(summary.akshare_records))
+    lines.extend(["", "## AKShare price records"])
+    lines.extend(_record_lines(summary.akshare_records))
+    lines.extend(["", "## AKShare quote freshness details"])
+    lines.extend(_akshare_freshness_lines(summary.akshare_records))
+    lines.extend(["", "## AKShare / 数据质量问题"])
+    lines.extend(_quality_issue_lines(summary.akshare_records))
+    lines.extend(["", "## 黄金手工价说明", GOLD_NOTE, "", "## 如果为否，原因"])
     lines.extend(_bullet_lines(summary.reasons))
     lines.extend(["", "## 缺失价格列表"])
     lines.extend(_record_lines(summary.missing_prices))
@@ -136,11 +159,10 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
     lines.extend(_record_lines(summary.quote_time_missing, marker="quote_time_missing"))
     lines.extend(["", "## manual price records"])
     lines.extend(_manual_record_lines(summary.manual_records))
+    lines.extend(["", "## warning"])
+    lines.extend(_bullet_lines(summary.warnings))
     lines.extend(
         [
-            "",
-            "## warning",
-            "- 非 required_for_operation 的辅助指标若 stale 或缺失，只在报告中披露 warning，不触发 strict exit code 2。",
             "",
             "## 不确定性",
             "- 手续费、点差、赎回到账规则未自动计算。",
@@ -163,99 +185,160 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
 
 def build_project_block(records: list[PriceRecord], project: str, title: str) -> str:
     project_records = [record for record in records if record.project == project]
-    lines = [
-        f"# {title}",
-        "",
-        "仅为价格事实和新鲜度记录，不包含买卖建议。",
-        "",
-    ]
+    lines = [f"# {title}", "", "仅为价格事实和新鲜度记录，不包含买卖建议。", ""]
     lines.extend(_price_table(project_records))
     return "\n".join(lines) + "\n"
 
 
 def build_tech_block(records: list[PriceRecord]) -> str:
     project_records = [record for record in records if record.project == "tech"]
-    equity_records = [record for record in project_records if record.asset_role != "defense_or_potential_tech_funding"]
-    gold_records = [record for record in project_records if record.asset_role == "defense_or_potential_tech_funding"]
-    lines = [
-        "# 科技账户价格事实块",
-        "",
-        "仅为价格事实和新鲜度记录，不包含买卖建议。",
-        "",
-        "## 科技权益",
-    ]
-    lines.extend(_price_table(equity_records))
-    lines.extend(["", "## 黄金防守仓 / 潜在转科技资金", GOLD_NOTE])
-    lines.extend(_price_table(gold_records))
+    lines = ["# 科技账户价格事实块", "", "仅为价格事实和新鲜度记录，不包含买卖建议。"]
+    for title, asset_role in TECH_GROUPS:
+        grouped = [record for record in project_records if record.asset_role == asset_role]
+        lines.extend(["", f"## {title}"])
+        if asset_role == "defense_or_potential_tech_funding":
+            lines.append(GOLD_NOTE)
+        lines.extend(_price_table(grouped))
     return "\n".join(lines) + "\n"
 
 
 def build_controller_summary(records: list[PriceRecord]) -> str:
-    project_names = {"energy": "能源账户", "tech": "科技账户", "controller": "总控辅助"}
+    energy_records = [record for record in records if record.project == "energy"]
+    tech_records = [record for record in records if record.project == "tech"]
+    gold = next((record for record in records if record.symbol == "GOLD_CNY"), None)
+    broad = next((record for record in records if record.symbol == "510300.SH"), None)
+    energy_ok = _required_records_ok(energy_records)
+    tech_ok = _required_records_ok(tech_records)
+    gold_ok = _record_ok(gold)
+    broad_ok = _record_ok(broad)
+    allocation_allowed = "是" if energy_ok and tech_ok and gold_ok else "否"
+    concrete_forbidden = "否" if allocation_allowed == "是" else "是"
+
     lines = [
         "# 总控价格摘要",
         "",
         "总控项目只维护摘要同步块，不输出能源/科技账户完整明细。",
         "",
-        "| project | total | stale_or_missing | latest_fetch_time |",
-        "|---|---:|---:|---|",
+        "| item | value |",
+        "|---|---|",
+        f"| 能源账户核心价格是否完整 | {_yes_no(energy_ok)} |",
+        f"| 科技账户核心价格是否完整 | {_yes_no(tech_ok)} |",
+        f"| 黄金参考价是否可用 | {_yes_no(gold_ok)} |",
+        f"| 非科技宽基价格是否可用 | {_yes_no(broad_ok)} |",
+        f"| 是否允许做资产配置判断 | {allocation_allowed} |",
+        f"| 是否禁止具体操作判断 | {concrete_forbidden} |",
+        "",
+        "说明：若 required_for_operation 指标缺失或过期，相关项目不可用于具体操作建议。",
     ]
-    for project in ["energy", "tech", "controller"]:
-        project_records = [record for record in records if record.project == project]
-        stale_count = sum(1 for record in project_records if record.is_stale or record.price is None)
-        latest_fetch = max((record.fetch_time for record in project_records if record.fetch_time), default=None)
-        lines.append(
-            f"| {project_names[project]} | {len(project_records)} | {stale_count} | {latest_fetch.isoformat() if latest_fetch else ''} |"
-        )
-
-    gold = next((record for record in records if record.symbol == "GOLD_CNY"), None)
-    if gold:
-        usable = "是" if not gold.is_stale and gold.price is not None and gold.quote_time is not None else "否"
-        allocation_allowed = "是" if usable == "是" else "否"
-        lines.extend(
-            [
-                "",
-                "## 黄金参考价摘要",
-                GOLD_NOTE,
-                "",
-                "| item | value |",
-                "|---|---|",
-                f"| 黄金参考价是否可用 | {usable} |",
-                f"| 是否 stale | {gold.is_stale} |",
-                f"| 是否允许做资产配置判断 | {allocation_allowed} |",
-            ]
-        )
-
-    lines.extend(["", "说明：若 required_for_operation 指标缺失或过期，相关项目不可用于具体操作建议。"])
     return "\n".join(lines) + "\n"
 
 
 def format_blocking_record(record: dict[str, Any]) -> str:
     return (
         "- project={project}, symbol={symbol}, name={name}, source={source}, quote_time={quote_time}, "
-        "is_stale={is_stale}, stale_reason={stale_reason}, blocking_reason={blocking_reason}"
+        "is_stale={is_stale}, stale_reason={stale_reason}, blocking_reason={blocking_reason}, "
+        "function_name={function_name}, exception_type={exception_type}"
     ).format(**record)
 
 
 def _blocking_reason(record: PriceRecord) -> str:
     issues = set(record.quality_issues)
+    if "provider_error" in issues or "akshare_not_installed" in issues:
+        return "provider_error"
+    if "symbol_not_found" in issues:
+        return "symbol_not_found"
     if record.price is None or "invalid_price" in issues:
         return "invalid_price_or_missing_price"
     if "invalid_quote_time" in issues:
         return "invalid_quote_time"
     if record.quote_time is None or "quote_time_missing" in issues:
         return "quote_time_missing"
-    if "provider_error" in issues:
-        return "provider_error"
     if record.is_stale:
         return "stale"
     return ""
+
+
+def _required_records_ok(records: list[PriceRecord]) -> bool:
+    required = [record for record in records if record.required_for_operation]
+    return bool(required) and all(_record_ok(record) for record in required)
+
+
+def _record_ok(record: PriceRecord | None) -> bool:
+    return bool(record and record.price is not None and not record.is_stale and record.quote_time is not None and not record.quality_issues)
+
+
+def _yes_no(value: bool) -> str:
+    return "是" if value else "否"
 
 
 def _blocking_record_lines(records: list[dict[str, Any]]) -> list[str]:
     if not records:
         return ["- 无"]
     return [format_blocking_record(record) for record in records]
+
+
+def _provider_diagnostics_lines(records: list[PriceRecord]) -> list[str]:
+    if not records:
+        return ["- 无 AKShare 记录"]
+    grouped = _group_provider_diagnostics(records)
+    statuses = {name: grouped.get(name, {}).get("status", "not_called") for name in AKSHARE_FUNCTIONS}
+    lines = []
+    if any(status == "success" for status in statuses.values()) and any(status == "fail" for status in statuses.values()):
+        lines.append("- AKShare partially succeeded")
+    if all(status == "fail" for status in statuses.values()):
+        lines.append("- AKShare 全部接口调用失败")
+    for function_name in AKSHARE_FUNCTIONS:
+        diagnostic = grouped.get(function_name)
+        if not diagnostic:
+            lines.append(f"- {function_name}: not_called")
+            continue
+        status = diagnostic.get("status", "unknown")
+        line = f"- {function_name}: {status}"
+        if status == "success":
+            line += f", returned_rows={diagnostic.get('returned_rows', '')}, matched_symbols={diagnostic.get('matched_symbols', [])}"
+        else:
+            line += (
+                f", exception_type={diagnostic.get('exception_type', '')}, "
+                f"exception_message={diagnostic.get('exception_message', '')}"
+            )
+        lines.append(line)
+    return lines
+
+
+def _group_provider_diagnostics(records: list[PriceRecord]) -> dict[str, dict[str, object]]:
+    grouped: dict[str, dict[str, object]] = {}
+    for record in records:
+        diagnostic = record.provider_diagnostics
+        function_name = str(diagnostic.get("function_name", ""))
+        if not function_name:
+            continue
+        existing = grouped.get(function_name)
+        if existing is None:
+            grouped[function_name] = dict(diagnostic)
+            continue
+        if existing.get("status") != "fail" and diagnostic.get("status") == "fail":
+            grouped[function_name] = dict(diagnostic)
+    return grouped
+
+
+def _akshare_freshness_lines(records: list[PriceRecord]) -> list[str]:
+    if not records:
+        return ["- 无"]
+    lines = []
+    for record in records:
+        diagnostic = record.provider_diagnostics
+        lines.append(
+            "- {symbol}: quote_time_raw={quote_time_raw}, quote_time_utc={quote_time_utc}, fetch_time_utc={fetch_time_utc}, age_seconds={age_seconds}, max_age_seconds={max_age_seconds}, is_stale={is_stale}".format(
+                symbol=record.symbol,
+                quote_time_raw=diagnostic.get("quote_time_raw", ""),
+                quote_time_utc=diagnostic.get("quote_time_utc", ""),
+                fetch_time_utc=diagnostic.get("fetch_time_utc", ""),
+                age_seconds=diagnostic.get("age_seconds", ""),
+                max_age_seconds=diagnostic.get("max_age_seconds", ""),
+                is_stale=record.is_stale,
+            )
+        )
+    return lines
 
 
 def _price_table(records: list[PriceRecord]) -> list[str]:
@@ -293,9 +376,16 @@ def _record_lines(records: list[PriceRecord], marker: str | None = None) -> list
     if not records:
         return ["- 无"]
     prefix = f"{marker}: " if marker else ""
+    return [f"- {prefix}{record.project} {record.symbol} {record.name}: {record.stale_reason}" for record in records]
+
+
+def _quality_issue_lines(records: list[PriceRecord]) -> list[str]:
+    issue_records = [record for record in records if record.quality_issues]
+    if not issue_records:
+        return ["- 无"]
     return [
-        f"- {prefix}{record.project} {record.symbol} {record.name}: {record.stale_reason}"
-        for record in records
+        f"- {record.project} {record.symbol} {record.name}: {', '.join(record.quality_issues)}"
+        for record in issue_records
     ]
 
 

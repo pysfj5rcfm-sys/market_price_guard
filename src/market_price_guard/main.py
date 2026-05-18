@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .normalize import load_watchlist, load_yaml, normalize_records
+from .providers.akshare_provider import AkshareProvider
 from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
 from .report import CompletenessSummary, build_completeness_summary, format_blocking_record, write_outputs
@@ -37,28 +38,37 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--mock-prices", type=Path, default=CONFIG_DIR / "mock_prices.yaml")
     parser.add_argument("--manual-prices", type=Path, default=MANUAL_PRICES_PATH)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--provider-mode", choices=["mock", "live"], default="mock")
     parser.add_argument("--strict", action="store_true", help="Return exit code 2 when required price data is unusable.")
     return parser.parse_args(argv)
 
 
-def collect_prices(watchlist_path: Path, mock_prices_path: Path, manual_prices_path: Path) -> dict:
+def collect_prices(watchlist_path: Path, mock_prices_path: Path, manual_prices_path: Path, provider_mode: str = "mock") -> dict:
     watchlist = load_watchlist(watchlist_path)
     mock_provider = MockProvider(mock_prices_path)
     manual_provider = ManualProvider(manual_prices_path)
+    akshare_provider = AkshareProvider()
 
     mock_symbols: list[str] = []
     manual_symbols: list[str] = []
+    akshare_symbols: list[str] = []
     for project in watchlist.projects.values():
         for instrument in project.instruments:
             if instrument.provider == "manual":
                 manual_symbols.append(instrument.symbol)
+            elif provider_mode == "live" and instrument.provider == "akshare":
+                akshare_symbols.append(instrument.symbol)
             else:
                 mock_symbols.append(instrument.symbol)
 
     prices = {}
-    prices.update(mock_provider.fetch(mock_symbols))
+    if mock_symbols:
+        prices.update(mock_provider.fetch(mock_symbols))
+    if akshare_symbols:
+        prices.update(akshare_provider.fetch(akshare_symbols))
     # Manual records intentionally override mock values for the same symbol.
-    prices.update(manual_provider.fetch(manual_symbols))
+    if manual_symbols:
+        prices.update(manual_provider.fetch(manual_symbols))
     return {"watchlist": watchlist, "prices": prices}
 
 
@@ -68,9 +78,10 @@ def run_pipeline(
     mock_prices_path: Path = CONFIG_DIR / "mock_prices.yaml",
     manual_prices_path: Path = MANUAL_PRICES_PATH,
     output_dir: Path = OUTPUT_DIR,
+    provider_mode: str = "mock",
     strict: bool = False,
 ) -> PipelineResult:
-    collected = collect_prices(watchlist_path, mock_prices_path, manual_prices_path)
+    collected = collect_prices(watchlist_path, mock_prices_path, manual_prices_path, provider_mode)
     rules = load_yaml(stale_rules_path)
     records = normalize_records(collected["watchlist"], collected["prices"], rules)
     write_outputs(records, output_dir)
@@ -94,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             mock_prices_path=args.mock_prices,
             manual_prices_path=args.manual_prices,
             output_dir=args.output_dir,
+            provider_mode=args.provider_mode,
             strict=args.strict,
         )
     except Exception as exc:
@@ -108,6 +120,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         for record in result.completeness.strict_blockers:
             print(format_blocking_record(record), file=sys.stderr)
+    else:
+        print("Price guard completed without strict blocking records.")
     return result.exit_code
 
 

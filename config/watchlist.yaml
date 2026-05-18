@@ -7,22 +7,26 @@ projects:
         name: "中海油H"
         market: "HK"
         core: true
-        provider: "mock"
+        provider: "akshare"
+        required_for_operation: true
       - symbol: "601899.SH"
         name: "紫金矿业A"
         market: "CN"
         core: true
-        provider: "mock"
+        provider: "akshare"
+        required_for_operation: true
       - symbol: "601985.SH"
         name: "中国核电"
         market: "CN"
         core: true
-        provider: "mock"
+        provider: "akshare"
+        required_for_operation: true
       - symbol: "003816.SZ"
         name: "中国广核"
         market: "CN"
         core: true
-        provider: "mock"
+        provider: "akshare"
+        required_for_operation: true
   tech:
     display_name: "理财｜科技账户项目"
     allow_full_detail: true
@@ -31,14 +35,37 @@ projects:
         name: "纳指相关ETF"
         market: "CN"
         core: true
-        provider: "mock"
-        asset_role: "tech_equity"
+        provider: "akshare"
+        required_for_operation: true
+        asset_role: "nasdaq_or_overseas_tech_etf"
       - symbol: "513300.SH"
         name: "纳指ETF"
         market: "CN"
         core: true
-        provider: "mock"
-        asset_role: "tech_equity"
+        provider: "akshare"
+        required_for_operation: true
+        asset_role: "nasdaq_or_overseas_tech_etf"
+      - symbol: "159819.SZ"
+        name: "人工智能ETF"
+        market: "CN"
+        core: true
+        provider: "akshare"
+        required_for_operation: true
+        asset_role: "ai_tech_equity"
+      - symbol: "515880.SH"
+        name: "通信ETF"
+        market: "CN"
+        core: true
+        provider: "akshare"
+        required_for_operation: true
+        asset_role: "communication_tech_equity"
+      - symbol: "510300.SH"
+        name: "沪深300ETF"
+        market: "CN"
+        core: false
+        provider: "akshare"
+        required_for_operation: false
+        asset_role: "non_tech_broad_base_etf"
       - symbol: "GOLD_CNY"
         name: "黄金持仓参考价"
         market: "MANUAL"
@@ -53,15 +80,18 @@ projects:
       - symbol: "USD_CNY"
         name: "美元兑人民币"
         market: "FX"
-        core: true
+        core: false
         provider: "mock"
+        required_for_operation: false
       - symbol: "HKD_CNY"
         name: "港币兑人民币"
         market: "FX"
-        core: true
+        core: false
         provider: "mock"
+        required_for_operation: false
       - symbol: "IXIC"
         name: "纳斯达克综合指数"
         market: "US"
-        core: true
+        core: false
         provider: "mock"
+        required_for_operation: false

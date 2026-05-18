@@ -11,12 +11,18 @@ def now_utc() -> datetime:
 
 
 def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: datetime | None = None) -> tuple[bool, str]:
-    current_time = now or now_utc()
+    current_time = _to_utc(now or now_utc())
 
     if raw.quality_issues:
         issue_text = ", ".join(raw.quality_issues)
+        if "akshare_not_installed" in raw.quality_issues:
+            return True, f"akshare_not_installed: AKShare 未安装，不可用于具体操作建议；{issue_text}"
+        if "provider_error" in raw.quality_issues:
+            return True, f"provider_error: 行情源调用失败，不可用于具体操作建议；{issue_text}"
+        if "symbol_not_found" in raw.quality_issues:
+            return True, f"symbol_not_found: 行情源未返回该标的，不可用于具体操作建议；{issue_text}"
         if "invalid_price" in raw.quality_issues:
-            return True, f"invalid_price: 手工价格缺失或不是正数，不可用于具体操作建议；{issue_text}"
+            return True, f"invalid_price: 价格缺失或不是正数，不可用于具体操作建议；{issue_text}"
         if "invalid_quote_time" in raw.quality_issues:
             return True, f"invalid_quote_time: quote_time 解析失败，不可用于具体操作建议；{issue_text}"
         if "quote_time_missing" in raw.quality_issues:
@@ -28,7 +34,7 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
         return True, "quote_time_missing: quote_time 缺失，数据质量不足，不可用于具体操作建议"
 
     reference_time = raw.entry_time if raw.source == "manual" and raw.entry_time else raw.quote_time
-    age_seconds = (current_time - reference_time).total_seconds()
+    age_seconds = (_to_utc(current_time) - _to_utc(reference_time)).total_seconds()
 
     if age_seconds < 0:
         return True, "时间戳晚于当前时间，数据质量不足"
@@ -54,3 +60,9 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
         return False, "收盘/最后成交参考价，不可用于盘中做T"
 
     return True, "market_status 未知，数据质量不足，不可用于具体操作建议"
+
+
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
