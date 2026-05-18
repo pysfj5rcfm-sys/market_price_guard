@@ -4,17 +4,22 @@ from market_price_guard.models import PriceRecord
 from market_price_guard.report import build_completeness_report, build_controller_summary, records_to_dataframe
 
 
-def make_record(project: str = "energy", stale: bool = False) -> PriceRecord:
+def make_record(
+    project: str = "energy",
+    stale: bool = False,
+    price: float | None = 21.35,
+    quote_time: datetime | None = None,
+) -> PriceRecord:
     now = datetime(2026, 5, 18, 12, 0, tzinfo=timezone.utc)
     return PriceRecord(
         project=project,
         symbol="00883.HK",
         name="中海油H",
         market="HK",
-        price=21.35,
+        price=price,
         currency="HKD",
         source="mock",
-        quote_time=now,
+        quote_time=now if quote_time is None else quote_time,
         fetch_time=now,
         market_status="closed",
         is_stale=stale,
@@ -45,7 +50,16 @@ def test_dataframe_contains_required_columns():
 def test_completeness_report_blocks_specific_advice_when_stale():
     report = build_completeness_report([make_record(stale=True)])
 
+    assert "可用于具体操作建议：否" in report
     assert "不可用于具体操作建议" in report
+
+
+def test_completeness_report_lists_quote_time_missing():
+    record = make_record(stale=True, quote_time=None)
+    record.quote_time = None
+    report = build_completeness_report([record])
+
+    assert "quote_time_missing" in report
 
 
 def test_controller_summary_is_summary_only():

@@ -15,6 +15,7 @@ class Instrument(BaseModel):
     market: str
     core: bool = True
     provider: str = "mock"
+    required_for_operation: bool = False
 
 
 class WatchProject(BaseModel):
@@ -61,6 +62,7 @@ class PriceRecord(BaseModel):
     is_stale: bool
     stale_reason: str = Field(default="")
     core: bool = True
+    required_for_operation: bool = False
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
@@ -23,6 +24,45 @@ OUTPUT_COLUMNS = [
 ]
 
 
+@dataclass(frozen=True)
+class CompletenessSummary:
+    usable_for_operation: bool
+    reasons: list[str]
+    missing_prices: list[PriceRecord]
+    stale_prices: list[PriceRecord]
+    quote_time_missing: list[PriceRecord]
+    strict_blockers: list[PriceRecord]
+
+
+def build_completeness_summary(records: list[PriceRecord]) -> CompletenessSummary:
+    missing_prices = [record for record in records if record.price is None]
+    quote_time_missing = [record for record in records if record.quote_time is None]
+    stale_prices = [record for record in records if record.is_stale and record.price is not None]
+    strict_blockers = [
+        record
+        for record in records
+        if (record.core or record.required_for_operation)
+        and (record.price is None or record.is_stale or record.quote_time is None)
+    ]
+
+    reasons: list[str] = []
+    if missing_prices:
+        reasons.append("存在价格缺失")
+    if stale_prices:
+        reasons.append("存在 stale 价格")
+    if quote_time_missing:
+        reasons.append("存在 quote_time_missing，无法证明价格新鲜")
+
+    return CompletenessSummary(
+        usable_for_operation=not strict_blockers,
+        reasons=reasons,
+        missing_prices=missing_prices,
+        stale_prices=stale_prices,
+        quote_time_missing=quote_time_missing,
+        strict_blockers=strict_blockers,
+    )
+
+
 def records_to_dataframe(records: list[PriceRecord]) -> pd.DataFrame:
     return pd.DataFrame([record.output_dict() for record in records], columns=OUTPUT_COLUMNS)
 
@@ -38,22 +78,38 @@ def write_outputs(records: list[PriceRecord], output_dir: Path) -> None:
 
 
 def build_completeness_report(records: list[PriceRecord]) -> str:
-    core_problem_records = [record for record in records if record.core and (record.price is None or record.is_stale)]
-    status = "不可用于具体操作建议" if core_problem_records else "数据完整度通过"
+    summary = build_completeness_summary(records)
+    usable_text = "是" if summary.usable_for_operation else "否"
     lines = [
         "# 数据完整度报告",
         "",
-        f"结论：{status}",
+        f"可用于具体操作建议：{usable_text}",
         "",
         "本工具不做自动交易，不输出买卖建议，只输出价格事实、数据源、时间戳、市场状态和数据完整度。",
         "",
-        "## 异常核心标的",
+        "## 如果为否，原因",
     ]
-    if core_problem_records:
-        for record in core_problem_records:
-            lines.append(f"- {record.project} {record.symbol} {record.name}: {record.stale_reason}")
-    else:
-        lines.append("- 无")
+    lines.extend(_bullet_lines(summary.reasons))
+    lines.extend(["", "## 缺失价格列表"])
+    lines.extend(_record_lines(summary.missing_prices))
+    lines.extend(["", "## stale 价格列表"])
+    lines.extend(_record_lines(summary.stale_prices))
+    lines.extend(["", "## quote_time 缺失列表"])
+    lines.extend(_record_lines(summary.quote_time_missing, marker="quote_time_missing"))
+    lines.extend(
+        [
+            "",
+            "## 允许使用范围",
+            "- 可用于价格事实同步、数据源核对、时间戳核对、市场状态核对和数据完整度检查。",
+            "- 收盘后价格仅可作为收盘/最后成交参考。",
+            "",
+            "## 禁止使用范围",
+            "- 不可用于自动交易。",
+            "- 不输出买卖建议。",
+            "- 若核心标的或 required_for_operation 指标缺失、stale 或 quote_time 缺失，不可用于具体操作建议。",
+            "- 收盘/最后成交参考价不可用于盘中做T。",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -105,3 +161,19 @@ def build_controller_summary(records: list[PriceRecord]) -> str:
 
     lines.extend(["", "说明：若核心标的缺失或过期，相关项目不可用于具体操作建议。"])
     return "\n".join(lines) + "\n"
+
+
+def _bullet_lines(items: list[str]) -> list[str]:
+    if not items:
+        return ["- 无"]
+    return [f"- {item}" for item in items]
+
+
+def _record_lines(records: list[PriceRecord], marker: str | None = None) -> list[str]:
+    if not records:
+        return ["- 无"]
+    prefix = f"{marker}: " if marker else ""
+    return [
+        f"- {prefix}{record.project} {record.symbol} {record.name}: {record.stale_reason}"
+        for record in records
+    ]

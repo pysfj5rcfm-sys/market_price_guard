@@ -58,6 +58,7 @@ def normalize_records(
                     is_stale=is_stale,
                     stale_reason=stale_reason,
                     core=instrument.core,
+                    required_for_operation=instrument.required_for_operation,
                 )
             )
     return records
