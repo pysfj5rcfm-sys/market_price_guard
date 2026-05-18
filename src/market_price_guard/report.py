@@ -127,11 +127,15 @@ def records_to_dataframe(records: list[PriceRecord]) -> pd.DataFrame:
     return pd.DataFrame([record.output_dict() for record in records], columns=OUTPUT_COLUMNS)
 
 
-def write_outputs(records: list[PriceRecord], output_dir: Path) -> None:
+def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: str = "mock") -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     df = records_to_dataframe(records)
     df.to_csv(output_dir / "prices_snapshot.csv", index=False, encoding="utf-8-sig")
     (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records), encoding="utf-8")
+    (output_dir / "provider_health_report.md").write_text(
+        build_provider_health_report(records, provider_mode=provider_mode),
+        encoding="utf-8",
+    )
     (output_dir / "energy_price_block.md").write_text(build_project_block(records, "energy", "能源账户价格事实块"), encoding="utf-8")
     (output_dir / "tech_price_block.md").write_text(build_tech_block(records), encoding="utf-8")
     (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
@@ -146,6 +150,8 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
         f"可用于具体操作建议：{usable_text}",
         "",
         "本工具不做自动交易，不输出买卖建议，只输出价格事实、数据源、时间戳、市场状态和数据完整度。",
+        "",
+        "行情源健康状态详见 provider_health_report.md。",
         "",
         "## Strict blocking records",
     ]
@@ -189,6 +195,32 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
             "- 收盘/最后成交参考价不可用于盘中做T。",
         ]
     )
+    return "\n".join(lines) + "\n"
+
+
+def build_provider_health_report(records: list[PriceRecord], provider_mode: str = "mock") -> str:
+    lines = [
+        "# Provider Health Report",
+        "",
+        "行情源健康报告仅用于解释价格事实、接口状态和数据完整度，不提供买卖建议，不做自动交易。",
+    ]
+    lines.extend(["", "## AKShare ETF"])
+    lines.extend(_akshare_health_group(records, "ETF", ["fund_etf_spot_em"]))
+    lines.extend(["", "## AKShare A股"])
+    lines.extend(_akshare_health_group(records, "A_SHARE", ["stock_zh_a_spot_em", "stock_sh_a_spot_em", "stock_sz_a_spot_em"]))
+    lines.extend(["", "## AKShare 港股"])
+    lines.extend(
+        _akshare_health_group(
+            records,
+            "HK",
+            ["stock_hk_spot_em", "stock_hk_main_board_spot_em", "stock_hsgt_sh_hk_spot_em"],
+        )
+    )
+    lines.extend(["", "## Manual"])
+    lines.extend(_manual_health_group(records))
+    if provider_mode == "mock":
+        lines.extend(["", "## Mock"])
+        lines.extend(_mock_health_group(records))
     return "\n".join(lines) + "\n"
 
 
@@ -317,6 +349,152 @@ def _provider_diagnostics_lines(records: list[PriceRecord]) -> list[str]:
     return lines
 
 
+def _akshare_health_group(records: list[PriceRecord], category: str, function_names: list[str]) -> list[str]:
+    category_records = [
+        record
+        for record in records
+        if record.source == "akshare" and record.provider_diagnostics.get("category") == category
+    ]
+    grouped = _group_provider_diagnostics(category_records)
+    lines = [
+        "- provider: akshare",
+        f"- market_category: {category}",
+        f"- affected_symbols: {_symbols(category_records)}",
+        f"- quote_time_status: {_quote_time_status(category_records)}",
+        f"- usable_for_operation: {_usable_for_operation(category_records)}",
+    ]
+    if not category_records:
+        lines.append("- status: not_called")
+    for function_name in function_names:
+        diagnostic = grouped.get(function_name)
+        if not diagnostic:
+            lines.append(f"- function_name={function_name}, status=not_called")
+            continue
+        status = _provider_health_status(diagnostic)
+        lines.append(
+            "- function_name={function_name}, status={status}, returned_rows={returned_rows}, matched_symbols={matched_symbols}, affected_symbols={affected_symbols}, exception_type={exception_type}, exception_message={exception_message}".format(
+                function_name=function_name,
+                status=status,
+                returned_rows=diagnostic.get("returned_rows", ""),
+                matched_symbols=_format_symbols(diagnostic.get("matched_symbols", [])),
+                affected_symbols=_symbols(category_records),
+                exception_type=diagnostic.get("exception_type", ""),
+                exception_message=diagnostic.get("exception_message", ""),
+            )
+        )
+    return lines
+
+
+def _manual_health_group(records: list[PriceRecord]) -> list[str]:
+    manual_records = [record for record in records if record.source == "manual"]
+    if not manual_records:
+        return ["- provider: manual", "- status: not_called"]
+    lines = [
+        "- provider: manual",
+        f"- affected_symbols: {_symbols(manual_records)}",
+        f"- quote_time_status: {_quote_time_status(manual_records)}",
+        f"- usable_for_operation: {_usable_for_operation(manual_records)}",
+    ]
+    for record in manual_records:
+        status = "success"
+        if record.quality_issues:
+            status = "invalid"
+        elif record.is_stale:
+            status = "stale"
+        lines.append(
+            "- symbol={symbol}, status={status}, quote_time={quote_time}, source_note={source_note}".format(
+                symbol=record.symbol,
+                status=status,
+                quote_time=record.quote_time.isoformat() if record.quote_time else "",
+                source_note=record.source_note or "",
+            )
+        )
+    return lines
+
+
+def _mock_health_group(records: list[PriceRecord]) -> list[str]:
+    mock_records = [record for record in records if record.source == "mock"]
+    if not mock_records:
+        return ["- provider: mock", "- status: not_called"]
+    return [
+        "- provider: mock",
+        "- function_name=mock_prices.yaml",
+        f"- status: {_records_status(mock_records)}",
+        f"- matched_symbols: {_symbols(mock_records)}",
+        f"- affected_symbols: {_symbols(mock_records)}",
+        f"- quote_time_status: {_quote_time_status(mock_records)}",
+        f"- usable_for_operation: {_usable_for_operation(mock_records)}",
+    ]
+
+
+def _provider_health_status(diagnostic: dict[str, object]) -> str:
+    provider_status = str(diagnostic.get("provider_status", ""))
+    if provider_status in {"fallback_success", "fallback_failed"}:
+        return provider_status
+    status = str(diagnostic.get("status", ""))
+    if status == "fail":
+        return "failed"
+    if status == "success":
+        return "success"
+    return status or "unknown"
+
+
+def _records_status(records: list[PriceRecord]) -> str:
+    if not records:
+        return "not_called"
+    if all(_record_ok(record) for record in records):
+        return "success"
+    if any(_record_ok(record) for record in records):
+        return "partial_success"
+    return "failed"
+
+
+def _usable_for_operation(records: list[PriceRecord]) -> str:
+    required = [record for record in records if record.required_for_operation]
+    candidates = required or records
+    if not candidates:
+        return "no"
+    ok_count = sum(1 for record in candidates if _record_ok(record))
+    if ok_count == len(candidates):
+        return "yes"
+    if ok_count:
+        return "partial"
+    return "no"
+
+
+def _quote_time_status(records: list[PriceRecord]) -> str:
+    if not records:
+        return "not_available"
+    statuses = set()
+    for record in records:
+        issues = set(record.quality_issues)
+        if "invalid_quote_time" in issues:
+            statuses.add("invalid")
+        elif record.quote_time is None or "quote_time_missing" in issues:
+            statuses.add("missing")
+        elif record.is_stale:
+            statuses.add("stale")
+        else:
+            statuses.add("ok")
+    if len(statuses) == 1:
+        return next(iter(statuses))
+    return "mixed:" + ",".join(sorted(statuses))
+
+
+def _symbols(records: list[PriceRecord]) -> str:
+    return _format_symbols([record.symbol for record in records])
+
+
+def _format_symbols(symbols: object) -> str:
+    if not symbols:
+        return ""
+    if isinstance(symbols, str):
+        return symbols
+    if isinstance(symbols, list | tuple | set):
+        return ", ".join(str(symbol) for symbol in symbols)
+    return str(symbols)
+
+
 def _group_provider_diagnostics(records: list[PriceRecord]) -> dict[str, dict[str, object]]:
     grouped: dict[str, dict[str, object]] = {}
     for record in records:
@@ -343,7 +521,7 @@ def _merge_provider_diagnostic(grouped: dict[str, dict[str, object]], diagnostic
         if existing.get("status") == "success" and diagnostic.get("status") == "success":
             existing_symbols = list(existing.get("matched_symbols", []) or [])
             new_symbols = list(diagnostic.get("matched_symbols", []) or [])
-            existing["matched_symbols"] = sorted(set(existing_symbols + new_symbols))
+            existing["matched_symbols"] = list(dict.fromkeys(existing_symbols + new_symbols))
             if diagnostic.get("provider_status") == "fallback_success":
                 existing["provider_status"] = "fallback_success"
 

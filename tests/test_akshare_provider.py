@@ -6,7 +6,7 @@ import pandas as pd
 
 from market_price_guard.models import PriceRecord
 from market_price_guard.providers.akshare_provider import AkshareProvider
-from market_price_guard.report import build_completeness_report, get_blocking_records
+from market_price_guard.report import build_completeness_report, build_provider_health_report, get_blocking_records
 
 
 def make_ak(a_df=None, hk_df=None, etf_df=None):
@@ -458,6 +458,60 @@ def test_report_for_closed_etf_does_not_say_open_market_stale():
     assert "max_age_seconds=86400" in report
     assert "交易中价格超过 max_age_seconds" not in report
     assert "不适合盘中做T判断" in report
+
+
+def test_provider_health_report_shows_etf_success():
+    raw_prices = AkshareProvider(make_ak(etf_df=_etf_df())).fetch(["159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"])
+    records = [_record("tech", raw, required=raw.symbol != "510300.SH") for raw in raw_prices.values()]
+
+    report = build_provider_health_report(records, provider_mode="live")
+
+    assert "## AKShare ETF" in report
+    assert "function_name=fund_etf_spot_em, status=success" in report
+    assert "matched_symbols=159632.SZ, 513300.SH, 159819.SZ, 515880.SH, 510300.SH" in report
+
+
+def test_provider_health_report_lists_a_share_primary_and_fallback_failures():
+    ak = SimpleNamespace(
+        stock_zh_a_spot_em=lambda: (_ for _ in ()).throw(ConnectionError("primary down")),
+        stock_sh_a_spot_em=lambda: (_ for _ in ()).throw(ConnectionError("sh down")),
+        stock_sz_a_spot_em=lambda: (_ for _ in ()).throw(ConnectionError("sz down")),
+        stock_hk_spot_em=lambda: pd.DataFrame(),
+        stock_hk_main_board_spot_em=lambda: pd.DataFrame(),
+        stock_hsgt_sh_hk_spot_em=lambda: pd.DataFrame(),
+        fund_etf_spot_em=lambda: pd.DataFrame(),
+    )
+    raw_prices = AkshareProvider(ak).fetch(["601899.SH", "601985.SH", "003816.SZ"])
+    records = [_record("energy", raw, required=True) for raw in raw_prices.values()]
+
+    report = build_provider_health_report(records, provider_mode="live")
+
+    assert "stock_zh_a_spot_em" in report
+    assert "stock_sh_a_spot_em" in report
+    assert "stock_sz_a_spot_em" in report
+    assert "affected_symbols=601899.SH, 601985.SH, 003816.SZ" in report
+    assert "ConnectionError" in report
+
+
+def test_provider_health_report_lists_all_hk_fallback_failures():
+    ak = SimpleNamespace(
+        stock_zh_a_spot_em=lambda: pd.DataFrame(),
+        stock_sh_a_spot_em=lambda: pd.DataFrame(),
+        stock_sz_a_spot_em=lambda: pd.DataFrame(),
+        stock_hk_spot_em=lambda: (_ for _ in ()).throw(RuntimeError("primary hk down")),
+        stock_hk_main_board_spot_em=lambda: (_ for _ in ()).throw(RuntimeError("main down")),
+        stock_hsgt_sh_hk_spot_em=lambda: (_ for _ in ()).throw(RuntimeError("hsgt down")),
+        fund_etf_spot_em=lambda: pd.DataFrame(),
+    )
+    raw = AkshareProvider(ak).fetch(["00883.HK"])["00883.HK"]
+
+    report = build_provider_health_report([_record("energy", raw, required=True)], provider_mode="live")
+
+    assert "stock_hk_spot_em" in report
+    assert "stock_hk_main_board_spot_em" in report
+    assert "stock_hsgt_sh_hk_spot_em" in report
+    assert "affected_symbols=00883.HK" in report
+    assert "RuntimeError" in report
 
 
 def _etf_df():

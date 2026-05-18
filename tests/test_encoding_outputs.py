@@ -13,6 +13,8 @@ def test_markdown_report_reads_as_utf8(tmp_path):
 
     assert "数据完整度报告" in report
     assert "不输出买卖建议" in report
+    health_report = (output_dir / "provider_health_report.md").read_text(encoding="utf-8")
+    assert "行情源健康报告" in health_report
 
 
 def test_prices_snapshot_reads_as_utf8_sig_with_chinese(tmp_path):

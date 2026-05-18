@@ -4,6 +4,7 @@ from market_price_guard.models import PriceRecord
 from market_price_guard.report import (
     build_completeness_report,
     build_controller_summary,
+    build_provider_health_report,
     build_tech_block,
     get_blocking_records,
     records_to_dataframe,
@@ -73,6 +74,30 @@ def test_completeness_report_lists_quote_time_missing():
     report = build_completeness_report([record])
 
     assert "quote_time_missing" in report
+
+
+def test_completeness_report_references_provider_health_report():
+    report = build_completeness_report([make_record()])
+
+    assert "provider_health_report.md" in report
+
+
+def test_provider_health_report_includes_manual_gold():
+    record = make_record(
+        "tech",
+        "GOLD_CNY",
+        "黄金持仓参考价",
+        asset_role="defense_or_potential_tech_funding",
+    )
+    record.source = "manual"
+    record.market = "MANUAL"
+    record.source_note = "用户手工录入"
+
+    report = build_provider_health_report([record])
+
+    assert "## Manual" in report
+    assert "GOLD_CNY" in report
+    assert "用户手工录入" in report
 
 
 def test_controller_summary_is_summary_only():

@@ -20,6 +20,7 @@ def test_custom_output_dir_generates_files(tmp_path):
 
     assert result.exit_code == EXIT_OK
     assert (output_dir / "data_completeness_report.md").exists()
+    assert (output_dir / "provider_health_report.md").exists()
     assert (output_dir / "controller_price_summary.md").exists()
 
 
@@ -245,6 +246,15 @@ def test_strict_failure_output_and_report_include_blocking_symbol(tmp_path, caps
     assert "GOLD_CNY" in captured.err
     assert "Strict blocking records" in report
     assert "GOLD_CNY" in report
+
+
+def test_provider_health_report_does_not_change_strict_exit_code(tmp_path):
+    stale_rules = _write_stale_rules(tmp_path, default_max_age=900, manual_max_age=1)
+
+    result = run_pipeline(stale_rules_path=stale_rules, output_dir=tmp_path / "out", strict=True)
+
+    assert result.exit_code == EXIT_STRICT_BLOCKED
+    assert (tmp_path / "out" / "provider_health_report.md").exists()
 
 
 def _write_stale_rules(tmp_path, default_max_age: int, manual_max_age: int):

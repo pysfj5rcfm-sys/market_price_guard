@@ -4,13 +4,13 @@
 
 本工具不做自动交易，不输出买卖建议，只输出价格事实、数据源、时间戳、市场状态和数据完整度。
 
+行情源健康状态详见 provider_health_report.md。
+
 ## Strict blocking records
 - project=energy, symbol=00883.HK, name=中海油H, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_hsgt_sh_hk_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
 - project=energy, symbol=601899.SH, name=紫金矿业A, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_sh_a_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
 - project=energy, symbol=601985.SH, name=中国核电, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_sh_a_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
 - project=energy, symbol=003816.SZ, name=中国广核, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_sz_a_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
-- project=tech, symbol=159632.SZ, name=纳斯达克ETF华安, source=akshare, quote_time=2026-05-18T15:34:03+08:00, is_stale=True, stale_reason=交易中价格超过 max_age_seconds，不可用于具体操作建议, blocking_reason=stale, function_name=fund_etf_spot_em, provider_status=success, exception_type=
-- project=tech, symbol=159819.SZ, name=人工智能ETF易方达, source=akshare, quote_time=2026-05-18T15:34:21+08:00, is_stale=True, stale_reason=交易中价格超过 max_age_seconds，不可用于具体操作建议, blocking_reason=stale, function_name=fund_etf_spot_em, provider_status=success, exception_type=
 
 ## Provider diagnostics
 - AKShare partially succeeded
@@ -20,29 +20,34 @@
 - stock_hk_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - stock_hk_main_board_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - stock_hsgt_sh_hk_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-- fund_etf_spot_em: success, provider_status=success, returned_rows=1467, matched_symbols=['159632.SZ', '159819.SZ', '510300.SH', '513300.SH', '515880.SH']
+- fund_etf_spot_em: success, provider_status=success, returned_rows=1467, matched_symbols=['159632.SZ', '513300.SH', '159819.SZ', '515880.SH', '510300.SH']
 
 ## AKShare price records
 - energy 00883.HK 中海油H: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - energy 601899.SH 紫金矿业A: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - energy 601985.SH 中国核电: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - energy 003816.SZ 中国广核: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
-- tech 159632.SZ 纳斯达克ETF华安: 交易中价格超过 max_age_seconds，不可用于具体操作建议
-- tech 513300.SH 纳斯达克ETF华夏: 交易中价格在新鲜度阈值内
-- tech 159819.SZ 人工智能ETF易方达: 交易中价格超过 max_age_seconds，不可用于具体操作建议
-- tech 515880.SH 通信ETF国泰: 交易中价格在新鲜度阈值内
-- tech 510300.SH 沪深300ETF华泰柏瑞: 交易中价格在新鲜度阈值内
+- tech 159632.SZ 纳斯达克ETF华安: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 513300.SH 纳斯达克ETF华夏: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 159819.SZ 人工智能ETF易方达: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 515880.SH 通信ETF国泰: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 510300.SH 沪深300ETF华泰柏瑞: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
 
 ## AKShare quote freshness details
-- 00883.HK: quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=, max_age_seconds=900, is_stale=True
-- 601899.SH: quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=, max_age_seconds=900, is_stale=True
-- 601985.SH: quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=, max_age_seconds=900, is_stale=True
-- 003816.SZ: quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=, max_age_seconds=900, is_stale=True
-- 159632.SZ: quote_time_raw=2026-05-18 15:34:03+08:00, quote_time_utc=2026-05-18T07:34:03+00:00, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=2851, max_age_seconds=900, is_stale=True
-- 513300.SH: quote_time_raw=2026-05-18 16:11:53+08:00, quote_time_utc=2026-05-18T08:11:53+00:00, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=581, max_age_seconds=900, is_stale=False
-- 159819.SZ: quote_time_raw=2026-05-18 15:34:21+08:00, quote_time_utc=2026-05-18T07:34:21+00:00, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=2833, max_age_seconds=900, is_stale=True
-- 515880.SH: quote_time_raw=2026-05-18 16:11:34+08:00, quote_time_utc=2026-05-18T08:11:34+00:00, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=600, max_age_seconds=900, is_stale=False
-- 510300.SH: quote_time_raw=2026-05-18 16:11:48+08:00, quote_time_utc=2026-05-18T08:11:48+00:00, fetch_time_utc=2026-05-18T08:20:36.507967+00:00, age_seconds=586, max_age_seconds=900, is_stale=False
+- 00883.HK: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 601899.SH: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 601985.SH: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 003816.SZ: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 159632.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:03+08:00, quote_time_utc=2026-05-18T07:34:03+00:00, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=4056, max_age_seconds=86400, is_stale=False
+- 159632.SZ: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 513300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:53+08:00, quote_time_utc=2026-05-18T08:11:53+00:00, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=1786, max_age_seconds=86400, is_stale=False
+- 513300.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 159819.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:21+08:00, quote_time_utc=2026-05-18T07:34:21+00:00, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=4038, max_age_seconds=86400, is_stale=False
+- 159819.SZ: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 515880.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:34+08:00, quote_time_utc=2026-05-18T08:11:34+00:00, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=1805, max_age_seconds=86400, is_stale=False
+- 515880.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 510300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:48+08:00, quote_time_utc=2026-05-18T08:11:48+00:00, fetch_time_utc=2026-05-18T08:40:35.614262+00:00, age_seconds=1791, max_age_seconds=86400, is_stale=False
+- 510300.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
 
 ## AKShare / 数据质量问题
 - energy 00883.HK 中海油H: provider_error
@@ -65,8 +70,6 @@
 - energy 003816.SZ 中国广核: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 
 ## stale 价格列表
-- tech 159632.SZ 纳斯达克ETF华安: 交易中价格超过 max_age_seconds，不可用于具体操作建议
-- tech 159819.SZ 人工智能ETF易方达: 交易中价格超过 max_age_seconds，不可用于具体操作建议
 - controller USD_CNY 美元兑人民币: 交易中价格超过 max_age_seconds，不可用于具体操作建议
 - controller HKD_CNY 港币兑人民币: 交易中价格超过 max_age_seconds，不可用于具体操作建议
 

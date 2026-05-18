@@ -84,7 +84,7 @@ def run_pipeline(
     collected = collect_prices(watchlist_path, mock_prices_path, manual_prices_path, provider_mode)
     rules = load_yaml(stale_rules_path)
     records = normalize_records(collected["watchlist"], collected["prices"], rules)
-    write_outputs(records, output_dir)
+    write_outputs(records, output_dir, provider_mode=provider_mode)
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
     return PipelineResult(

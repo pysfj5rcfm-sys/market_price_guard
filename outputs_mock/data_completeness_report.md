@@ -4,6 +4,8 @@
 
 本工具不做自动交易，不输出买卖建议，只输出价格事实、数据源、时间戳、市场状态和数据完整度。
 
+行情源健康状态详见 provider_health_report.md。
+
 ## Strict blocking records
 - 无
 
