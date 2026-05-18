@@ -218,7 +218,7 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
             ["stock_hk_spot_em", "stock_hk_main_board_spot_em", "stock_hsgt_sh_hk_spot_em"],
         )
     )
-    lines.extend(["", "## YFinance 港股"])
+    lines.extend(["", "## YFinance 港股 / A股"])
     lines.extend(_yfinance_health_group(records))
     lines.extend(["", "## Manual"])
     lines.extend(_manual_health_group(records))
@@ -428,10 +428,10 @@ def _manual_health_group(records: list[PriceRecord]) -> list[str]:
 def _yfinance_health_group(records: list[PriceRecord]) -> list[str]:
     yfinance_records = [record for record in records if record.source == "yfinance"]
     if not yfinance_records:
-        return ["- provider: yfinance", "- market_category: HK", "- status: not_called"]
+        return ["- provider: yfinance", "- market_category: HK/A_SHARE", "- status: not_called"]
     lines = [
         "- provider: yfinance",
-        "- market_category: HK",
+        "- market_category: HK/A_SHARE",
         f"- affected_symbols: {_symbols(yfinance_records)}",
         f"- quote_time_status: {_quote_time_status(yfinance_records)}",
         f"- usable_for_operation: {_usable_for_operation(yfinance_records)}",
@@ -517,7 +517,7 @@ def _provider_routing_note_lines(records: list[PriceRecord]) -> list[str]:
             )
         if diagnostics.get("selected_provider") == "yfinance":
             notes.append(
-                "- 00883.HK: 使用 yfinance secondary provider；数据源限制：open-source Yahoo Finance public API wrapper; research/educational use; not official exchange feed"
+                f"- {record.symbol}: 使用 yfinance secondary provider；数据源限制：open-source Yahoo Finance public API wrapper; research/educational use; not official exchange feed"
             )
         if "mock_fallback_not_allowed" in record.quality_issues:
             notes.append(f"- {record.symbol}: mock fallback 不可用于具体操作建议")

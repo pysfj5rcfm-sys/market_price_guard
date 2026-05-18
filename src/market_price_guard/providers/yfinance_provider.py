@@ -10,8 +10,15 @@ from market_price_guard.models import RawPrice
 from market_price_guard.providers.base import PriceProvider
 
 
-SUPPORTED_SYMBOLS = {"00883.HK", "883.HK"}
+SUPPORTED_SYMBOLS = {"00883.HK", "883.HK", "601899.SH", "601985.SH", "003816.SZ"}
 HONG_KONG_TZ = timezone(timedelta(hours=8))
+SHANGHAI_TZ = timezone(timedelta(hours=8))
+SYMBOL_NAMES = {
+    "00883.HK": "中海油H",
+    "601899.SH": "紫金矿业A",
+    "601985.SH": "中国核电",
+    "003816.SZ": "中国广核",
+}
 
 
 class YFinanceProvider(PriceProvider):
@@ -43,7 +50,7 @@ class YFinanceProvider(PriceProvider):
             "function_name": "yfinance.Ticker",
             "symbol": internal_symbol,
             "yahoo_ticker": yahoo_ticker,
-            "category": "HK",
+            "category": _category_for_symbol(internal_symbol),
             "fetch_time_utc": fetch_time.isoformat(),
             "source_limit_note": _source_limit_note(),
         }
@@ -70,8 +77,8 @@ class YFinanceProvider(PriceProvider):
         if price is None:
             issues.append("invalid_price")
         if not currency:
-            currency = "HKD"
-            issues.append("assumed_currency_hkd")
+            currency = _default_currency_for_symbol(internal_symbol)
+            issues.append("assumed_currency_hkd" if currency == "HKD" else "assumed_currency_cny")
         if quote_time is None:
             issues.append("quote_time_missing")
 
@@ -88,7 +95,7 @@ class YFinanceProvider(PriceProvider):
                     {
                         "provider": "yfinance",
                         "function_name": "yfinance.Ticker",
-                        "category": "HK",
+                        "category": _category_for_symbol(internal_symbol),
                         "status": "success" if price is not None and quote_time is not None else "fail",
                         "provider_status": "success" if price is not None and quote_time is not None else "failed",
                         "matched_symbols": [internal_symbol] if price is not None else [],
@@ -100,14 +107,14 @@ class YFinanceProvider(PriceProvider):
 
         return RawPrice(
             symbol=internal_symbol,
-            name="中海油H",
-            market="HK",
+            name=SYMBOL_NAMES.get(internal_symbol, internal_symbol),
+            market=_market_for_symbol(internal_symbol),
             price=price,
             currency=currency,
             source="yfinance",
             quote_time=quote_time,
             fetch_time=fetch_time,
-            market_status=_hk_market_status(quote_time or fetch_time),
+            market_status=_market_status_for_symbol(internal_symbol, quote_time or fetch_time),
             quality_issues=list(dict.fromkeys(issues)),
             provider_diagnostics=diagnostics,
         )
@@ -131,6 +138,10 @@ def yahoo_ticker_for_symbol(symbol: str) -> str:
     base = symbol.split(".")[0].lstrip("0") or "0"
     if symbol.endswith(".HK"):
         return f"{base.zfill(4)}.HK"
+    if symbol in {"601899.SH", "601985.SH"}:
+        return f"{symbol.split('.')[0]}.SS"
+    if symbol == "003816.SZ":
+        return "003816.SZ"
     raise ValueError(f"unsupported yfinance symbol: {symbol}")
 
 
@@ -184,12 +195,16 @@ def _parse_quote_time(value: Any) -> datetime | None:
     return None
 
 
-def _hk_market_status(reference_time: datetime) -> str:
+def _market_status_for_symbol(symbol: str, reference_time: datetime) -> str:
     local_time = _parse_quote_time(reference_time)
     if local_time is None:
         return "unknown"
-    current = local_time.astimezone(HONG_KONG_TZ).time()
-    is_open = (time(9, 30) <= current < time(12, 0)) or (time(13, 0) <= current < time(16, 0))
+    if symbol.endswith(".HK"):
+        current = local_time.astimezone(HONG_KONG_TZ).time()
+        is_open = (time(9, 30) <= current < time(12, 0)) or (time(13, 0) <= current < time(16, 0))
+        return "open" if is_open else "closed"
+    current = local_time.astimezone(SHANGHAI_TZ).time()
+    is_open = (time(9, 30) <= current < time(11, 30)) or (time(13, 0) <= current < time(15, 0))
     return "open" if is_open else "closed"
 
 
@@ -231,7 +246,19 @@ def _text(value: Any) -> str:
 
 
 def _internal_symbol(symbol: str) -> str:
-    return "00883.HK" if symbol in SUPPORTED_SYMBOLS else symbol
+    return "00883.HK" if symbol == "883.HK" else symbol
+
+
+def _market_for_symbol(symbol: str) -> str:
+    return "HK" if symbol.endswith(".HK") else "CN"
+
+
+def _category_for_symbol(symbol: str) -> str:
+    return "HK" if symbol.endswith(".HK") else "A_SHARE"
+
+
+def _default_currency_for_symbol(symbol: str) -> str:
+    return "HKD" if symbol.endswith(".HK") else "CNY"
 
 
 def _source_limit_note() -> str:
@@ -249,7 +276,7 @@ def _error_price(
         "provider": "yfinance",
         "function_name": "yfinance.Ticker",
         "symbol": _internal_symbol(symbol),
-        "category": "HK",
+        "category": _category_for_symbol(_internal_symbol(symbol)),
         "status": "fail",
         "provider_status": "failed",
         "fetch_time_utc": fetch_time.isoformat(),
@@ -262,10 +289,10 @@ def _error_price(
         provider_diagnostics["exception_message"] = str(exception)
     return RawPrice(
         symbol=_internal_symbol(symbol),
-        name="中海油H",
-        market="HK",
+        name=SYMBOL_NAMES.get(_internal_symbol(symbol), _internal_symbol(symbol)),
+        market=_market_for_symbol(_internal_symbol(symbol)),
         price=None,
-        currency="HKD",
+        currency=_default_currency_for_symbol(_internal_symbol(symbol)),
         source="yfinance",
         quote_time=None,
         fetch_time=fetch_time,

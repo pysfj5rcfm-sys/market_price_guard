@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-from .freshness import assess_freshness, now_utc
+from .freshness import assess_freshness, market_status_for_now, now_utc
 from .models import PriceRecord, RawPrice, Watchlist
 
 
@@ -43,9 +43,10 @@ def normalize_records(
                     quality_issues=["missing_price"],
                 )
 
+            effective_market_status = market_status_for_now(raw, instrument.market, current_time)
             is_stale, stale_reason = assess_freshness(raw, instrument.market, rules, now=current_time)
             provider_diagnostics = dict(raw.provider_diagnostics)
-            provider_diagnostics.update(_freshness_diagnostics(raw, instrument.market, rules, current_time))
+            provider_diagnostics.update(_freshness_diagnostics(raw, instrument.market, rules, current_time, effective_market_status))
             records.append(
                 PriceRecord(
                     project=project_key,
@@ -57,7 +58,7 @@ def normalize_records(
                     source=raw.source,
                     quote_time=raw.quote_time,
                     fetch_time=raw.fetch_time or current_time,
-                    market_status=raw.market_status,
+                    market_status=effective_market_status,
                     is_stale=is_stale,
                     stale_reason=stale_reason,
                     core=instrument.core,
@@ -77,11 +78,11 @@ def normalize_records(
     return records
 
 
-def _freshness_diagnostics(raw: RawPrice, market: str, rules: dict[str, Any], current_time: datetime) -> dict[str, object]:
+def _freshness_diagnostics(raw: RawPrice, market: str, rules: dict[str, Any], current_time: datetime, market_status: str) -> dict[str, object]:
     diagnostics: dict[str, object] = {
         "fetch_time_utc": _to_utc(raw.fetch_time or current_time).isoformat(),
     }
-    max_age = _max_age_seconds(raw, market, rules)
+    max_age = _max_age_seconds(raw, market, rules, market_status)
     if max_age is not None:
         diagnostics["max_age_seconds"] = max_age
     if raw.quote_time is not None:
@@ -91,11 +92,11 @@ def _freshness_diagnostics(raw: RawPrice, market: str, rules: dict[str, Any], cu
     return diagnostics
 
 
-def _max_age_seconds(raw: RawPrice, market: str, rules: dict[str, Any]) -> int | None:
+def _max_age_seconds(raw: RawPrice, market: str, rules: dict[str, Any], market_status: str) -> int | None:
     if raw.source == "manual" or market == "MANUAL":
         return int(rules.get("MANUAL", rules.get("manual", {})).get("max_age_seconds", 0))
     market_rules = rules.get("markets", {}).get(market, rules.get("default", {}))
-    if raw.market_status == "closed":
+    if market_status == "closed":
         return int(market_rules.get("max_age_seconds_closed", rules.get("default", {}).get("max_age_seconds_closed", 0)))
     return int(market_rules.get("max_age_seconds_open", rules.get("default", {}).get("max_age_seconds_open", 0)))
 

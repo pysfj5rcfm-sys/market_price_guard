@@ -20,6 +20,7 @@ projects:
         provider: "akshare"
         provider_priority:
           - akshare
+          - yfinance
           - mock
         required_for_operation: true
       - symbol: "601985.SH"
@@ -29,6 +30,7 @@ projects:
         provider: "akshare"
         provider_priority:
           - akshare
+          - yfinance
           - mock
         required_for_operation: true
       - symbol: "003816.SZ"
@@ -38,6 +40,7 @@ projects:
         provider: "akshare"
         provider_priority:
           - akshare
+          - yfinance
           - mock
         required_for_operation: true
   tech:

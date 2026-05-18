@@ -4,7 +4,7 @@
 
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
 |---|---|---:|---|---|---|---|---|---|---|
-| 00883.HK | 中海油H | 26.760000228881836 | HKD | yfinance | 2026-05-18T16:08:00+08:00 | 2026-05-18T09:28:27.741404+00:00 | closed | False | 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T |
-| 601899.SH | 紫金矿业A | 18.42 | CNY | mock_fallback | 2026-05-18T12:45:00+08:00 | 2026-05-18T12:50:00+08:00 | closed | True | mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed |
-| 601985.SH | 中国核电 | 10.91 | CNY | mock_fallback | 2026-05-18T12:45:00+08:00 | 2026-05-18T12:50:00+08:00 | closed | True | mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed |
-| 003816.SZ | 中国广核 | 4.27 | CNY | mock_fallback | 2026-05-18T12:45:00+08:00 | 2026-05-18T12:50:00+08:00 | closed | True | mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed |
+| 00883.HK | 中海油H | 26.760000228881836 | HKD | yfinance | 2026-05-18T16:08:00+08:00 | 2026-05-18T11:01:40.074760+00:00 | closed | False | 市场已收盘；价格为收盘前/最后更新时间参考，不适合盘中做T判断 |
+| 601899.SH | 紫金矿业A | 31.299999237060547 | CNY | yfinance | 2026-05-18T14:57:00+08:00 | 2026-05-18T11:01:59.148582+00:00 | closed | False | 市场已收盘；价格为收盘前/最后更新时间参考，不适合盘中做T判断 |
+| 601985.SH | 中国核电 | 9.050000190734863 | CNY | yfinance | 2026-05-18T14:56:00+08:00 | 2026-05-18T11:02:15.025971+00:00 | closed | False | 市场已收盘；价格为收盘前/最后更新时间参考，不适合盘中做T判断 |
+| 003816.SZ | 中国广核 | 4.800000190734863 | CNY | yfinance | 2026-05-18T14:59:00+08:00 | 2026-05-18T11:02:31.509409+00:00 | closed | False | 市场已收盘；价格为收盘前/最后更新时间参考，不适合盘中做T判断 |

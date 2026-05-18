@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from market_price_guard.freshness import assess_freshness
+from market_price_guard.freshness import assess_freshness, market_status_for_now
 from market_price_guard.models import RawPrice
 
 
@@ -12,7 +12,7 @@ RULES = {
 
 
 def test_open_market_price_over_max_age_is_stale():
-    now = datetime(2026, 5, 18, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 5, 18, 14, 0, tzinfo=timezone(timedelta(hours=8)))
     raw = RawPrice(
         symbol="601985.SH",
         price=10.0,
@@ -44,7 +44,7 @@ def test_closed_market_price_is_reference_not_intraday_t():
     is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
 
     assert is_stale is False
-    assert "不可用于盘中做T" in reason
+    assert "不适合盘中做T判断" in reason
     assert "市场已收盘" in reason
 
 
@@ -65,7 +65,7 @@ def test_closed_market_allowed_does_not_use_trading_max_age():
 
     assert is_stale is False
     assert "交易中价格超过 max_age_seconds" not in reason
-    assert "收盘后/最后更新时间参考价" in reason
+    assert "收盘前/最后更新时间参考" in reason
 
 
 def test_closed_market_not_allowed_uses_closed_reason():
@@ -118,3 +118,85 @@ def test_manual_price_uses_entry_time():
 
     assert is_stale is True
     assert "manual 价格超过允许录入时间" in reason
+
+
+def test_cn_after_close_uses_now_market_time_for_sh_not_quote_time():
+    now = datetime(2026, 5, 18, 15, 10, tzinfo=timezone(timedelta(hours=8)))
+    quote_time = datetime(2026, 5, 18, 14, 57, tzinfo=timezone(timedelta(hours=8)))
+    raw = RawPrice(
+        symbol="601899.SH",
+        price=18.42,
+        currency="CNY",
+        source="yfinance",
+        quote_time=quote_time,
+        fetch_time=now,
+        market_status="open",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
+
+    assert market_status_for_now(raw, "CN", now) == "closed"
+    assert is_stale is False
+    assert "交易中价格超过 max_age_seconds" not in reason
+    assert "市场已收盘" in reason
+    assert "不适合盘中做T判断" in reason
+
+
+def test_cn_after_close_uses_now_market_time_for_sz_not_quote_time():
+    now = datetime(2026, 5, 18, 15, 10, tzinfo=timezone(timedelta(hours=8)))
+    quote_time = datetime(2026, 5, 18, 14, 59, tzinfo=timezone(timedelta(hours=8)))
+    raw = RawPrice(
+        symbol="003816.SZ",
+        price=4.27,
+        currency="CNY",
+        source="yfinance",
+        quote_time=quote_time,
+        fetch_time=now,
+        market_status="open",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
+
+    assert market_status_for_now(raw, "CN", now) == "closed"
+    assert is_stale is False
+    assert "交易中价格超过 max_age_seconds" not in reason
+
+
+def test_cn_trading_now_still_uses_trading_max_age_for_sh():
+    now = datetime(2026, 5, 18, 14, 58, tzinfo=timezone(timedelta(hours=8)))
+    quote_time = datetime(2026, 5, 18, 14, 50, tzinfo=timezone(timedelta(hours=8)))
+    raw = RawPrice(
+        symbol="601899.SH",
+        price=18.42,
+        currency="CNY",
+        source="yfinance",
+        quote_time=quote_time,
+        fetch_time=now,
+        market_status="closed",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
+
+    assert market_status_for_now(raw, "CN", now) == "open"
+    assert is_stale is True
+    assert "交易中价格超过 max_age_seconds" in reason
+
+
+def test_cn_trading_now_still_uses_trading_max_age_for_sz():
+    now = datetime(2026, 5, 18, 14, 58, tzinfo=timezone(timedelta(hours=8)))
+    quote_time = datetime(2026, 5, 18, 14, 50, tzinfo=timezone(timedelta(hours=8)))
+    raw = RawPrice(
+        symbol="003816.SZ",
+        price=4.27,
+        currency="CNY",
+        source="yfinance",
+        quote_time=quote_time,
+        fetch_time=now,
+        market_status="closed",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
+
+    assert market_status_for_now(raw, "CN", now) == "open"
+    assert is_stale is True
+    assert "交易中价格超过 max_age_seconds" in reason

@@ -14,8 +14,8 @@
 - provider: akshare
 - market_category: A_SHARE
 - affected_symbols: 601899.SH, 601985.SH, 003816.SZ
-- quote_time_status: stale
-- usable_for_operation: no
+- quote_time_status: ok
+- usable_for_operation: yes
 - function_name=stock_zh_a_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=601899.SH, 601985.SH, 003816.SZ, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - function_name=stock_sh_a_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=601899.SH, 601985.SH, 003816.SZ, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - function_name=stock_sz_a_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=601899.SH, 601985.SH, 003816.SZ, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
@@ -30,14 +30,17 @@
 - function_name=stock_hk_main_board_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=00883.HK, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - function_name=stock_hsgt_sh_hk_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=00883.HK, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 
-## YFinance 港股
+## YFinance 港股 / A股
 - provider: yfinance
-- market_category: HK
-- affected_symbols: 00883.HK
+- market_category: HK/A_SHARE
+- affected_symbols: 00883.HK, 601899.SH, 601985.SH, 003816.SZ
 - quote_time_status: ok
 - usable_for_operation: yes
 - source_limit_note: yfinance is an open-source Yahoo Finance public API wrapper for research/educational use; not an official exchange feed
 - function_name=yfinance.Ticker, status=success, returned_rows=, matched_symbols=00883.HK, affected_symbols=00883.HK, exception_type=, exception_message=
+- function_name=yfinance.Ticker, status=success, returned_rows=, matched_symbols=601899.SH, affected_symbols=601899.SH, exception_type=, exception_message=
+- function_name=yfinance.Ticker, status=success, returned_rows=, matched_symbols=601985.SH, affected_symbols=601985.SH, exception_type=, exception_message=
+- function_name=yfinance.Ticker, status=success, returned_rows=, matched_symbols=003816.SZ, affected_symbols=003816.SZ, exception_type=, exception_message=
 
 ## Manual
 - provider: manual
@@ -61,41 +64,41 @@
   - provider=akshare, function_name=stock_hsgt_sh_hk_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
   - provider=yfinance, function_name=yfinance.Ticker, status=success, price=26.760000228881836, quote_time=2026-05-18T16:08:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
 ### 601899.SH
-- provider_priority_chain: akshare, mock
-- selected_provider: mock
-- selected_source: mock_fallback
+- provider_priority_chain: akshare, yfinance, mock
+- selected_provider: yfinance
+- selected_source: yfinance
 - fallback_used: True
-- usable_for_operation: False
-- selection_reason: mock_fallback_not_allowed_for_operation
-- final_blocking_reason: mock_fallback_not_allowed
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
 - attempts:
   - provider=akshare, function_name=stock_zh_a_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
   - provider=akshare, function_name=stock_sh_a_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-  - provider=mock, function_name=mock, status=success, price=18.42, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+  - provider=yfinance, function_name=yfinance.Ticker, status=success, price=31.299999237060547, quote_time=2026-05-18T14:57:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
 ### 601985.SH
-- provider_priority_chain: akshare, mock
-- selected_provider: mock
-- selected_source: mock_fallback
+- provider_priority_chain: akshare, yfinance, mock
+- selected_provider: yfinance
+- selected_source: yfinance
 - fallback_used: True
-- usable_for_operation: False
-- selection_reason: mock_fallback_not_allowed_for_operation
-- final_blocking_reason: mock_fallback_not_allowed
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
 - attempts:
   - provider=akshare, function_name=stock_zh_a_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
   - provider=akshare, function_name=stock_sh_a_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-  - provider=mock, function_name=mock, status=success, price=10.91, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+  - provider=yfinance, function_name=yfinance.Ticker, status=success, price=9.050000190734863, quote_time=2026-05-18T14:56:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
 ### 003816.SZ
-- provider_priority_chain: akshare, mock
-- selected_provider: mock
-- selected_source: mock_fallback
+- provider_priority_chain: akshare, yfinance, mock
+- selected_provider: yfinance
+- selected_source: yfinance
 - fallback_used: True
-- usable_for_operation: False
-- selection_reason: mock_fallback_not_allowed_for_operation
-- final_blocking_reason: mock_fallback_not_allowed
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
 - attempts:
   - provider=akshare, function_name=stock_zh_a_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
   - provider=akshare, function_name=stock_sz_a_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-  - provider=mock, function_name=mock, status=success, price=4.27, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+  - provider=yfinance, function_name=yfinance.Ticker, status=success, price=4.800000190734863, quote_time=2026-05-18T14:59:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
 ### 159632.SZ
 - provider_priority_chain: akshare, mock
 - selected_provider: akshare

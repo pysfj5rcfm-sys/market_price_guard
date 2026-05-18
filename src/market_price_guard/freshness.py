@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Any
 
 from .models import RawPrice
+
+
+SHANGHAI_TZ = timezone(timedelta(hours=8))
+HONG_KONG_TZ = timezone(timedelta(hours=8))
 
 
 def now_utc() -> datetime:
@@ -12,6 +16,7 @@ def now_utc() -> datetime:
 
 def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: datetime | None = None) -> tuple[bool, str]:
     current_time = _to_utc(now or now_utc())
+    market_status = market_status_for_now(raw, market, current_time)
 
     if raw.quality_issues:
         issue_text = ", ".join(raw.quality_issues)
@@ -51,19 +56,19 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
         return False, "manual 价格，已显示录入时间"
 
     market_rules = rules.get("markets", {}).get(market, rules.get("default", {}))
-    if raw.market_status == "open":
+    if market_status == "open":
         max_age = int(market_rules.get("max_age_seconds_open", rules.get("default", {}).get("max_age_seconds_open", 0)))
         if age_seconds > max_age:
             return True, "交易中价格超过 max_age_seconds，不可用于具体操作建议"
         return False, "交易中价格在新鲜度阈值内"
 
-    if raw.market_status == "closed":
+    if market_status == "closed":
         max_age = int(market_rules.get("max_age_seconds_closed", rules.get("default", {}).get("max_age_seconds_closed", 0)))
         if not bool(market_rules.get("closed_market_allowed", rules.get("default", {}).get("closed_market_allowed", True))):
             return True, "closed_market_not_allowed: 市场已收盘，配置不允许使用收盘后参考价，不可用于具体操作建议"
         if age_seconds > max_age:
             return True, "收盘参考价超过允许时间，不可用于具体操作建议"
-        return False, "市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T"
+        return False, "市场已收盘；价格为收盘前/最后更新时间参考，不适合盘中做T判断"
 
     return True, "market_status 未知，数据质量不足，不可用于具体操作建议"
 
@@ -72,3 +77,19 @@ def _to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def market_status_for_now(raw: RawPrice, market: str, now: datetime) -> str:
+    if raw.market_status == "manual" or raw.source == "manual" or market == "MANUAL":
+        return raw.market_status
+    if market == "CN" and raw.symbol.endswith((".SH", ".SZ")):
+        current = _to_utc(now).astimezone(SHANGHAI_TZ).time()
+        return "open" if _in_ranges(current, [(time(9, 30), time(11, 30)), (time(13, 0), time(15, 0))]) else "closed"
+    if market == "HK" and raw.symbol.endswith(".HK"):
+        current = _to_utc(now).astimezone(HONG_KONG_TZ).time()
+        return "open" if _in_ranges(current, [(time(9, 30), time(12, 0)), (time(13, 0), time(16, 0))]) else "closed"
+    return raw.market_status
+
+
+def _in_ranges(value: time, ranges: list[tuple[time, time]]) -> bool:
+    return any(start <= value < end for start, end in ranges)

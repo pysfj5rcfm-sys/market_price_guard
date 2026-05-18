@@ -33,9 +33,9 @@
 - function_name=stock_hk_main_board_spot_em, status=not_called
 - function_name=stock_hsgt_sh_hk_spot_em, status=not_called
 
-## YFinance 港股
+## YFinance 港股 / A股
 - provider: yfinance
-- market_category: HK
+- market_category: HK/A_SHARE
 - status: not_called
 
 ## Manual
