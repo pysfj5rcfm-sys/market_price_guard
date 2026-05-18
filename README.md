@@ -4,6 +4,61 @@
 
 本工具不提供买卖建议，不做自动交易，只做价格事实与数据完整度检查。不做仓位市值计算。
 
+## 日常使用
+
+一键脚本会自动定位项目根目录，并优先使用 `.venv\Scripts\python.exe`。如果未找到 `.venv`，请先创建虚拟环境并安装依赖。
+
+能源账户日常快速刷新：
+```powershell
+.\scripts\run_energy_fast_strict.ps1
+```
+
+科技账户日常快速刷新：
+```powershell
+.\scripts\run_tech_fast_strict.ps1
+```
+
+投资咨询 / 总控项目全量快速刷新：
+```powershell
+.\scripts\run_all_fast_strict.ps1
+```
+
+完整 provider 诊断：
+```powershell
+.\scripts\run_diagnostic.ps1
+```
+
+离线自检：
+```powershell
+.\scripts\run_mock_strict.ps1
+```
+
+每次运行后先查看入口摘要：
+```powershell
+Get-Content outputs_energy_latest\index.md -Encoding UTF8
+Get-Content outputs_tech_latest\index.md -Encoding UTF8
+Get-Content outputs_all_latest\index.md -Encoding UTF8
+```
+
+exit code 说明：
+- exit code=0：strict 通过，可根据报告进一步分析。
+- exit code=2：strict 阻断，不得用于具体操作建议。
+- exit code=1：程序错误，需要排查。
+
+报告说明：
+- `index.md` 是入口摘要。
+- `data_completeness_report.md` 是正式数据完整度报告。
+- `provider_health_report.md` 是行情源健康报告。
+- `runtime_diagnostics.md` 是运行耗时报告。
+
+Windows PowerShell 查看中文报告建议：
+```powershell
+chcp 65001
+Get-Content outputs_energy_latest\index.md -Encoding UTF8
+```
+
+也可以使用 VS Code 打开 Markdown 报告。
+
 ## Provider Mode
 
 默认使用 mock 模式，不访问网络：

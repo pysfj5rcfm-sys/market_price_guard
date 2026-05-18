@@ -108,9 +108,10 @@ def run_pipeline(
         max_run_seconds=max_run_seconds,
         max_data_lag_seconds=max_data_lag_seconds,
     )
-    write_outputs(records, output_dir, provider_mode=provider_mode, runtime=runtime)
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
+    runtime["exit_code"] = exit_code
+    write_outputs(records, output_dir, provider_mode=provider_mode, runtime=runtime)
     return PipelineResult(
         records_count=len(records),
         output_dir=output_dir,

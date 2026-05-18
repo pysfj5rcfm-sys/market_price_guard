@@ -129,10 +129,11 @@ def records_to_dataframe(records: list[PriceRecord]) -> pd.DataFrame:
 
 def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: str = "mock", runtime: dict[str, Any] | None = None) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
+    runtime = runtime or {}
     df = records_to_dataframe(records)
     df.to_csv(output_dir / "prices_snapshot.csv", index=False, encoding="utf-8-sig")
     (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records, runtime=runtime), encoding="utf-8")
-    (output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics_report(records, runtime or {}), encoding="utf-8")
+    (output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics_report(records, runtime), encoding="utf-8")
     (output_dir / "provider_health_report.md").write_text(
         build_provider_health_report(records, provider_mode=provider_mode),
         encoding="utf-8",
@@ -140,6 +141,99 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
     (output_dir / "energy_price_block.md").write_text(build_project_block(records, "energy", "能源账户价格事实块"), encoding="utf-8")
     (output_dir / "tech_price_block.md").write_text(build_tech_block(records), encoding="utf-8")
     (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
+    (output_dir / "index.md").write_text(
+        build_index_report(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime),
+        encoding="utf-8",
+    )
+
+
+def build_index_report(
+    records: list[PriceRecord],
+    output_dir: Path,
+    provider_mode: str = "mock",
+    runtime: dict[str, Any] | None = None,
+) -> str:
+    runtime = runtime or {}
+    summary = build_completeness_summary(records)
+    issue_counts = _index_issue_counts(records, summary, runtime)
+    usable_text = "是" if summary.usable_for_operation else "否"
+    provider_counts = _selected_provider_counts(records)
+    recommended_files = _recommended_files(
+        profile=str(runtime.get("profile", "")),
+        provider_policy=str(runtime.get("provider_policy", "")),
+    )
+    lines = [
+        "# market_price_guard 本轮刷新索引",
+        "",
+        "## 基本信息",
+        f"- generated_at: {runtime.get('run_end_time_utc', '')}",
+        f"- profile: {runtime.get('profile', '')}",
+        f"- provider_mode: {runtime.get('provider_mode', provider_mode)}",
+        f"- provider_policy: {runtime.get('provider_policy', '')}",
+        f"- strict: {str(runtime.get('strict', False)).lower()}",
+        f"- exit_code: {runtime.get('exit_code', '')}",
+        f"- output_dir: {output_dir}",
+        "",
+        "## 本轮结论",
+        f"- 可用于具体操作建议：{usable_text}",
+    ]
+    if not summary.usable_for_operation:
+        lines.extend(
+            [
+                f"- strict blocking records 数量: {issue_counts['blocking_records']}",
+                f"- provider_error 数量: {issue_counts['provider_error']}",
+                f"- stale 数量: {issue_counts['stale']}",
+                f"- quote_time_missing 数量: {issue_counts['quote_time_missing']}",
+                f"- mock fallback not usable 数量: {issue_counts['mock_fallback_not_usable']}",
+                f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+            ]
+        )
+    lines.extend(["", "## Blocking Records 摘要"])
+    if summary.strict_blockers:
+        lines.extend(_index_blocking_lines(summary.strict_blockers))
+    else:
+        lines.append("- 无")
+    lines.extend(["", "## 核心价格覆盖摘要"])
+    lines.extend(_coverage_summary_lines(records, str(runtime.get("profile", ""))))
+    lines.extend(
+        [
+            "",
+            "## 运行时效摘要",
+            f"- total_elapsed_seconds: {runtime.get('total_elapsed_seconds', '')}",
+            f"- max_quote_lag_seconds: {runtime.get('max_quote_lag_seconds', '')}",
+            f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+            f"- slow_provider_attempts 数量: {issue_counts['slow_provider_attempts']}",
+            f"- oldest_quote_time: {_oldest_quote_time(records)}",
+            f"- newest_quote_time: {_newest_quote_time(records)}",
+            "",
+            "## Provider 摘要",
+        ]
+    )
+    if provider_counts:
+        lines.extend([f"- {provider}: {count}" for provider, count in sorted(provider_counts.items())])
+    else:
+        lines.append("- 无")
+    lines.extend(
+        [
+            f"- fallback_used 数量: {issue_counts['fallback_used']}",
+            f"- mock fallback not usable 数量: {issue_counts['mock_fallback_not_usable']}",
+            "",
+            "## 推荐复制给项目的文件",
+        ]
+    )
+    lines.extend([f"- {filename}" for filename in recommended_files])
+    lines.extend(
+        [
+            "",
+            "## 报告入口",
+            "- data_completeness_report.md",
+            "- provider_health_report.md",
+            "- runtime_diagnostics.md",
+            "",
+            "本索引只汇总数据状态、可用性、阻断原因和建议查看的报告文件。",
+        ]
+    )
+    return "\n".join(lines) + "\n"
 
 
 def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
@@ -587,6 +681,84 @@ def _runtime_freshness_lines(runtime: dict[str, Any]) -> list[str]:
     if runtime.get("run_time_budget_exceeded"):
         lines.append("- 本轮刷新耗时超过预算，价格不宜用于盘中精确做T或高频操作。")
     return lines
+
+
+def _index_issue_counts(records: list[PriceRecord], summary: CompletenessSummary, runtime: dict[str, Any]) -> dict[str, int]:
+    attempts = _all_provider_attempts(records)
+    return {
+        "blocking_records": len(summary.strict_blockers),
+        "provider_error": sum(1 for record in records if "provider_error" in record.quality_issues),
+        "stale": len(summary.stale_prices),
+        "quote_time_missing": len(summary.quote_time_missing),
+        "mock_fallback_not_usable": sum(1 for record in records if "mock_fallback_not_allowed" in record.quality_issues),
+        "slow_provider_attempts": sum(1 for attempt in attempts if attempt.get("slow_provider_attempt")),
+        "fallback_used": sum(1 for record in records if record.provider_diagnostics.get("fallback_used")),
+        "run_time_budget_exceeded": 1 if runtime.get("run_time_budget_exceeded") else 0,
+    }
+
+
+def _index_blocking_lines(blockers: list[dict[str, Any]]) -> list[str]:
+    return [
+        "- project={project}, symbol={symbol}, name={name}, selected_provider={source}, blocking_reason={blocking_reason}, stale_reason={stale_reason}, quote_time={quote_time}".format(
+            **blocker
+        )
+        for blocker in blockers
+    ]
+
+
+def _coverage_summary_lines(records: list[PriceRecord], profile: str) -> list[str]:
+    return [
+        f"- 能源账户核心价格：{_project_coverage(records, 'energy', profile)}",
+        f"- 科技账户核心价格：{_project_coverage(records, 'tech', profile)}",
+        f"- 黄金参考价：{_symbol_coverage(records, 'GOLD_CNY', profile)}",
+        f"- 非科技宽基：{_symbol_coverage(records, '510300.SH', profile)}",
+    ]
+
+
+def _project_coverage(records: list[PriceRecord], project: str, profile: str) -> str:
+    if profile in {"energy", "tech"} and profile != project:
+        return "本轮未刷新"
+    project_records = [record for record in records if record.project == project and record.required_for_operation]
+    if not project_records:
+        return "本轮未刷新"
+    return "完整" if all(_record_ok(record) for record in project_records) else "不完整"
+
+
+def _symbol_coverage(records: list[PriceRecord], symbol: str, profile: str) -> str:
+    if profile == "energy" and symbol in {"GOLD_CNY", "510300.SH"}:
+        return "本轮未刷新"
+    record = next((item for item in records if item.symbol == symbol), None)
+    if record is None:
+        return "本轮未刷新"
+    return "可用" if _record_ok(record) else "不可用"
+
+
+def _selected_provider_counts(records: list[PriceRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        provider = str(record.provider_diagnostics.get("selected_provider") or record.source or "unknown")
+        counts[provider] = counts.get(provider, 0) + 1
+    return counts
+
+
+def _recommended_files(profile: str, provider_policy: str) -> list[str]:
+    if provider_policy == "diagnostic":
+        return ["provider_health_report.md", "runtime_diagnostics.md", "data_completeness_report.md"]
+    if profile == "energy":
+        return ["energy_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md"]
+    if profile == "tech":
+        return ["tech_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md"]
+    return ["controller_price_summary.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md"]
+
+
+def _oldest_quote_time(records: list[PriceRecord]) -> str:
+    quote_times = [record.quote_time for record in records if record.quote_time is not None]
+    return min(quote_times).isoformat() if quote_times else ""
+
+
+def _newest_quote_time(records: list[PriceRecord]) -> str:
+    quote_times = [record.quote_time for record in records if record.quote_time is not None]
+    return max(quote_times).isoformat() if quote_times else ""
 
 
 def _all_provider_attempts(records: list[PriceRecord]) -> list[dict[str, object]]:
