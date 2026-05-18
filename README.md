@@ -21,6 +21,20 @@ python -m market_price_guard.main --provider-mode live --strict --output-dir out
 
 AKShare live 模式仅用于价格事实获取与数据完整度检查，不提供买卖建议。
 
+## Provider Priority Chain
+
+watchlist 支持为每个标的配置 `provider_priority`：
+
+```yaml
+provider_priority:
+  - akshare
+  - mock
+```
+
+旧配置中的 `provider` 字段仍然有效；如果没有 `provider_priority`，工具会使用单一 `provider`。live 模式会按优先级逐个尝试 provider，primary 失败但 fallback 成功时使用 fallback 结果，并在 `provider_health_report.md` 的 “Provider attempts by symbol” 中展示尝试链路。
+
+`mock` fallback 仅用于开发和测试。live 模式下如果 AKShare 失败后选中 `mock` fallback，默认仍不可用于具体操作建议；只有标的显式配置 `allow_mock_fallback_for_operation: true` 时，才允许用于 strict 判断。
+
 ## AKShare
 
 live 模式下：

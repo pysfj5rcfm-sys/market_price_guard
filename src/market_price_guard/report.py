@@ -158,6 +158,8 @@ def build_completeness_report(records: list[PriceRecord]) -> str:
     lines.extend(_blocking_record_lines(summary.strict_blockers))
     lines.extend(["", "## Provider diagnostics"])
     lines.extend(_provider_diagnostics_lines(summary.akshare_records))
+    lines.extend(["", "## Provider routing notes"])
+    lines.extend(_provider_routing_note_lines(records))
     lines.extend(["", "## AKShare price records"])
     lines.extend(_record_lines(summary.akshare_records))
     lines.extend(["", "## AKShare quote freshness details"])
@@ -221,6 +223,8 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
     if provider_mode == "mock":
         lines.extend(["", "## Mock"])
         lines.extend(_mock_health_group(records))
+    lines.extend(["", "## Provider attempts by symbol"])
+    lines.extend(_provider_attempts_by_symbol(records))
     return "\n".join(lines) + "\n"
 
 
@@ -294,6 +298,10 @@ def _blocking_reason(record: PriceRecord) -> str:
         return "invalid_quote_time"
     if record.quote_time is None or "quote_time_missing" in issues:
         return "quote_time_missing"
+    if "mock_fallback_not_allowed" in issues:
+        return "mock_fallback_not_allowed"
+    if "manual_fallback_not_allowed" in issues:
+        return "manual_fallback_not_allowed"
     if record.is_stale:
         return "stale"
     return ""
@@ -353,7 +361,10 @@ def _akshare_health_group(records: list[PriceRecord], category: str, function_na
     category_records = [
         record
         for record in records
-        if record.source == "akshare" and record.provider_diagnostics.get("category") == category
+        if (
+            record.source == "akshare" and record.provider_diagnostics.get("category") == category
+        )
+        or _record_has_attempt_function(record, function_names)
     ]
     grouped = _group_provider_diagnostics(category_records)
     lines = [
@@ -425,6 +436,62 @@ def _mock_health_group(records: list[PriceRecord]) -> list[str]:
         f"- quote_time_status: {_quote_time_status(mock_records)}",
         f"- usable_for_operation: {_usable_for_operation(mock_records)}",
     ]
+
+
+def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
+    if not records:
+        return ["- 无"]
+    lines: list[str] = []
+    for record in records:
+        diagnostic = record.provider_diagnostics
+        attempts = diagnostic.get("provider_attempts", [])
+        lines.append(f"### {record.symbol}")
+        lines.append(f"- provider_priority_chain: {_format_symbols(diagnostic.get('provider_priority', []))}")
+        lines.append(f"- selected_provider: {diagnostic.get('selected_provider', record.source)}")
+        lines.append(f"- selected_source: {diagnostic.get('selected_source', record.source)}")
+        lines.append(f"- fallback_used: {diagnostic.get('fallback_used', False)}")
+        lines.append(f"- usable_for_operation: {diagnostic.get('usable_for_operation', _record_ok(record))}")
+        lines.append(f"- selection_reason: {diagnostic.get('selection_reason', '')}")
+        blocking_reason = _blocking_reason(record)
+        lines.append(f"- final_blocking_reason: {blocking_reason}")
+        if not attempts:
+            lines.append("- attempts: 无")
+            continue
+        lines.append("- attempts:")
+        for attempt in attempts:
+            if not isinstance(attempt, dict):
+                continue
+            lines.append(
+                "  - provider={provider}, function_name={function_name}, status={status}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
+                    provider=attempt.get("provider", ""),
+                    function_name=attempt.get("function_name", ""),
+                    status=attempt.get("status", ""),
+                    price=attempt.get("price", ""),
+                    quote_time=attempt.get("quote_time", ""),
+                    usable_for_operation=attempt.get("usable_for_operation", ""),
+                    reason=attempt.get("reason", ""),
+                    exception_type=attempt.get("exception_type", ""),
+                    exception_message=attempt.get("exception_message", ""),
+                )
+            )
+    return lines
+
+
+def _provider_routing_note_lines(records: list[PriceRecord]) -> list[str]:
+    notes: list[str] = []
+    for record in records:
+        diagnostics = record.provider_diagnostics
+        if diagnostics.get("fallback_used"):
+            notes.append(
+                f"- {record.symbol}: primary failed but fallback selected; selected_provider={diagnostics.get('selected_provider', '')}; selection_reason={diagnostics.get('selection_reason', '')}"
+            )
+        if "mock_fallback_not_allowed" in record.quality_issues:
+            notes.append(f"- {record.symbol}: mock fallback 不可用于具体操作建议")
+        if "manual_fallback_not_allowed" in record.quality_issues:
+            notes.append(f"- {record.symbol}: manual fallback 未配置为可用于具体操作建议")
+    if not notes:
+        return ["- 无"]
+    return notes
 
 
 def _provider_health_status(diagnostic: dict[str, object]) -> str:
@@ -502,6 +569,9 @@ def _group_provider_diagnostics(records: list[PriceRecord]) -> dict[str, dict[st
         for attempt in diagnostic.get("attempts", []) or []:
             if isinstance(attempt, dict):
                 _merge_provider_diagnostic(grouped, attempt)
+        for attempt in diagnostic.get("provider_attempts", []) or []:
+            if isinstance(attempt, dict):
+                _merge_provider_diagnostic(grouped, attempt)
         if diagnostic.get("function_name"):
             _merge_provider_diagnostic(grouped, diagnostic)
     return grouped
@@ -524,6 +594,14 @@ def _merge_provider_diagnostic(grouped: dict[str, dict[str, object]], diagnostic
             existing["matched_symbols"] = list(dict.fromkeys(existing_symbols + new_symbols))
             if diagnostic.get("provider_status") == "fallback_success":
                 existing["provider_status"] = "fallback_success"
+
+
+def _record_has_attempt_function(record: PriceRecord, function_names: list[str]) -> bool:
+    wanted = set(function_names)
+    for attempt in record.provider_diagnostics.get("provider_attempts", []) or []:
+        if isinstance(attempt, dict) and attempt.get("function_name") in wanted:
+            return True
+    return False
 
 
 def _akshare_freshness_lines(records: list[PriceRecord]) -> list[str]:

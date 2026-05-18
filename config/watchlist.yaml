@@ -8,24 +8,36 @@ projects:
         market: "HK"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
       - symbol: "601899.SH"
         name: "紫金矿业A"
         market: "CN"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
       - symbol: "601985.SH"
         name: "中国核电"
         market: "CN"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
       - symbol: "003816.SZ"
         name: "中国广核"
         market: "CN"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
   tech:
     display_name: "理财｜科技账户项目"
@@ -36,6 +48,9 @@ projects:
         market: "CN"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
         asset_role: "nasdaq_or_overseas_tech_etf"
       - symbol: "513300.SH"
@@ -43,6 +58,9 @@ projects:
         market: "CN"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
         asset_role: "nasdaq_or_overseas_tech_etf"
       - symbol: "159819.SZ"
@@ -50,6 +68,9 @@ projects:
         market: "CN"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
         asset_role: "ai_tech_equity"
       - symbol: "515880.SH"
@@ -57,6 +78,9 @@ projects:
         market: "CN"
         core: true
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: true
         asset_role: "communication_tech_equity"
       - symbol: "510300.SH"
@@ -64,6 +88,9 @@ projects:
         market: "CN"
         core: false
         provider: "akshare"
+        provider_priority:
+          - akshare
+          - mock
         required_for_operation: false
         asset_role: "non_tech_broad_base_etf"
       - symbol: "GOLD_CNY"
@@ -71,6 +98,8 @@ projects:
         market: "MANUAL"
         core: true
         provider: "manual"
+        provider_priority:
+          - manual
         required_for_operation: true
         asset_role: "defense_or_potential_tech_funding"
   controller:
@@ -82,16 +111,22 @@ projects:
         market: "FX"
         core: false
         provider: "mock"
+        provider_priority:
+          - mock
         required_for_operation: false
       - symbol: "HKD_CNY"
         name: "港币兑人民币"
         market: "FX"
         core: false
         provider: "mock"
+        provider_priority:
+          - mock
         required_for_operation: false
       - symbol: "IXIC"
         name: "纳斯达克综合指数"
         market: "US"
         core: false
         provider: "mock"
+        provider_priority:
+          - mock
         required_for_operation: false

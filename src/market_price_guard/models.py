@@ -15,6 +15,9 @@ class Instrument(BaseModel):
     market: str
     core: bool = True
     provider: str = "mock"
+    provider_priority: list[str] | None = None
+    allow_mock_fallback_for_operation: bool = False
+    allow_manual_fallback_for_operation: bool = False
     required_for_operation: bool = False
     asset_role: str | None = None
 

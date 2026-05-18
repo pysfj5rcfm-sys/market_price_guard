@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .normalize import load_watchlist, load_yaml, normalize_records
+from .provider_router import RouterConfig, collect_routed_prices
 from .providers.akshare_provider import AkshareProvider
 from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
@@ -45,30 +46,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def collect_prices(watchlist_path: Path, mock_prices_path: Path, manual_prices_path: Path, provider_mode: str = "mock") -> dict:
     watchlist = load_watchlist(watchlist_path)
-    mock_provider = MockProvider(mock_prices_path)
-    manual_provider = ManualProvider(manual_prices_path)
-    akshare_provider = AkshareProvider()
-
-    mock_symbols: list[str] = []
-    manual_symbols: list[str] = []
-    akshare_symbols: list[str] = []
-    for project in watchlist.projects.values():
-        for instrument in project.instruments:
-            if instrument.provider == "manual":
-                manual_symbols.append(instrument.symbol)
-            elif provider_mode == "live" and instrument.provider == "akshare":
-                akshare_symbols.append(instrument.symbol)
-            else:
-                mock_symbols.append(instrument.symbol)
-
-    prices = {}
-    if mock_symbols:
-        prices.update(mock_provider.fetch(mock_symbols))
-    if akshare_symbols:
-        prices.update(akshare_provider.fetch(akshare_symbols))
-    # Manual records intentionally override mock values for the same symbol.
-    if manual_symbols:
-        prices.update(manual_provider.fetch(manual_symbols))
+    providers = {
+        "mock": MockProvider(mock_prices_path),
+        "manual": ManualProvider(manual_prices_path),
+        "akshare": AkshareProvider(),
+    }
+    prices = collect_routed_prices(watchlist, providers, RouterConfig(provider_mode=provider_mode))
     return {"watchlist": watchlist, "prices": prices}
 
 

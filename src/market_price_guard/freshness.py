@@ -27,6 +27,10 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
             return True, f"invalid_quote_time: quote_time 解析失败，不可用于具体操作建议；{issue_text}"
         if "quote_time_missing" in raw.quality_issues:
             return True, f"quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；{issue_text}"
+        if "mock_fallback_not_allowed" in raw.quality_issues:
+            return True, f"mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；{issue_text}"
+        if "manual_fallback_not_allowed" in raw.quality_issues:
+            return True, f"manual_fallback_not_allowed: manual fallback 未配置为可用于具体操作建议；{issue_text}"
 
     if raw.price is None:
         return True, "价格缺失，不可用于具体操作建议"

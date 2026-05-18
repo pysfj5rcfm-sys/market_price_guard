@@ -48,3 +48,135 @@
 - affected_symbols: 00883.HK, 601899.SH, 601985.SH, 003816.SZ, 159632.SZ, 513300.SH, 159819.SZ, 515880.SH, 510300.SH, USD_CNY, HKD_CNY, IXIC
 - quote_time_status: mixed:ok,stale
 - usable_for_operation: yes
+
+## Provider attempts by symbol
+### 00883.HK
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=21.35, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 601899.SH
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=18.42, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 601985.SH
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=10.91, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 003816.SZ
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=4.27, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 159632.SZ
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=1.432, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 513300.SH
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=1.671, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 159819.SZ
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=0.921, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 515880.SH
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=1.084, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### 510300.SH
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=3.921, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### GOLD_CNY
+- provider_priority_chain: manual
+- selected_provider: manual
+- selected_source: manual
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=manual, function_name=manual, status=success, price=1040.0, quote_time=2026-05-18T14:03:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### USD_CNY
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: stale
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=7.215, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### HKD_CNY
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: stale
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=0.925, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+### IXIC
+- provider_priority_chain: mock
+- selected_provider: mock
+- selected_source: mock
+- fallback_used: False
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
+- attempts:
+  - provider=mock, function_name=mock, status=success, price=16835.24, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=

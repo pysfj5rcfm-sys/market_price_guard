@@ -22,7 +22,7 @@
 黄金持仓参考价为用户手工录入价，不等同于国际现货金价；用于科技账户防守仓/潜在转科技资金的参考，实际操作前需核对账户内可卖价、手续费、点差和到账规则。
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
 |---|---|---:|---|---|---|---|---|---|---|
-| GOLD_CNY | 黄金持仓参考价 | 1040.0 | CNY | manual | 2026-05-18T14:03:00+08:00 | 2026-05-18T08:39:35.911583+00:00 | manual | False | manual 价格，已显示录入时间 |
+| GOLD_CNY | 黄金持仓参考价 | 1040.0 | CNY | manual | 2026-05-18T14:03:00+08:00 | 2026-05-18T08:53:31.768308+00:00 | manual | False | manual 价格，已显示录入时间 |
 
 ## 非科技宽基单独列示
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
