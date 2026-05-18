@@ -186,4 +186,39 @@ strict 模式会把工具当作价格新鲜度守门员：只要 `required_for_o
 pytest
 ```
 
+## 输出契约与 UAT
+
+输出契约文档：
+
+- `docs/output_contract.md`
+
+UAT 检查清单：
+
+- `docs/uat_checklist.md`
+
+运行完整 UAT：
+
+```powershell
+.\scripts\run_uat.ps1
+```
+
+查看 UAT 汇总：
+
+```powershell
+Get-Content outputs_uat_summary.md -Encoding UTF8
+```
+
+UAT 说明：
+
+- strict=0：数据完整度通过，可进一步分析。
+- strict=2：价格守门员阻断，不得用于具体操作建议。
+- strict=2 不是 UAT 失败，前提是报告正确生成并说明阻断原因。
+- exit code=1 是程序错误，需要排查。
+- UAT 主要验证输出契约、报告结构、阻断语义和项目接入稳定性。
+
+输出契约变更规则：
+
+- 如果未来修改 `index.md`、price block 或报告格式，必须同步更新 `docs/output_contract.md`、`docs/uat_checklist.md` 和 `tests/test_output_contract.py`。
+- 科技账户项目已经 UAT pass，因此 `tech_price_block.md` 的分组名称和分类边界不得随意改变。
+
 Codex smoke test passed.
