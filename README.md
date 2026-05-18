@@ -35,6 +35,8 @@ provider_priority:
 
 `mock` fallback 仅用于开发和测试。live 模式下如果 AKShare 失败后选中 `mock` fallback，默认仍不可用于具体操作建议；只有标的显式配置 `allow_mock_fallback_for_operation: true` 时，才允许用于 strict 判断。
 
+`00883.HK` 支持 yfinance secondary provider，内部映射为 Yahoo Finance ticker `0883.HK`。yfinance 是 Yahoo Finance public API wrapper，适合研究/教育用途，不是官方交易所行情源。
+
 ## AKShare
 
 live 模式下：

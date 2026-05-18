@@ -24,11 +24,20 @@
 - provider: akshare
 - market_category: HK
 - affected_symbols: 00883.HK
-- quote_time_status: stale
-- usable_for_operation: no
+- quote_time_status: ok
+- usable_for_operation: yes
 - function_name=stock_hk_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=00883.HK, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - function_name=stock_hk_main_board_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=00883.HK, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
 - function_name=stock_hsgt_sh_hk_spot_em, status=failed, returned_rows=, matched_symbols=, affected_symbols=00883.HK, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+## YFinance 港股
+- provider: yfinance
+- market_category: HK
+- affected_symbols: 00883.HK
+- quote_time_status: ok
+- usable_for_operation: yes
+- source_limit_note: yfinance is an open-source Yahoo Finance public API wrapper for research/educational use; not an official exchange feed
+- function_name=yfinance.Ticker, status=success, returned_rows=, matched_symbols=00883.HK, affected_symbols=00883.HK, exception_type=, exception_message=
 
 ## Manual
 - provider: manual
@@ -39,18 +48,18 @@
 
 ## Provider attempts by symbol
 ### 00883.HK
-- provider_priority_chain: akshare, mock
-- selected_provider: mock
-- selected_source: mock_fallback
+- provider_priority_chain: akshare, yfinance, mock
+- selected_provider: yfinance
+- selected_source: yfinance
 - fallback_used: True
-- usable_for_operation: False
-- selection_reason: mock_fallback_not_allowed_for_operation
-- final_blocking_reason: mock_fallback_not_allowed
+- usable_for_operation: True
+- selection_reason: selected_provider_returned_usable_price
+- final_blocking_reason: 
 - attempts:
   - provider=akshare, function_name=stock_hk_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
   - provider=akshare, function_name=stock_hk_main_board_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
   - provider=akshare, function_name=stock_hsgt_sh_hk_spot_em, status=failed, price=, quote_time=, usable_for_operation=False, reason=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')), exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-  - provider=mock, function_name=mock, status=success, price=21.35, quote_time=2026-05-18T12:45:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
+  - provider=yfinance, function_name=yfinance.Ticker, status=success, price=26.760000228881836, quote_time=2026-05-18T16:08:00+08:00, usable_for_operation=True, reason=, exception_type=, exception_message=
 ### 601899.SH
 - provider_priority_chain: akshare, mock
 - selected_provider: mock

@@ -7,7 +7,6 @@
 行情源健康状态详见 provider_health_report.md。
 
 ## Strict blocking records
-- project=energy, symbol=00883.HK, name=中海油H, source=mock_fallback, quote_time=2026-05-18T12:45:00+08:00, is_stale=True, stale_reason=mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed, blocking_reason=mock_fallback_not_allowed, function_name=, provider_status=, exception_type=
 - project=energy, symbol=601899.SH, name=紫金矿业A, source=mock_fallback, quote_time=2026-05-18T12:45:00+08:00, is_stale=True, stale_reason=mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed, blocking_reason=mock_fallback_not_allowed, function_name=, provider_status=, exception_type=
 - project=energy, symbol=601985.SH, name=中国核电, source=mock_fallback, quote_time=2026-05-18T12:45:00+08:00, is_stale=True, stale_reason=mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed, blocking_reason=mock_fallback_not_allowed, function_name=, provider_status=, exception_type=
 - project=energy, symbol=003816.SZ, name=中国广核, source=mock_fallback, quote_time=2026-05-18T12:45:00+08:00, is_stale=True, stale_reason=mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed, blocking_reason=mock_fallback_not_allowed, function_name=, provider_status=, exception_type=
@@ -22,8 +21,8 @@
 - fund_etf_spot_em: success, provider_status=success, returned_rows=1467, matched_symbols=['159632.SZ', '513300.SH', '159819.SZ', '515880.SH', '510300.SH']
 
 ## Provider routing notes
-- 00883.HK: primary failed but fallback selected; selected_provider=mock; selection_reason=mock_fallback_not_allowed_for_operation
-- 00883.HK: mock fallback 不可用于具体操作建议
+- 00883.HK: primary failed but fallback selected; selected_provider=yfinance; selection_reason=selected_provider_returned_usable_price
+- 00883.HK: 使用 yfinance secondary provider；数据源限制：open-source Yahoo Finance public API wrapper; research/educational use; not official exchange feed
 - 601899.SH: primary failed but fallback selected; selected_provider=mock; selection_reason=mock_fallback_not_allowed_for_operation
 - 601899.SH: mock fallback 不可用于具体操作建议
 - 601985.SH: primary failed but fallback selected; selected_provider=mock; selection_reason=mock_fallback_not_allowed_for_operation
@@ -39,15 +38,15 @@
 - tech 510300.SH 沪深300ETF华泰柏瑞: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
 
 ## AKShare quote freshness details
-- 159632.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:03+08:00, quote_time_utc=2026-05-18T07:34:03+00:00, fetch_time_utc=2026-05-18T08:54:40.440580+00:00, age_seconds=4973, max_age_seconds=86400, is_stale=False
+- 159632.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:03+08:00, quote_time_utc=2026-05-18T07:34:03+00:00, fetch_time_utc=2026-05-18T09:23:51.684710+00:00, age_seconds=6700, max_age_seconds=86400, is_stale=False
 - 159632.SZ: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
-- 513300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:53+08:00, quote_time_utc=2026-05-18T08:11:53+00:00, fetch_time_utc=2026-05-18T08:55:14.418047+00:00, age_seconds=2703, max_age_seconds=86400, is_stale=False
+- 513300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:53+08:00, quote_time_utc=2026-05-18T08:11:53+00:00, fetch_time_utc=2026-05-18T09:24:13.638264+00:00, age_seconds=4430, max_age_seconds=86400, is_stale=False
 - 513300.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
-- 159819.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:21+08:00, quote_time_utc=2026-05-18T07:34:21+00:00, fetch_time_utc=2026-05-18T08:55:37.655591+00:00, age_seconds=4955, max_age_seconds=86400, is_stale=False
+- 159819.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:21+08:00, quote_time_utc=2026-05-18T07:34:21+00:00, fetch_time_utc=2026-05-18T09:24:38.038534+00:00, age_seconds=6682, max_age_seconds=86400, is_stale=False
 - 159819.SZ: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
-- 515880.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:34+08:00, quote_time_utc=2026-05-18T08:11:34+00:00, fetch_time_utc=2026-05-18T08:56:02.128699+00:00, age_seconds=2722, max_age_seconds=86400, is_stale=False
+- 515880.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:34+08:00, quote_time_utc=2026-05-18T08:11:34+00:00, fetch_time_utc=2026-05-18T09:25:00.825862+00:00, age_seconds=4449, max_age_seconds=86400, is_stale=False
 - 515880.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
-- 510300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:48+08:00, quote_time_utc=2026-05-18T08:11:48+00:00, fetch_time_utc=2026-05-18T08:56:30.039318+00:00, age_seconds=2708, max_age_seconds=86400, is_stale=False
+- 510300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:48+08:00, quote_time_utc=2026-05-18T08:11:48+00:00, fetch_time_utc=2026-05-18T09:25:21.427993+00:00, age_seconds=4435, max_age_seconds=86400, is_stale=False
 - 510300.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
 
 ## AKShare / 数据质量问题
@@ -63,7 +62,6 @@
 - 无
 
 ## stale 价格列表
-- energy 00883.HK 中海油H: mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed
 - energy 601899.SH 紫金矿业A: mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed
 - energy 601985.SH 中国核电: mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed
 - energy 003816.SZ 中国广核: mock_fallback_not_allowed: mock fallback 不可用于具体操作建议；mock_fallback_not_allowed

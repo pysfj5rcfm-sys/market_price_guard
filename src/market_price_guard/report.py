@@ -218,6 +218,8 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
             ["stock_hk_spot_em", "stock_hk_main_board_spot_em", "stock_hsgt_sh_hk_spot_em"],
         )
     )
+    lines.extend(["", "## YFinance 港股"])
+    lines.extend(_yfinance_health_group(records))
     lines.extend(["", "## Manual"])
     lines.extend(_manual_health_group(records))
     if provider_mode == "mock":
@@ -313,7 +315,7 @@ def _required_records_ok(records: list[PriceRecord]) -> bool:
 
 
 def _record_ok(record: PriceRecord | None) -> bool:
-    return bool(record and record.price is not None and not record.is_stale and record.quote_time is not None and not record.quality_issues)
+    return bool(record and record.price is not None and not record.is_stale and record.quote_time is not None and not _blocking_reason(record))
 
 
 def _yes_no(value: bool) -> str:
@@ -423,6 +425,34 @@ def _manual_health_group(records: list[PriceRecord]) -> list[str]:
     return lines
 
 
+def _yfinance_health_group(records: list[PriceRecord]) -> list[str]:
+    yfinance_records = [record for record in records if record.source == "yfinance"]
+    if not yfinance_records:
+        return ["- provider: yfinance", "- market_category: HK", "- status: not_called"]
+    lines = [
+        "- provider: yfinance",
+        "- market_category: HK",
+        f"- affected_symbols: {_symbols(yfinance_records)}",
+        f"- quote_time_status: {_quote_time_status(yfinance_records)}",
+        f"- usable_for_operation: {_usable_for_operation(yfinance_records)}",
+        "- source_limit_note: yfinance is an open-source Yahoo Finance public API wrapper for research/educational use; not an official exchange feed",
+    ]
+    for record in yfinance_records:
+        diagnostic = record.provider_diagnostics
+        lines.append(
+            "- function_name={function_name}, status={status}, returned_rows={returned_rows}, matched_symbols={matched_symbols}, affected_symbols={affected_symbols}, exception_type={exception_type}, exception_message={exception_message}".format(
+                function_name=diagnostic.get("function_name", "yfinance.Ticker"),
+                status=_provider_health_status(diagnostic),
+                returned_rows=diagnostic.get("returned_rows", ""),
+                matched_symbols=record.symbol if record.price is not None else "",
+                affected_symbols=record.symbol,
+                exception_type=diagnostic.get("exception_type", ""),
+                exception_message=diagnostic.get("exception_message", ""),
+            )
+        )
+    return lines
+
+
 def _mock_health_group(records: list[PriceRecord]) -> list[str]:
     mock_records = [record for record in records if record.source == "mock"]
     if not mock_records:
@@ -484,6 +514,10 @@ def _provider_routing_note_lines(records: list[PriceRecord]) -> list[str]:
         if diagnostics.get("fallback_used"):
             notes.append(
                 f"- {record.symbol}: primary failed but fallback selected; selected_provider={diagnostics.get('selected_provider', '')}; selection_reason={diagnostics.get('selection_reason', '')}"
+            )
+        if diagnostics.get("selected_provider") == "yfinance":
+            notes.append(
+                "- 00883.HK: 使用 yfinance secondary provider；数据源限制：open-source Yahoo Finance public API wrapper; research/educational use; not official exchange feed"
             )
         if "mock_fallback_not_allowed" in record.quality_issues:
             notes.append(f"- {record.symbol}: mock fallback 不可用于具体操作建议")

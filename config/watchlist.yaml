@@ -10,6 +10,7 @@ projects:
         provider: "akshare"
         provider_priority:
           - akshare
+          - yfinance
           - mock
         required_for_operation: true
       - symbol: "601899.SH"

@@ -10,6 +10,7 @@ from .provider_router import RouterConfig, collect_routed_prices
 from .providers.akshare_provider import AkshareProvider
 from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
+from .providers.yfinance_provider import YFinanceProvider
 from .report import CompletenessSummary, build_completeness_summary, format_blocking_record, write_outputs
 
 
@@ -50,6 +51,7 @@ def collect_prices(watchlist_path: Path, mock_prices_path: Path, manual_prices_p
         "mock": MockProvider(mock_prices_path),
         "manual": ManualProvider(manual_prices_path),
         "akshare": AkshareProvider(),
+        "yfinance": YFinanceProvider(),
     }
     prices = collect_routed_prices(watchlist, providers, RouterConfig(provider_mode=provider_mode))
     return {"watchlist": watchlist, "prices": prices}

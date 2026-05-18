@@ -160,6 +160,7 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
     attempts = diagnostics.get("attempts")
     if not isinstance(attempts, list):
         return []
+    usable = _raw_usable_for_selection(raw)
     return [
         {
             "symbol": raw.symbol,
@@ -170,7 +171,7 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
             "exception_message": attempt.get("exception_message", ""),
             "price": raw.price if attempt.get("status") == "success" else "",
             "quote_time": raw.quote_time.isoformat() if raw.quote_time and attempt.get("status") == "success" else "",
-            "usable_for_operation": raw.price is not None and raw.quote_time is not None and not raw.quality_issues,
+            "usable_for_operation": usable,
             "reason": attempt.get("exception_message", "") or ",".join(raw.quality_issues),
         }
         for attempt in attempts
