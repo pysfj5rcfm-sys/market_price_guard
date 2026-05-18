@@ -7,3 +7,6 @@ outputs/*
 !outputs/.gitkeep
 .pytest_cache/
 .DS_Store
+
+outputs/
+outputs_*/
