@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import datetime, time, timedelta, timezone
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -14,6 +14,11 @@ A_STOCK_SYMBOLS = {"601899.SH", "601985.SH", "003816.SZ"}
 HK_STOCK_SYMBOLS = {"00883.HK"}
 ETF_SYMBOLS = {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}
 SHANGHAI_TZ = timezone(timedelta(hours=8))
+
+CODE_COLUMNS = ["代码", "证券代码", "股票代码", "基金代码", "symbol", "code"]
+NAME_COLUMNS = ["名称", "股票简称", "基金简称", "基金名称", "简称", "name"]
+PRICE_COLUMNS = ["最新价", "最新", "现价", "收盘", "价格", "price", "最新价格"]
+QUOTE_TIME_COLUMNS = ["更新时间", "update_time", "quote_time", "时间", "数据时间", "数据日期"]
 
 
 class AkshareProvider(PriceProvider):
@@ -35,28 +40,24 @@ class AkshareProvider(PriceProvider):
                     function_name="import_akshare",
                     category=_category_for_symbol(symbol),
                     exception=exc,
+                    provider_status="failed",
                 )
                 for symbol in symbols
             }
 
-        groups = [
-            ("stock_zh_a_spot_em", "A_SHARE", [s for s in symbols if s in A_STOCK_SYMBOLS], "CNY"),
-            ("stock_hk_spot_em", "HK", [s for s in symbols if s in HK_STOCK_SYMBOLS], "HKD"),
-            ("fund_etf_spot_em", "ETF", [s for s in symbols if s in ETF_SYMBOLS], "CNY"),
-        ]
-
         prices: dict[str, RawPrice] = {}
-        for function_name, category, group_symbols, currency in groups:
-            prices.update(
-                self._fetch_group(
-                    fetch_fn=getattr(ak, function_name),
-                    symbols=group_symbols,
-                    currency=currency,
-                    fetch_time=fetch_time,
-                    function_name=function_name,
-                    category=category,
-                )
+        prices.update(self._fetch_a_shares(ak, [s for s in symbols if s in A_STOCK_SYMBOLS], fetch_time))
+        prices.update(self._fetch_hk_shares(ak, [s for s in symbols if s in HK_STOCK_SYMBOLS], fetch_time))
+        prices.update(
+            self._fetch_single_interface(
+                ak=ak,
+                symbols=[s for s in symbols if s in ETF_SYMBOLS],
+                currency="CNY",
+                fetch_time=fetch_time,
+                function_name="fund_etf_spot_em",
+                category="ETF",
             )
+        )
 
         for symbol in symbols:
             if symbol not in prices:
@@ -66,12 +67,107 @@ class AkshareProvider(PriceProvider):
                     quality_issues=["symbol_not_found"],
                     function_name="unknown",
                     category=_category_for_symbol(symbol),
+                    provider_status="failed",
                 )
         return prices
 
-    def _fetch_group(
+    def _fetch_a_shares(self, ak: Any, symbols: list[str], fetch_time: datetime) -> dict[str, RawPrice]:
+        if not symbols:
+            return {}
+
+        primary_df, primary_attempt = _call_akshare(ak, "stock_zh_a_spot_em", "A_SHARE", fetch_time)
+        if primary_df is not None:
+            return self._rows_to_prices(
+                symbols=symbols,
+                df=primary_df,
+                currency="CNY",
+                fetch_time=fetch_time,
+                function_name="stock_zh_a_spot_em",
+                category="A_SHARE",
+                provider_status="success",
+                attempts=[primary_attempt],
+            )
+
+        prices: dict[str, RawPrice] = {}
+        fallback_groups = [
+            ("stock_sh_a_spot_em", [symbol for symbol in symbols if symbol.endswith(".SH")]),
+            ("stock_sz_a_spot_em", [symbol for symbol in symbols if symbol.endswith(".SZ")]),
+        ]
+        for function_name, group_symbols in fallback_groups:
+            if not group_symbols:
+                continue
+            fallback_df, fallback_attempt = _call_akshare(ak, function_name, "A_SHARE", fetch_time)
+            attempts = [primary_attempt, fallback_attempt]
+            if fallback_df is not None:
+                prices.update(
+                    self._rows_to_prices(
+                        symbols=group_symbols,
+                        df=fallback_df,
+                        currency="CNY",
+                        fetch_time=fetch_time,
+                        function_name=function_name,
+                        category="A_SHARE",
+                        provider_status="fallback_success",
+                        attempts=attempts,
+                    )
+                )
+            else:
+                for symbol in group_symbols:
+                    prices[symbol] = _error_price(
+                        symbol=symbol,
+                        fetch_time=fetch_time,
+                        quality_issues=["provider_error"],
+                        currency="CNY",
+                        function_name=function_name,
+                        category="A_SHARE",
+                        exception=fallback_attempt.get("_exception"),
+                        diagnostics={"attempts": [_public_attempt(attempt) for attempt in attempts]},
+                        provider_status="fallback_failed",
+                    )
+        return prices
+
+    def _fetch_hk_shares(self, ak: Any, symbols: list[str], fetch_time: datetime) -> dict[str, RawPrice]:
+        if not symbols:
+            return {}
+
+        attempts: list[dict[str, object]] = []
+        for index, function_name in enumerate(
+            ["stock_hk_spot_em", "stock_hk_main_board_spot_em", "stock_hsgt_sh_hk_spot_em"]
+        ):
+            df, attempt = _call_akshare(ak, function_name, "HK", fetch_time)
+            attempts.append(attempt)
+            if df is None:
+                continue
+            return self._rows_to_prices(
+                symbols=symbols,
+                df=df,
+                currency="HKD",
+                fetch_time=fetch_time,
+                function_name=function_name,
+                category="HK",
+                provider_status="success" if index == 0 else "fallback_success",
+                attempts=attempts,
+            )
+
+        last_attempt = attempts[-1]
+        return {
+            symbol: _error_price(
+                symbol=symbol,
+                fetch_time=fetch_time,
+                quality_issues=["provider_error"],
+                currency="HKD",
+                function_name=str(last_attempt["function_name"]),
+                category="HK",
+                exception=last_attempt.get("_exception"),
+                diagnostics={"attempts": [_public_attempt(attempt) for attempt in attempts]},
+                provider_status="fallback_failed",
+            )
+            for symbol in symbols
+        }
+
+    def _fetch_single_interface(
         self,
-        fetch_fn: Any,
+        ak: Any,
         symbols: list[str],
         currency: str,
         fetch_time: datetime,
@@ -80,9 +176,8 @@ class AkshareProvider(PriceProvider):
     ) -> dict[str, RawPrice]:
         if not symbols:
             return {}
-        try:
-            df = fetch_fn()
-        except Exception as exc:
+        df, attempt = _call_akshare(ak, function_name, category, fetch_time)
+        if df is None:
             return {
                 symbol: _error_price(
                     symbol=symbol,
@@ -91,19 +186,45 @@ class AkshareProvider(PriceProvider):
                     currency=currency,
                     function_name=function_name,
                     category=category,
-                    exception=exc,
+                    exception=attempt.get("_exception"),
+                    diagnostics={"attempts": [_public_attempt(attempt)]},
+                    provider_status="failed",
                 )
                 for symbol in symbols
             }
+        return self._rows_to_prices(
+            symbols=symbols,
+            df=df,
+            currency=currency,
+            fetch_time=fetch_time,
+            function_name=function_name,
+            category=category,
+            provider_status="success",
+            attempts=[attempt],
+        )
 
+    def _rows_to_prices(
+        self,
+        symbols: list[str],
+        df: pd.DataFrame,
+        currency: str,
+        fetch_time: datetime,
+        function_name: str,
+        category: str,
+        provider_status: str,
+        attempts: list[dict[str, object]],
+    ) -> dict[str, RawPrice]:
         matched_symbols = [symbol for symbol in symbols if _find_row(symbol, df) is not None]
+        attempts[-1]["matched_symbols"] = matched_symbols
         diagnostics = {
             "provider": "akshare",
             "function_name": function_name,
             "category": category,
             "status": "success",
+            "provider_status": provider_status,
             "returned_rows": 0 if df is None else len(df),
             "matched_symbols": matched_symbols,
+            "attempts": [_public_attempt(attempt) for attempt in attempts],
             "fetch_time_utc": fetch_time.isoformat(),
         }
         return {
@@ -129,6 +250,7 @@ class AkshareProvider(PriceProvider):
                 function_name=str(diagnostics["function_name"]),
                 category=str(diagnostics["category"]),
                 diagnostics=diagnostics,
+                provider_status=str(diagnostics.get("provider_status", "failed")),
             )
 
         issues: list[str] = []
@@ -141,6 +263,8 @@ class AkshareProvider(PriceProvider):
         row_diagnostics = {
             **diagnostics,
             "symbol": symbol,
+            "price": price if price is not None else "",
+            "quote_time": quote_time.isoformat() if quote_time else "",
             "quote_time_raw": quote_raw or "",
             "quote_time_utc": quote_time.astimezone(timezone.utc).isoformat() if quote_time else "",
             "fetch_time_utc": fetch_time.isoformat(),
@@ -148,14 +272,14 @@ class AkshareProvider(PriceProvider):
 
         return RawPrice(
             symbol=symbol,
-            name=_extract_text(row, ["名称", "股票简称", "基金简称", "简称"]) or symbol,
+            name=_extract_text(row, NAME_COLUMNS) or symbol,
             market=_market_for_symbol(symbol),
             price=price,
             currency=currency,
             source="akshare",
             quote_time=quote_time,
             fetch_time=fetch_time,
-            market_status="open",
+            market_status=_market_status_for_symbol(symbol, quote_time or fetch_time),
             quality_issues=issues,
             provider_diagnostics=row_diagnostics,
         )
@@ -169,12 +293,48 @@ def _import_akshare() -> Any:
     return ak
 
 
+def _call_akshare(ak: Any, function_name: str, category: str, fetch_time: datetime) -> tuple[pd.DataFrame | None, dict[str, object]]:
+    attempt = {
+        "provider": "akshare",
+        "function_name": function_name,
+        "category": category,
+        "fetch_time_utc": fetch_time.isoformat(),
+    }
+    try:
+        fetch_fn: Callable[[], pd.DataFrame] = getattr(ak, function_name)
+        df = fetch_fn()
+    except Exception as exc:
+        attempt.update(
+            {
+                "status": "fail",
+                "provider_status": "failed",
+                "exception_type": type(exc).__name__,
+                "exception_message": str(exc),
+                "_exception": exc,
+            }
+        )
+        return None, attempt
+
+    attempt.update(
+        {
+            "status": "success",
+            "provider_status": "success",
+            "returned_rows": 0 if df is None else len(df),
+            "matched_symbols": [],
+        }
+    )
+    return df, attempt
+
+
+def _public_attempt(attempt: dict[str, object]) -> dict[str, object]:
+    return {key: value for key, value in attempt.items() if key != "_exception"}
+
+
 def _find_row(symbol: str, df: pd.DataFrame) -> pd.Series | None:
     if df is None or df.empty:
         return None
     target_codes = _candidate_codes(symbol)
-    code_columns = ["代码", "证券代码", "股票代码", "基金代码", "symbol", "代码代码"]
-    for column in code_columns:
+    for column in CODE_COLUMNS:
         if column not in df.columns:
             continue
         normalized = df[column].map(_normalize_code)
@@ -200,7 +360,7 @@ def _normalize_code(value: Any) -> str:
 
 
 def _extract_positive_price(row: pd.Series) -> float | None:
-    for column in ["最新价", "最新", "现价", "收盘", "价格"]:
+    for column in PRICE_COLUMNS:
         if column not in row:
             continue
         try:
@@ -221,7 +381,7 @@ def _extract_text(row: pd.Series, columns: list[str]) -> str | None:
 
 
 def _extract_quote_time(row: pd.Series) -> tuple[datetime | None, list[str], str | None]:
-    for column in ["更新时间", "update_time", "quote_time", "时间", "数据时间", "数据日期"]:
+    for column in QUOTE_TIME_COLUMNS:
         if column not in row or pd.isna(row[column]):
             continue
         raw_value = str(row[column]).strip()
@@ -264,6 +424,19 @@ def _market_for_symbol(symbol: str) -> str:
     return "CN"
 
 
+def _market_status_for_symbol(symbol: str, reference_time: datetime) -> str:
+    local_time = _ensure_aware_shanghai(reference_time).astimezone(SHANGHAI_TZ).time()
+    if symbol.endswith(".HK"):
+        return "open" if _in_ranges(local_time, [(time(9, 30), time(12, 0)), (time(13, 0), time(16, 0))]) else "closed"
+    if symbol.endswith((".SH", ".SZ")):
+        return "open" if _in_ranges(local_time, [(time(9, 30), time(11, 30)), (time(13, 0), time(15, 0))]) else "closed"
+    return "unknown"
+
+
+def _in_ranges(value: time, ranges: list[tuple[time, time]]) -> bool:
+    return any(start <= value < end for start, end in ranges)
+
+
 def _category_for_symbol(symbol: str) -> str:
     if symbol in A_STOCK_SYMBOLS:
         return "A_SHARE"
@@ -283,6 +456,7 @@ def _error_price(
     currency: str = "",
     exception: Exception | None = None,
     diagnostics: dict[str, object] | None = None,
+    provider_status: str = "failed",
 ) -> RawPrice:
     provider_diagnostics = {
         "provider": "akshare",
@@ -290,11 +464,13 @@ def _error_price(
         "symbol": symbol,
         "category": category,
         "status": "fail" if "provider_error" in quality_issues or "akshare_not_installed" in quality_issues else "success",
+        "provider_status": provider_status,
         "fetch_time_utc": fetch_time.isoformat(),
     }
     if diagnostics:
         provider_diagnostics.update(diagnostics)
         provider_diagnostics["symbol"] = symbol
+        provider_diagnostics["provider_status"] = provider_status
     if exception is not None:
         provider_diagnostics["exception_type"] = type(exception).__name__
         provider_diagnostics["exception_message"] = str(exception)

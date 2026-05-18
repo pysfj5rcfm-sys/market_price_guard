@@ -5,26 +5,26 @@
 ## 纳指 / 海外科技ETF
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
 |---|---|---:|---|---|---|---|---|---|---|
-| 159632.SZ | 纳斯达克ETF华安 | 2.283 | CNY | akshare | 2026-05-18T15:34:03+08:00 | 2026-05-18T08:07:41.840301+00:00 | open | True | 交易中价格超过 max_age_seconds，不可用于具体操作建议 |
-| 513300.SH | 纳斯达克ETF华夏 | 2.5 | CNY | akshare | 2026-05-18T16:07:53+08:00 | 2026-05-18T08:07:41.840301+00:00 | open | False | 交易中价格在新鲜度阈值内 |
+| 159632.SZ | 纳斯达克ETF华安 | 2.283 | CNY | akshare | 2026-05-18T15:34:03+08:00 | 2026-05-18T08:20:36.507967+00:00 | open | True | 交易中价格超过 max_age_seconds，不可用于具体操作建议 |
+| 513300.SH | 纳斯达克ETF华夏 | 2.5 | CNY | akshare | 2026-05-18T16:11:53+08:00 | 2026-05-18T08:20:36.507967+00:00 | open | False | 交易中价格在新鲜度阈值内 |
 
 ## AI / 人工智能ETF
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
 |---|---|---:|---|---|---|---|---|---|---|
-| 159819.SZ | 人工智能ETF易方达 | 1.96 | CNY | akshare | 2026-05-18T15:34:21+08:00 | 2026-05-18T08:07:41.840301+00:00 | open | True | 交易中价格超过 max_age_seconds，不可用于具体操作建议 |
+| 159819.SZ | 人工智能ETF易方达 | 1.96 | CNY | akshare | 2026-05-18T15:34:21+08:00 | 2026-05-18T08:20:36.507967+00:00 | open | True | 交易中价格超过 max_age_seconds，不可用于具体操作建议 |
 
 ## 通信 / 科技ETF
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
 |---|---|---:|---|---|---|---|---|---|---|
-| 515880.SH | 通信ETF国泰 | 1.517 | CNY | akshare | 2026-05-18T16:07:34+08:00 | 2026-05-18T08:07:41.840301+00:00 | open | False | 交易中价格在新鲜度阈值内 |
+| 515880.SH | 通信ETF国泰 | 1.517 | CNY | akshare | 2026-05-18T16:11:34+08:00 | 2026-05-18T08:20:36.507967+00:00 | open | False | 交易中价格在新鲜度阈值内 |
 
 ## 黄金防守仓 / 潜在转科技资金
 黄金持仓参考价为用户手工录入价，不等同于国际现货金价；用于科技账户防守仓/潜在转科技资金的参考，实际操作前需核对账户内可卖价、手续费、点差和到账规则。
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
 |---|---|---:|---|---|---|---|---|---|---|
-| GOLD_CNY | 黄金持仓参考价 | 1040.0 | CNY | manual | 2026-05-18T14:03:00+08:00 | 2026-05-18T08:08:16.425494+00:00 | manual | False | manual 价格，已显示录入时间 |
+| GOLD_CNY | 黄金持仓参考价 | 1040.0 | CNY | manual | 2026-05-18T14:03:00+08:00 | 2026-05-18T08:21:34.238821+00:00 | manual | False | manual 价格，已显示录入时间 |
 
 ## 非科技宽基单独列示
 | symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |
 |---|---|---:|---|---|---|---|---|---|---|
-| 510300.SH | 沪深300ETF华泰柏瑞 | 4.852 | CNY | akshare | 2026-05-18T16:07:48+08:00 | 2026-05-18T08:07:41.840301+00:00 | open | False | 交易中价格在新鲜度阈值内 |
+| 510300.SH | 沪深300ETF华泰柏瑞 | 4.852 | CNY | akshare | 2026-05-18T16:11:48+08:00 | 2026-05-18T08:20:36.507967+00:00 | open | False | 交易中价格在新鲜度阈值内 |

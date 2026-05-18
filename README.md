@@ -29,6 +29,13 @@ live 模式下：
 - 港股使用 `ak.stock_hk_spot_em()`。
 - A股 ETF 使用 `ak.fund_etf_spot_em()`。
 
+AKShare provider 支持分接口诊断和 fallback：
+
+- A股总接口失败时，`.SH` 标的会尝试 `ak.stock_sh_a_spot_em()`，`.SZ` 标的会尝试 `ak.stock_sz_a_spot_em()`。
+- 港股总接口失败时，会依次尝试 `ak.stock_hk_main_board_spot_em()` 和 `ak.stock_hsgt_sh_hk_spot_em()`。
+- ETF 继续使用 `ak.fund_etf_spot_em()`，不受 A股 / 港股接口失败影响。
+- strict 模式按每个 required 标的最终是否可用判断；主接口失败但 fallback 成功时，该标的不因主接口失败进入 blocking records。
+
 ETF 的 `quote_time` 优先从 AKShare 返回的 `更新时间` 字段解析；如果无时区，按 Asia/Shanghai（UTC+08:00）处理并标记 `assumed_timezone_asia_shanghai`；如果只有 `数据日期`，标记 `quote_time_date_only` / `low_precision_quote_time`。
 
 ## GOLD_CNY 手工价

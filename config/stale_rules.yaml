@@ -1,6 +1,7 @@
 default:
   max_age_seconds_open: 900
   max_age_seconds_closed: 86400
+  closed_market_allowed: true
 manual:
   max_age_seconds: 604800
 MANUAL:
@@ -9,12 +10,16 @@ markets:
   CN:
     max_age_seconds_open: 900
     max_age_seconds_closed: 86400
+    closed_market_allowed: true
   HK:
     max_age_seconds_open: 900
     max_age_seconds_closed: 86400
+    closed_market_allowed: true
   US:
     max_age_seconds_open: 900
     max_age_seconds_closed: 86400
+    closed_market_allowed: true
   FX:
     max_age_seconds_open: 1800
     max_age_seconds_closed: 86400
+    closed_market_allowed: true

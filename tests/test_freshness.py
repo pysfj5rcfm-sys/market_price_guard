@@ -5,9 +5,9 @@ from market_price_guard.models import RawPrice
 
 
 RULES = {
-    "default": {"max_age_seconds_open": 60, "max_age_seconds_closed": 86400},
+    "default": {"max_age_seconds_open": 60, "max_age_seconds_closed": 86400, "closed_market_allowed": True},
     "manual": {"max_age_seconds": 3600},
-    "markets": {"CN": {"max_age_seconds_open": 60, "max_age_seconds_closed": 86400}},
+    "markets": {"CN": {"max_age_seconds_open": 60, "max_age_seconds_closed": 86400, "closed_market_allowed": True}},
 }
 
 
@@ -45,6 +45,51 @@ def test_closed_market_price_is_reference_not_intraday_t():
 
     assert is_stale is False
     assert "不可用于盘中做T" in reason
+    assert "市场已收盘" in reason
+
+
+def test_closed_market_allowed_does_not_use_trading_max_age():
+    quote_time = datetime(2026, 5, 18, 15, 34, 3, tzinfo=timezone(timedelta(hours=8)))
+    now = datetime(2026, 5, 18, 8, 0, tzinfo=timezone.utc)
+    raw = RawPrice(
+        symbol="159632.SZ",
+        price=1.0,
+        currency="CNY",
+        source="akshare",
+        quote_time=quote_time,
+        fetch_time=now,
+        market_status="closed",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
+
+    assert is_stale is False
+    assert "交易中价格超过 max_age_seconds" not in reason
+    assert "收盘后/最后更新时间参考价" in reason
+
+
+def test_closed_market_not_allowed_uses_closed_reason():
+    quote_time = datetime(2026, 5, 18, 15, 34, 3, tzinfo=timezone(timedelta(hours=8)))
+    now = datetime(2026, 5, 18, 8, 0, tzinfo=timezone.utc)
+    rules = {
+        **RULES,
+        "markets": {"CN": {"max_age_seconds_open": 60, "max_age_seconds_closed": 86400, "closed_market_allowed": False}},
+    }
+    raw = RawPrice(
+        symbol="159632.SZ",
+        price=1.0,
+        currency="CNY",
+        source="akshare",
+        quote_time=quote_time,
+        fetch_time=now,
+        market_status="closed",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", rules, now=now)
+
+    assert is_stale is True
+    assert "closed_market_not_allowed" in reason
+    assert "交易中价格超过 max_age_seconds" not in reason
 
 
 def test_missing_quote_time_is_stale():

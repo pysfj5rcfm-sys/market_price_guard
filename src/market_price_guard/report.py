@@ -37,7 +37,15 @@ TECH_GROUPS = [
     ("非科技宽基单独列示", "non_tech_broad_base_etf"),
 ]
 
-AKSHARE_FUNCTIONS = ["stock_zh_a_spot_em", "stock_hk_spot_em", "fund_etf_spot_em"]
+AKSHARE_FUNCTIONS = [
+    "stock_zh_a_spot_em",
+    "stock_sh_a_spot_em",
+    "stock_sz_a_spot_em",
+    "stock_hk_spot_em",
+    "stock_hk_main_board_spot_em",
+    "stock_hsgt_sh_hk_spot_em",
+    "fund_etf_spot_em",
+]
 
 
 @dataclass(frozen=True)
@@ -72,6 +80,7 @@ def get_blocking_records(records: list[PriceRecord]) -> list[dict[str, Any]]:
                     "stale_reason": record.stale_reason,
                     "blocking_reason": blocking_reason,
                     "function_name": diagnostics.get("function_name", ""),
+                    "provider_status": diagnostics.get("provider_status", ""),
                     "exception_type": diagnostics.get("exception_type", ""),
                 }
             )
@@ -237,7 +246,7 @@ def format_blocking_record(record: dict[str, Any]) -> str:
     return (
         "- project={project}, symbol={symbol}, name={name}, source={source}, quote_time={quote_time}, "
         "is_stale={is_stale}, stale_reason={stale_reason}, blocking_reason={blocking_reason}, "
-        "function_name={function_name}, exception_type={exception_type}"
+        "function_name={function_name}, provider_status={provider_status}, exception_type={exception_type}"
     ).format(**record)
 
 
@@ -293,7 +302,10 @@ def _provider_diagnostics_lines(records: list[PriceRecord]) -> list[str]:
             lines.append(f"- {function_name}: not_called")
             continue
         status = diagnostic.get("status", "unknown")
+        provider_status = diagnostic.get("provider_status", "")
         line = f"- {function_name}: {status}"
+        if provider_status:
+            line += f", provider_status={provider_status}"
         if status == "success":
             line += f", returned_rows={diagnostic.get('returned_rows', '')}, matched_symbols={diagnostic.get('matched_symbols', [])}"
         else:
@@ -309,16 +321,31 @@ def _group_provider_diagnostics(records: list[PriceRecord]) -> dict[str, dict[st
     grouped: dict[str, dict[str, object]] = {}
     for record in records:
         diagnostic = record.provider_diagnostics
+        for attempt in diagnostic.get("attempts", []) or []:
+            if isinstance(attempt, dict):
+                _merge_provider_diagnostic(grouped, attempt)
+        if diagnostic.get("function_name"):
+            _merge_provider_diagnostic(grouped, diagnostic)
+    return grouped
+
+
+def _merge_provider_diagnostic(grouped: dict[str, dict[str, object]], diagnostic: dict[str, object]) -> None:
         function_name = str(diagnostic.get("function_name", ""))
         if not function_name:
-            continue
+            return
         existing = grouped.get(function_name)
         if existing is None:
             grouped[function_name] = dict(diagnostic)
-            continue
+            return
         if existing.get("status") != "fail" and diagnostic.get("status") == "fail":
             grouped[function_name] = dict(diagnostic)
-    return grouped
+            return
+        if existing.get("status") == "success" and diagnostic.get("status") == "success":
+            existing_symbols = list(existing.get("matched_symbols", []) or [])
+            new_symbols = list(diagnostic.get("matched_symbols", []) or [])
+            existing["matched_symbols"] = sorted(set(existing_symbols + new_symbols))
+            if diagnostic.get("provider_status") == "fallback_success":
+                existing["provider_status"] = "fallback_success"
 
 
 def _akshare_freshness_lines(records: list[PriceRecord]) -> list[str]:
@@ -328,8 +355,9 @@ def _akshare_freshness_lines(records: list[PriceRecord]) -> list[str]:
     for record in records:
         diagnostic = record.provider_diagnostics
         lines.append(
-            "- {symbol}: quote_time_raw={quote_time_raw}, quote_time_utc={quote_time_utc}, fetch_time_utc={fetch_time_utc}, age_seconds={age_seconds}, max_age_seconds={max_age_seconds}, is_stale={is_stale}".format(
+            "- {symbol}: market_status={market_status}, quote_time_raw={quote_time_raw}, quote_time_utc={quote_time_utc}, fetch_time_utc={fetch_time_utc}, age_seconds={age_seconds}, max_age_seconds={max_age_seconds}, is_stale={is_stale}".format(
                 symbol=record.symbol,
+                market_status=record.market_status,
                 quote_time_raw=diagnostic.get("quote_time_raw", ""),
                 quote_time_utc=diagnostic.get("quote_time_utc", ""),
                 fetch_time_utc=diagnostic.get("fetch_time_utc", ""),
@@ -338,6 +366,8 @@ def _akshare_freshness_lines(records: list[PriceRecord]) -> list[str]:
                 is_stale=record.is_stale,
             )
         )
+        if record.market_status == "closed":
+            lines.append(f"- {record.symbol}: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断")
     return lines
 
 

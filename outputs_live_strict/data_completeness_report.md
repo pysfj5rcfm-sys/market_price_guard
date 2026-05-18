@@ -5,42 +5,53 @@
 本工具不做自动交易，不输出买卖建议，只输出价格事实、数据源、时间戳、市场状态和数据完整度。
 
 ## Strict blocking records
-- project=energy, symbol=00883.HK, name=中海油H, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_hk_spot_em, exception_type=ConnectionError
-- project=energy, symbol=601899.SH, name=紫金矿业A, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_zh_a_spot_em, exception_type=ConnectionError
-- project=energy, symbol=601985.SH, name=中国核电, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_zh_a_spot_em, exception_type=ConnectionError
-- project=energy, symbol=003816.SZ, name=中国广核, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_zh_a_spot_em, exception_type=ConnectionError
-- project=tech, symbol=159632.SZ, name=纳斯达克ETF华安, source=akshare, quote_time=, is_stale=True, stale_reason=quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing, blocking_reason=quote_time_missing, function_name=fund_etf_spot_em, exception_type=
-- project=tech, symbol=513300.SH, name=纳斯达克ETF华夏, source=akshare, quote_time=, is_stale=True, stale_reason=quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing, blocking_reason=quote_time_missing, function_name=fund_etf_spot_em, exception_type=
-- project=tech, symbol=159819.SZ, name=人工智能ETF易方达, source=akshare, quote_time=, is_stale=True, stale_reason=quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing, blocking_reason=quote_time_missing, function_name=fund_etf_spot_em, exception_type=
-- project=tech, symbol=515880.SH, name=通信ETF国泰, source=akshare, quote_time=, is_stale=True, stale_reason=quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing, blocking_reason=quote_time_missing, function_name=fund_etf_spot_em, exception_type=
+- project=energy, symbol=00883.HK, name=中海油H, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_hsgt_sh_hk_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
+- project=energy, symbol=601899.SH, name=紫金矿业A, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_sh_a_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
+- project=energy, symbol=601985.SH, name=中国核电, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_sh_a_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
+- project=energy, symbol=003816.SZ, name=中国广核, source=akshare, quote_time=, is_stale=True, stale_reason=provider_error: 行情源调用失败，不可用于具体操作建议；provider_error, blocking_reason=provider_error, function_name=stock_sz_a_spot_em, provider_status=fallback_failed, exception_type=ConnectionError
 
 ## Provider diagnostics
 - AKShare partially succeeded
-- stock_zh_a_spot_em: fail, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-- stock_hk_spot_em: fail, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-- fund_etf_spot_em: success, returned_rows=1467, matched_symbols=['159632.SZ', '513300.SH', '159819.SZ', '515880.SH', '510300.SH']
+- stock_zh_a_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+- stock_sh_a_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+- stock_sz_a_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+- stock_hk_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+- stock_hk_main_board_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+- stock_hsgt_sh_hk_spot_em: fail, provider_status=failed, exception_type=ConnectionError, exception_message=('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+- fund_etf_spot_em: success, provider_status=success, returned_rows=1467, matched_symbols=['159632.SZ', '159819.SZ', '510300.SH', '513300.SH', '515880.SH']
 
 ## AKShare price records
 - energy 00883.HK 中海油H: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - energy 601899.SH 紫金矿业A: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - energy 601985.SH 中国核电: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - energy 003816.SZ 中国广核: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
-- tech 159632.SZ 纳斯达克ETF华安: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 513300.SH 纳斯达克ETF华夏: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 159819.SZ 人工智能ETF易方达: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 515880.SH 通信ETF国泰: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 510300.SH 沪深300ETF华泰柏瑞: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
+- tech 159632.SZ 纳斯达克ETF华安: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 513300.SH 纳斯达克ETF华夏: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 159819.SZ 人工智能ETF易方达: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 515880.SH 通信ETF国泰: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+- tech 510300.SH 沪深300ETF华泰柏瑞: 市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T
+
+## AKShare quote freshness details
+- 00883.HK: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 601899.SH: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 601985.SH: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 003816.SZ: market_status=unknown, quote_time_raw=, quote_time_utc=, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=, max_age_seconds=900, is_stale=True
+- 159632.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:03+08:00, quote_time_utc=2026-05-18T07:34:03+00:00, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=3463, max_age_seconds=86400, is_stale=False
+- 159632.SZ: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 513300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:53+08:00, quote_time_utc=2026-05-18T08:11:53+00:00, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=1193, max_age_seconds=86400, is_stale=False
+- 513300.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 159819.SZ: market_status=closed, quote_time_raw=2026-05-18 15:34:21+08:00, quote_time_utc=2026-05-18T07:34:21+00:00, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=3445, max_age_seconds=86400, is_stale=False
+- 159819.SZ: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 515880.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:34+08:00, quote_time_utc=2026-05-18T08:11:34+00:00, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=1212, max_age_seconds=86400, is_stale=False
+- 515880.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
+- 510300.SH: market_status=closed, quote_time_raw=2026-05-18 16:11:48+08:00, quote_time_utc=2026-05-18T08:11:48+00:00, fetch_time_utc=2026-05-18T08:30:46.862654+00:00, age_seconds=1198, max_age_seconds=86400, is_stale=False
+- 510300.SH: market_status=closed, 市场已收盘，价格为收盘后/最后更新时间参考，不适合盘中做T判断
 
 ## AKShare / 数据质量问题
 - energy 00883.HK 中海油H: provider_error
 - energy 601899.SH 紫金矿业A: provider_error
 - energy 601985.SH 中国核电: provider_error
 - energy 003816.SZ 中国广核: provider_error
-- tech 159632.SZ 纳斯达克ETF华安: quote_time_missing
-- tech 513300.SH 纳斯达克ETF华夏: quote_time_missing
-- tech 159819.SZ 人工智能ETF易方达: quote_time_missing
-- tech 515880.SH 通信ETF国泰: quote_time_missing
-- tech 510300.SH 沪深300ETF华泰柏瑞: quote_time_missing
 
 ## 黄金手工价说明
 黄金持仓参考价为用户手工录入价，不等同于国际现货金价；用于科技账户防守仓/潜在转科技资金的参考，实际操作前需核对账户内可卖价、手续费、点差和到账规则。
@@ -57,11 +68,6 @@
 - energy 003816.SZ 中国广核: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 
 ## stale 价格列表
-- tech 159632.SZ 纳斯达克ETF华安: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 513300.SH 纳斯达克ETF华夏: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 159819.SZ 人工智能ETF易方达: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 515880.SH 通信ETF国泰: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- tech 510300.SH 沪深300ETF华泰柏瑞: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
 - controller USD_CNY 美元兑人民币: 交易中价格超过 max_age_seconds，不可用于具体操作建议
 - controller HKD_CNY 港币兑人民币: 交易中价格超过 max_age_seconds，不可用于具体操作建议
 
@@ -70,17 +76,11 @@
 - quote_time_missing: energy 601899.SH 紫金矿业A: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - quote_time_missing: energy 601985.SH 中国核电: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
 - quote_time_missing: energy 003816.SZ 中国广核: provider_error: 行情源调用失败，不可用于具体操作建议；provider_error
-- quote_time_missing: tech 159632.SZ 纳斯达克ETF华安: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- quote_time_missing: tech 513300.SH 纳斯达克ETF华夏: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- quote_time_missing: tech 159819.SZ 人工智能ETF易方达: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- quote_time_missing: tech 515880.SH 通信ETF国泰: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
-- quote_time_missing: tech 510300.SH 沪深300ETF华泰柏瑞: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
 
 ## manual price records
 - GOLD_CNY 黄金持仓参考价: price=1040.0, quote_time=2026-05-18T14:03:00+08:00, is_stale=False, source_note=用户手工录入：银行积存金/黄金理财估值价，需以后续实际账户可卖价为准, fee_note=手续费、点差、赎回到账规则未自动计算, asset_role=defense_or_potential_tech_funding
 
 ## warning
-- tech 510300.SH 沪深300ETF华泰柏瑞: quote_time_missing: quote_time 缺失，无法证明价格新鲜，不可用于具体操作建议；quote_time_missing
 - controller USD_CNY 美元兑人民币: 交易中价格超过 max_age_seconds，不可用于具体操作建议
 - controller HKD_CNY 港币兑人民币: 交易中价格超过 max_age_seconds，不可用于具体操作建议
 

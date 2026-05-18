@@ -55,9 +55,11 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
 
     if raw.market_status == "closed":
         max_age = int(market_rules.get("max_age_seconds_closed", rules.get("default", {}).get("max_age_seconds_closed", 0)))
+        if not bool(market_rules.get("closed_market_allowed", rules.get("default", {}).get("closed_market_allowed", True))):
+            return True, "closed_market_not_allowed: 市场已收盘，配置不允许使用收盘后参考价，不可用于具体操作建议"
         if age_seconds > max_age:
             return True, "收盘参考价超过允许时间，不可用于具体操作建议"
-        return False, "收盘/最后成交参考价，不可用于盘中做T"
+        return False, "市场已收盘；收盘后/最后更新时间参考价，不可用于盘中做T"
 
     return True, "market_status 未知，数据质量不足，不可用于具体操作建议"
 
