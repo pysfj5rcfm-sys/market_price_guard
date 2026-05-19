@@ -16,10 +16,41 @@ HK_STOCK_SYMBOLS = {"00883.HK"}
 ETF_SYMBOLS = {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}
 SHANGHAI_TZ = timezone(timedelta(hours=8))
 
-CODE_COLUMNS = ["代码", "证券代码", "股票代码", "基金代码", "symbol", "code"]
-NAME_COLUMNS = ["名称", "股票简称", "基金简称", "基金名称", "简称", "name"]
-PRICE_COLUMNS = ["最新价", "最新", "现价", "收盘", "价格", "price", "最新价格"]
-QUOTE_TIME_COLUMNS = ["更新时间", "update_time", "quote_time", "时间", "数据时间", "数据日期"]
+CODE_COLUMNS = [
+    "\u4ee3\u7801",
+    "\u8bc1\u5238\u4ee3\u7801",
+    "\u80a1\u7968\u4ee3\u7801",
+    "\u57fa\u91d1\u4ee3\u7801",
+    "symbol",
+    "code",
+]
+NAME_COLUMNS = [
+    "\u540d\u79f0",
+    "\u80a1\u7968\u7b80\u79f0",
+    "\u57fa\u91d1\u7b80\u79f0",
+    "\u57fa\u91d1\u540d\u79f0",
+    "\u7b80\u79f0",
+    "name",
+]
+PRICE_COLUMNS = [
+    "\u6700\u65b0\u4ef7",
+    "\u6700\u65b0",
+    "\u73b0\u4ef7",
+    "\u6536\u76d8",
+    "\u4ef7\u683c",
+    "\u6700\u65b0\u4ef7\u683c",
+    "last_price",
+    "lastPrice",
+    "price",
+]
+QUOTE_TIME_COLUMNS = [
+    "\u66f4\u65b0\u65f6\u95f4",
+    "update_time",
+    "quote_time",
+    "\u65f6\u95f4",
+    "\u6570\u636e\u65f6\u95f4",
+    "\u6570\u636e\u65e5\u671f",
+]
 
 
 class AkshareProvider(PriceProvider):
@@ -394,11 +425,9 @@ def _normalize_code(value: Any) -> str:
 
 
 def _extract_positive_price(row: pd.Series) -> float | None:
-    for column in PRICE_COLUMNS:
-        if column not in row:
-            continue
+    for _column, value in _candidate_row_values(row, PRICE_COLUMNS):
         try:
-            price = float(row[column])
+            price = float(value)
         except (TypeError, ValueError):
             continue
         if price > 0:
@@ -408,17 +437,17 @@ def _extract_positive_price(row: pd.Series) -> float | None:
 
 
 def _extract_text(row: pd.Series, columns: list[str]) -> str | None:
-    for column in columns:
-        if column in row and pd.notna(row[column]):
-            return str(row[column])
+    for _column, value in _candidate_row_values(row, columns):
+        if pd.notna(value):
+            return str(value)
     return None
 
 
 def _extract_quote_time(row: pd.Series) -> tuple[datetime | None, list[str], str | None]:
-    for column in QUOTE_TIME_COLUMNS:
-        if column not in row or pd.isna(row[column]):
+    for column, value in _candidate_row_values(row, QUOTE_TIME_COLUMNS):
+        if pd.isna(value):
             continue
-        raw_value = str(row[column]).strip()
+        raw_value = str(value).strip()
         if not raw_value:
             continue
         parsed = _parse_quote_time(raw_value)
@@ -433,6 +462,24 @@ def _extract_quote_time(row: pd.Series) -> tuple[datetime | None, list[str], str
             parsed = parsed.replace(tzinfo=SHANGHAI_TZ)
         return _ensure_aware_shanghai(parsed), issues, raw_value
     return None, ["quote_time_missing"], None
+
+
+def _candidate_row_values(row: pd.Series, columns: list[str]) -> list[tuple[str, Any]]:
+    values: list[tuple[str, Any]] = []
+    seen: set[str] = set()
+    row_columns = list(row.index)
+    normalized_lookup = {_normalize_column_name(column): column for column in row_columns}
+    for candidate in columns:
+        actual_column = candidate if candidate in row else normalized_lookup.get(_normalize_column_name(candidate))
+        if actual_column is None or actual_column in seen:
+            continue
+        seen.add(actual_column)
+        values.append((str(actual_column).strip(), row[actual_column]))
+    return values
+
+
+def _normalize_column_name(value: Any) -> str:
+    return str(value).strip().lower()
 
 
 def _parse_quote_time(value: str) -> datetime | None:

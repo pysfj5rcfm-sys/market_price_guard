@@ -893,12 +893,15 @@ def _newest_quote_time(records: list[PriceRecord]) -> str:
 def _all_provider_attempts(records: list[PriceRecord]) -> list[dict[str, object]]:
     attempts: list[dict[str, object]] = []
     for record in records:
+        provider_attempts = record.provider_diagnostics.get("provider_attempts", []) or []
+        if provider_attempts:
+            for attempt in provider_attempts:
+                if isinstance(attempt, dict):
+                    attempts.append(attempt)
+            continue
         for attempt in record.provider_diagnostics.get("attempts", []) or []:
             if isinstance(attempt, dict):
                 attempts.append({"symbol": record.symbol, "provider": record.source, **attempt})
-        for attempt in record.provider_diagnostics.get("provider_attempts", []) or []:
-            if isinstance(attempt, dict):
-                attempts.append(attempt)
     return attempts
 
 

@@ -2,9 +2,9 @@ manual_prices:
   - symbol: "GOLD_CNY"
     name: "黄金持仓参考价"
     market: "MANUAL"
-    price: 1040.0
+    price: 1000.0
     currency: "CNY"
-    quote_time: "2026-05-18T14:03:00+08:00"
+    quote_time: "2026-05-19T09:13:00+08:00"
     source: "manual"
     source_note: "用户手工录入：银行积存金/黄金理财估值价，需以后续实际账户可卖价为准"
     product_type: "gold_savings_or_gold_wealth_product"

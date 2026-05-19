@@ -5,6 +5,8 @@ from types import SimpleNamespace
 import pandas as pd
 
 from market_price_guard.main import run_pipeline
+from market_price_guard.models import Instrument
+from market_price_guard.provider_router import RouterConfig, route_symbol
 from market_price_guard.providers.akshare_provider import AkshareProvider
 from market_price_guard.report import build_provider_health_report
 
@@ -29,6 +31,44 @@ def test_akshare_etf_full_interface_called_once_for_multiple_etfs():
         "515880.SH",
         "510300.SH",
     }
+    assert {symbol: raw.price for symbol, raw in prices.items()} == {
+        "159632.SZ": 1.432,
+        "513300.SH": 1.671,
+        "159819.SZ": 0.921,
+        "515880.SH": 1.084,
+        "510300.SH": 3.921,
+    }
+
+
+def test_cached_etf_dataframe_is_rematched_for_each_symbol_through_router():
+    calls = {"fund_etf_spot_em": 0}
+
+    def fund_etf_spot_em():
+        calls["fund_etf_spot_em"] += 1
+        return _etf_df()
+
+    akshare = AkshareProvider(_ak(fund_etf_spot_em=fund_etf_spot_em))
+    providers = {"akshare": akshare, "mock": _FailingProvider()}
+    selected = {}
+    for symbol in ["159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"]:
+        selected[symbol] = route_symbol(_instrument(symbol, required=symbol != "510300.SH"), providers, RouterConfig(provider_mode="live"))
+
+    assert calls["fund_etf_spot_em"] == 1
+    assert {symbol: raw.price for symbol, raw in selected.items()} == {
+        "159632.SZ": 1.432,
+        "513300.SH": 1.671,
+        "159819.SZ": 0.921,
+        "515880.SH": 1.084,
+        "510300.SH": 3.921,
+    }
+    assert all(raw.source == "akshare" for raw in selected.values())
+    assert all(raw.provider_diagnostics["selected_provider"] == "akshare" for raw in selected.values())
+    assert all(raw.provider_diagnostics["fallback_used"] is False for raw in selected.values())
+    assert selected["159632.SZ"].provider_diagnostics["provider_attempts"][0]["from_cache"] is False
+    for symbol in ["513300.SH", "159819.SZ", "515880.SH", "510300.SH"]:
+        assert selected[symbol].provider_diagnostics["provider_attempts"][0]["from_cache"] is True
+        assert selected[symbol].provider_diagnostics["provider_attempts"][0]["provider_status"] == "success"
+    assert not providers["mock"].called
 
 
 def test_akshare_cache_reuses_etf_failure():
@@ -169,6 +209,26 @@ def _ak(**overrides):
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
+
+
+class _FailingProvider:
+    def __init__(self):
+        self.called = False
+
+    def fetch(self, symbols):
+        self.called = True
+        raise AssertionError(f"fallback should not be called for {symbols}")
+
+
+def _instrument(symbol: str, required: bool = True) -> Instrument:
+    return Instrument(
+        symbol=symbol,
+        name=symbol,
+        market="CN",
+        provider="akshare",
+        provider_priority=["akshare", "mock"],
+        required_for_operation=required,
+    )
 
 
 def _etf_df():
