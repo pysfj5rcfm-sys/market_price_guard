@@ -68,6 +68,27 @@ def test_fast_policy_etf_keeps_akshare_first():
     assert raw.provider_diagnostics["selected_provider"] == "akshare"
 
 
+def test_reference_purpose_uses_yfinance_first_for_tech_etf():
+    raw = route_symbol(
+        _instrument("159819.SZ", provider_priority=["akshare", "mock"]),
+        {
+            "akshare": StaticProvider(_raw("159819.SZ", "akshare", 0.921)),
+            "yfinance": StaticProvider(_raw("159819.SZ", "yfinance", 0.922)),
+            "mock": StaticProvider(_raw("159819.SZ", "mock", 0.90)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="fast", quote_purpose="reference"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["yfinance", "akshare", "mock"]
+    assert raw.provider_diagnostics["selected_provider"] == "yfinance"
+    assert raw.provider_diagnostics["quote_purpose"] == "reference"
+    assert any(
+        attempt["reason"] == "skipped because yfinance reference quote succeeded in reference mode"
+        for attempt in raw.provider_diagnostics["provider_attempts"]
+        if attempt["status"] == "skipped"
+    )
+
+
 def test_fast_policy_gold_keeps_manual():
     raw = route_symbol(
         _instrument("GOLD_CNY", provider="manual", provider_priority=["manual"], market="MANUAL"),

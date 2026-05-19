@@ -160,12 +160,13 @@ def _quote_trust_fields(raw: RawPrice, is_stale: bool, required_for_operation: b
         yfinance_blocking_reason = operation_blocking_reason
         if raw.symbol in yfinance_etf_symbols and not yfinance_blocking_reason:
             yfinance_blocking_reason = "reference_tier_requires_operation_confirmation"
+        yfinance_confirmation_required = raw.symbol in yfinance_etf_symbols or raw.quote_purpose == "reference"
         return {
             "quote_trust_tier": raw.quote_trust_tier or "reference",
             "usable_for_reference": usable_for_reference,
             "usable_for_operation": yfinance_operation_usable,
             "quote_purpose": raw.quote_purpose,
-            "confirmation_required": True,
+            "confirmation_required": yfinance_confirmation_required,
             "operation_blocking_reason": yfinance_blocking_reason,
             "reference_note": raw.reference_note
             or "yfinance is an open-source Yahoo Finance public API wrapper; not an official exchange feed",

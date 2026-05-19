@@ -24,6 +24,14 @@ def test_a_share_symbols_map_to_yahoo_tickers():
     assert yahoo_ticker_for_symbol("003816.SZ") == "003816.SZ"
 
 
+def test_tech_etf_symbols_map_to_yahoo_tickers():
+    assert yahoo_ticker_for_symbol("159632.SZ") == "159632.SZ"
+    assert yahoo_ticker_for_symbol("513300.SH") == "513300.SS"
+    assert yahoo_ticker_for_symbol("159819.SZ") == "159819.SZ"
+    assert yahoo_ticker_for_symbol("515880.SH") == "515880.SS"
+    assert yahoo_ticker_for_symbol("510300.SH") == "510300.SS"
+
+
 def test_yfinance_provider_reads_fast_info_price_currency_and_time():
     yf = _yf(
         fast_info={
@@ -151,8 +159,8 @@ def test_yfinance_provider_a_share_assumes_cny_when_currency_missing():
     assert "assumed_currency_cny" in raw.quality_issues
 
 
-def test_yfinance_does_not_handle_gold_or_etf():
-    prices = YFinanceProvider(_yf()).fetch(["GOLD_CNY", "159819.SZ", "510300.SH", "IXIC", "USD_CNY", "HKD_CNY"])
+def test_yfinance_does_not_handle_gold_index_or_fx():
+    prices = YFinanceProvider(_yf()).fetch(["GOLD_CNY", "IXIC", "USD_CNY", "HKD_CNY"])
 
     assert prices == {}
 

@@ -244,4 +244,24 @@ v0.6.3 只追加价格用途分层诊断字段，不改变现有一键脚本、p
 
 新增字段包括 `quote_trust_tier`、`usable_for_reference`、`quote_purpose`、`confirmation_required`、`operation_blocking_reason`、`reference_note`。当前 `quote_purpose` 默认仍为 `operation`，`run_tech_fast_strict.ps1` 和 `outputs_tech_latest` 的既有使用方式保持不变。
 
+## Fast Reference Mode for Tech ETF
+
+科技 ETF 快速参考：
+
+```powershell
+.\scripts\run_tech_fast_reference.ps1
+```
+
+输出目录：
+
+- `outputs_tech_reference_latest`
+
+该模式使用 `--quote-purpose reference`，用于快速查看科技 ETF 参考价；yfinance ETF 记录会标记为 `quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。
+
+该目录不可用于具体操作建议。如需具体操作确认，请继续使用：
+
+```powershell
+.\scripts\run_tech_fast_strict.ps1
+```
+
 Codex smoke test passed.

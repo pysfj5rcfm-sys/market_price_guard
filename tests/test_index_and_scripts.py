@@ -82,6 +82,7 @@ def test_scripts_exist_and_use_expected_arguments():
         "run_all_fast_strict.ps1": ["--profile all", "--provider-policy fast", "--strict", "outputs_all_latest"],
         "run_diagnostic.ps1": ["--profile all", "--provider-policy diagnostic", "outputs_diagnostic"],
         "run_mock_strict.ps1": ["--provider-mode mock", "--strict", "outputs_mock_latest"],
+        "run_tech_fast_reference.ps1": ["--profile tech", "--provider-policy fast", "--quote-purpose reference", "outputs_tech_reference_latest"],
     }
 
     assert scripts_dir.exists()
@@ -97,3 +98,6 @@ def test_scripts_exist_and_use_expected_arguments():
         assert ".venv\\Scripts\\python.exe" in content
         for snippet in snippets:
             assert snippet in content
+    reference_content = (scripts_dir / "run_tech_fast_reference.ps1").read_text(encoding="utf-8")
+    assert "--strict" not in reference_content
+    assert "--quote-purpose reference" not in (scripts_dir / "run_tech_fast_strict.ps1").read_text(encoding="utf-8")

@@ -18,6 +18,7 @@ class RouterConfig:
     provider_mode: str = "mock"
     provider_policy: str = "fast"
     timeout_seconds: float = 8.0
+    quote_purpose: str = "operation"
 
 
 def collect_routed_prices(
@@ -34,7 +35,7 @@ def collect_routed_prices(
 
 def route_symbol(instrument: Instrument, providers: dict[str, Provider], config: RouterConfig) -> RawPrice:
     configured_priority = [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
-    priority = _effective_priority(instrument, config.provider_mode, config.provider_policy)
+    priority = _effective_priority(instrument, config.provider_mode, config.provider_policy, config.quote_purpose)
     attempts: list[dict[str, object]] = []
     last_raw: RawPrice | None = None
 
@@ -90,12 +91,12 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
         attempts.extend(stamped_attempts)
         last_raw = raw
         if _raw_usable_for_selection(raw):
-            return _selected_raw(instrument, raw, provider_name, priority, configured_priority, config.provider_policy, attempts)
+            return _selected_raw(instrument, raw, provider_name, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
 
-    return _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, attempts)
+    return _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
 
 
-def _effective_priority(instrument: Instrument, provider_mode: str, provider_policy: str) -> list[str]:
+def _effective_priority(instrument: Instrument, provider_mode: str, provider_policy: str, quote_purpose: str = "operation") -> list[str]:
     configured = instrument.provider_priority or [instrument.provider]
     priority = [provider for provider in configured if provider != "disabled"]
     if provider_mode == "mock":
@@ -103,11 +104,11 @@ def _effective_priority(instrument: Instrument, provider_mode: str, provider_pol
             return ["manual"]
         return ["mock"]
     if provider_policy == "fast":
-        return _policy_priority(instrument, ["yfinance", "akshare", "mock"])
+        return _policy_priority(instrument, ["yfinance", "akshare", "mock"], quote_purpose=quote_purpose)
     if provider_policy == "conservative":
-        return _policy_priority(instrument, ["akshare", "yfinance", "mock"])
+        return _policy_priority(instrument, ["akshare", "yfinance", "mock"], quote_purpose=quote_purpose)
     if provider_policy == "diagnostic":
-        return priority or _policy_priority(instrument, ["akshare", "yfinance", "mock"])
+        return priority or _policy_priority(instrument, ["akshare", "yfinance", "mock"], quote_purpose=quote_purpose)
     return priority or [instrument.provider]
 
 
@@ -118,16 +119,19 @@ def _selected_raw(
     priority: list[str],
     configured_priority: list[str],
     provider_policy: str,
+    quote_purpose: str,
     attempts: list[dict[str, object]],
 ) -> RawPrice:
     fallback_used = bool(priority and selected_provider != priority[0])
-    attempts = [*attempts, *_skipped_after_success(raw.symbol, priority, selected_provider, provider_policy)]
+    attempts = [*attempts, *_skipped_after_success(raw.symbol, priority, selected_provider, provider_policy, quote_purpose)]
+    raw.quote_purpose = quote_purpose
     raw.provider_diagnostics = {
         **raw.provider_diagnostics,
         "configured_provider_priority": configured_priority,
         "provider_priority": priority,
         "effective_provider_chain": priority,
         "provider_policy": provider_policy,
+        "quote_purpose": quote_purpose,
         "provider_attempts": attempts,
         "selected_provider": selected_provider,
         "selected_source": raw.source,
@@ -158,9 +162,11 @@ def _final_failed_raw(
     priority: list[str],
     configured_priority: list[str],
     provider_policy: str,
+    quote_purpose: str,
     attempts: list[dict[str, object]],
 ) -> RawPrice:
     raw = last_raw or _missing_raw(instrument, priority[-1] if priority else instrument.provider, attempts)
+    raw.quote_purpose = quote_purpose
     issues = list(raw.quality_issues)
     if not any(issue in issues for issue in ["provider_error", "symbol_not_found", "invalid_price", "quote_time_missing", "invalid_quote_time"]):
         issues.append("provider_error")
@@ -171,6 +177,7 @@ def _final_failed_raw(
         "provider_priority": priority,
         "effective_provider_chain": priority,
         "provider_policy": provider_policy,
+        "quote_purpose": quote_purpose,
         "provider_attempts": attempts,
         "selected_provider": "",
         "selected_source": raw.source,
@@ -306,25 +313,30 @@ def _missing_raw(instrument: Instrument, provider_name: str, attempts: list[dict
     )
 
 
-def _policy_priority(instrument: Instrument, stock_chain: list[str]) -> list[str]:
+def _policy_priority(instrument: Instrument, stock_chain: list[str], quote_purpose: str = "operation") -> list[str]:
     if instrument.symbol == "GOLD_CNY" or instrument.provider == "manual":
         return ["manual"]
     if instrument.symbol in {"601899.SH", "601985.SH", "003816.SZ", "00883.HK"}:
         return stock_chain
     if instrument.symbol in {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}:
+        if quote_purpose == "reference":
+            return ["yfinance", "akshare", "mock"]
         return ["akshare", "mock"]
     return [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
 
 
-def _skipped_after_success(symbol: str, priority: list[str], selected_provider: str, provider_policy: str) -> list[dict[str, object]]:
+def _skipped_after_success(symbol: str, priority: list[str], selected_provider: str, provider_policy: str, quote_purpose: str = "operation") -> list[dict[str, object]]:
     if selected_provider not in priority:
         return []
+    skip_reason = f"selected_provider_success_policy_skip:{provider_policy}"
+    if quote_purpose == "reference" and selected_provider == "yfinance" and symbol in {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}:
+        skip_reason = "skipped because yfinance reference quote succeeded in reference mode"
     return [
         _attempt(
             symbol,
             provider,
             "skipped",
-            reason=f"selected_provider_success_policy_skip:{provider_policy}",
+            reason=skip_reason,
             elapsed_seconds=0.0,
         )
         for provider in priority[priority.index(selected_provider) + 1 :]

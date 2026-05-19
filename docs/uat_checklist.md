@@ -101,6 +101,25 @@ Quote Trust Tier 检查：
 - 科技账户 UAT 仍通过；tech_price_block.md 的固定分组和 GOLD_CNY / 510300.SH 分类边界不得改变。
 - reference-grade 不得被描述成 operation-grade；yfinance ETF 如未来出现，不得用于 operation strict。
 
+Tech Reference UAT：
+
+运行：
+
+```powershell
+.\scripts\run_tech_fast_reference.ps1
+```
+
+检查：
+
+- `outputs_tech_reference_latest/index.md` 存在。
+- `outputs_tech_reference_latest/tech_price_block.md` 存在。
+- `outputs_tech_reference_latest` 不包含 `energy_price_block.md` 或 `controller_price_summary.md`。
+- `quote_purpose=reference` 可见。
+- ETF 可由 yfinance 提供 reference-grade 参考价。
+- `usable_for_operation=false` 和 `confirmation_required=true` 可见。
+- 报告明确不可用于具体操作建议。
+- 报告不输出实质性交易建议。
+
 通过标准：
 
 - pytest 全部通过。

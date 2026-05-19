@@ -45,6 +45,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     parser.add_argument("--provider-mode", choices=["mock", "live"], default="mock")
     parser.add_argument("--provider-policy", choices=["fast", "conservative", "diagnostic"], default="fast")
+    parser.add_argument("--quote-purpose", choices=["operation", "reference"], default="operation")
     parser.add_argument("--profile", choices=["all", "energy", "tech", "controller"], default="all")
     parser.add_argument("--timeout-seconds", type=float, default=8.0)
     parser.add_argument("--max-run-seconds", type=float, default=30.0)
@@ -61,6 +62,7 @@ def collect_prices(
     profile: str = "all",
     timeout_seconds: float = 8.0,
     provider_policy: str = "fast",
+    quote_purpose: str = "operation",
 ) -> dict:
     watchlist = _filter_watchlist(load_watchlist(watchlist_path), profile)
     providers = {
@@ -72,7 +74,12 @@ def collect_prices(
     prices = collect_routed_prices(
         watchlist,
         providers,
-        RouterConfig(provider_mode=provider_mode, provider_policy=provider_policy, timeout_seconds=timeout_seconds),
+        RouterConfig(
+            provider_mode=provider_mode,
+            provider_policy=provider_policy,
+            timeout_seconds=timeout_seconds,
+            quote_purpose=quote_purpose,
+        ),
     )
     return {"watchlist": watchlist, "prices": prices}
 
@@ -88,12 +95,22 @@ def run_pipeline(
     profile: str = "all",
     timeout_seconds: float = 8.0,
     provider_policy: str = "fast",
+    quote_purpose: str = "operation",
     max_run_seconds: float = 30.0,
     max_data_lag_seconds: float = 300.0,
 ) -> PipelineResult:
     perf_start = time.perf_counter()
     run_start = _utc_now_iso()
-    collected = collect_prices(watchlist_path, mock_prices_path, manual_prices_path, provider_mode, profile, timeout_seconds, provider_policy)
+    collected = collect_prices(
+        watchlist_path,
+        mock_prices_path,
+        manual_prices_path,
+        provider_mode,
+        profile,
+        timeout_seconds,
+        provider_policy,
+        quote_purpose,
+    )
     rules = load_yaml(stale_rules_path)
     records = normalize_records(collected["watchlist"], collected["prices"], rules)
     elapsed = time.perf_counter() - perf_start
@@ -104,6 +121,7 @@ def run_pipeline(
         profile=profile,
         provider_mode=provider_mode,
         provider_policy=provider_policy,
+        quote_purpose=quote_purpose,
         strict=strict,
         max_run_seconds=max_run_seconds,
         max_data_lag_seconds=max_data_lag_seconds,
@@ -133,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
             output_dir=args.output_dir,
             provider_mode=args.provider_mode,
             provider_policy=args.provider_policy,
+            quote_purpose=args.quote_purpose,
             strict=args.strict,
             profile=args.profile,
             timeout_seconds=args.timeout_seconds,
@@ -172,6 +191,7 @@ def _runtime_diagnostics(
     profile: str,
     provider_mode: str,
     provider_policy: str,
+    quote_purpose: str,
     strict: bool,
     max_run_seconds: float,
     max_data_lag_seconds: float,
@@ -190,7 +210,7 @@ def _runtime_diagnostics(
         "provider_mode": provider_mode,
         "provider_policy": provider_policy,
         "strict": strict,
-        "quote_purpose": "operation",
+        "quote_purpose": quote_purpose,
         "max_run_seconds": max_run_seconds,
         "max_data_lag_seconds": max_data_lag_seconds,
         "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,

@@ -10,7 +10,18 @@ from market_price_guard.models import RawPrice
 from market_price_guard.providers.base import PriceProvider
 
 
-SUPPORTED_SYMBOLS = {"00883.HK", "883.HK", "601899.SH", "601985.SH", "003816.SZ"}
+SUPPORTED_SYMBOLS = {
+    "00883.HK",
+    "883.HK",
+    "601899.SH",
+    "601985.SH",
+    "003816.SZ",
+    "159632.SZ",
+    "513300.SH",
+    "159819.SZ",
+    "515880.SH",
+    "510300.SH",
+}
 HONG_KONG_TZ = timezone(timedelta(hours=8))
 SHANGHAI_TZ = timezone(timedelta(hours=8))
 SYMBOL_NAMES = {
@@ -18,6 +29,11 @@ SYMBOL_NAMES = {
     "601899.SH": "紫金矿业A",
     "601985.SH": "中国核电",
     "003816.SZ": "中国广核",
+    "159632.SZ": "纳指相关ETF",
+    "513300.SH": "纳指ETF",
+    "159819.SZ": "人工智能ETF",
+    "515880.SH": "通信ETF",
+    "510300.SH": "沪深300ETF",
 }
 
 
@@ -142,6 +158,10 @@ def yahoo_ticker_for_symbol(symbol: str) -> str:
         return f"{symbol.split('.')[0]}.SS"
     if symbol == "003816.SZ":
         return "003816.SZ"
+    if symbol in {"159632.SZ", "159819.SZ"}:
+        return symbol
+    if symbol in {"513300.SH", "515880.SH", "510300.SH"}:
+        return f"{symbol.split('.')[0]}.SS"
     raise ValueError(f"unsupported yfinance symbol: {symbol}")
 
 
@@ -254,6 +274,8 @@ def _market_for_symbol(symbol: str) -> str:
 
 
 def _category_for_symbol(symbol: str) -> str:
+    if symbol in {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}:
+        return "ETF"
     return "HK" if symbol.endswith(".HK") else "A_SHARE"
 
 

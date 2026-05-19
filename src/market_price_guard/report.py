@@ -170,7 +170,8 @@ def build_index_report(
     runtime = runtime or {}
     summary = build_completeness_summary(records)
     issue_counts = _index_issue_counts(records, summary, runtime)
-    usable_text = "是" if summary.usable_for_operation else "否"
+    quote_purpose = str(runtime.get("quote_purpose", "operation"))
+    usable_text = "否" if quote_purpose == "reference" else ("是" if summary.usable_for_operation else "否")
     provider_counts = _selected_provider_counts(records)
     recommended_files = _recommended_files(
         profile=str(runtime.get("profile", "")),
@@ -187,10 +188,20 @@ def build_index_report(
         f"- strict: {str(runtime.get('strict', False)).lower()}",
         f"- exit_code: {runtime.get('exit_code', '')}",
         f"- output_dir: {output_dir}",
+        f"- quote_purpose: {quote_purpose}",
         "",
         "## 本轮结论",
         f"- 可用于具体操作建议：{usable_text}",
     ]
+    if quote_purpose == "reference":
+        lines.extend(
+            [
+                "- 本轮为快速参考模式。",
+                "- 可用于快速参考：是",
+                "- 不可用于具体操作建议。",
+                "- 如需具体买入/卖出/加仓/减仓/做T/挂单价，必须运行 operation-grade / strict 输出。",
+            ]
+        )
     if not summary.usable_for_operation:
         lines.extend(
             [
@@ -210,7 +221,7 @@ def build_index_report(
     lines.extend(["", "## 核心价格覆盖摘要"])
     lines.extend(_coverage_summary_lines(records, str(runtime.get("profile", ""))))
     lines.extend(["", "## Quote trust summary"])
-    lines.extend(_quote_trust_summary_lines(records, str(runtime.get("quote_purpose", "operation"))))
+    lines.extend(_quote_trust_summary_lines(records, quote_purpose))
     lines.extend(
         [
             "",
@@ -256,10 +267,13 @@ def build_index_report(
 
 def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
     summary = build_completeness_summary(records)
-    usable_text = "是" if summary.usable_for_operation else "否"
+    runtime = runtime or {}
+    quote_purpose = str(runtime.get("quote_purpose", "operation"))
+    usable_text = "否" if quote_purpose == "reference" else ("是" if summary.usable_for_operation else "否")
     lines = [
         "# 数据完整度报告",
         "",
+        f"quote_purpose: {quote_purpose}",
         f"可用于具体操作建议：{usable_text}",
         "",
         "本工具不做自动交易，不输出买卖建议，只输出价格事实、数据源、时间戳、市场状态和数据完整度。",
@@ -268,6 +282,15 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
         "",
         "## Strict blocking records",
     ]
+    if quote_purpose == "reference":
+        lines.extend(
+            [
+                "",
+                "## Reference mode warning",
+                "- 本轮为 reference 模式，可用于快速参考，不可用于具体操作建议。",
+                "- operation confirmation required: 如需具体买入/卖出/加仓/减仓/做T/挂单价，必须运行 operation-grade / strict 输出。",
+            ]
+        )
     lines.extend(_blocking_record_lines(summary.strict_blockers))
     lines.extend(["", "## Provider diagnostics"])
     lines.extend(_provider_diagnostics_lines(summary.akshare_records))
@@ -276,7 +299,7 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(["", "## Quote trust tier diagnostics"])
     lines.extend(_quote_trust_diagnostic_lines(records))
     lines.extend(["", "## Runtime freshness diagnostics"])
-    lines.extend(_runtime_freshness_lines(runtime or {}))
+    lines.extend(_runtime_freshness_lines(runtime))
     lines.extend(["", "## AKShare price records"])
     lines.extend(_record_lines(summary.akshare_records))
     lines.extend(["", "## AKShare quote freshness details"])
@@ -319,12 +342,14 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
 
 def build_provider_health_report(records: list[PriceRecord], provider_mode: str = "mock") -> str:
     provider_policy = _provider_policy_from_records(records)
+    quote_purpose = _quote_purpose_from_records(records)
     lines = [
         "# Provider Health Report",
         "",
         "行情源健康报告仅用于解释价格事实、接口状态和数据完整度，不提供买卖建议，不做自动交易。",
         "",
         f"- provider_policy={provider_policy}",
+        f"- quote_purpose={quote_purpose}",
     ]
     if provider_policy == "diagnostic":
         lines.append("- diagnostic mode active: provider diagnostics may run slower than fast mode.")
@@ -493,6 +518,8 @@ def _blocking_reason(record: PriceRecord) -> str:
         return "mock_fallback_not_allowed"
     if "manual_fallback_not_allowed" in issues:
         return "manual_fallback_not_allowed"
+    if record.operation_blocking_reason == "reference_tier_requires_operation_confirmation":
+        return "reference_tier_requires_operation_confirmation"
     if record.is_stale:
         return "stale"
     return ""
@@ -863,7 +890,7 @@ def _quote_trust_summary_lines(records: list[PriceRecord], quote_purpose: str) -
     counts = _quote_trust_counts(records)
     confirmation_required = sum(1 for record in records if record.confirmation_required)
     usable_for_reference = bool(records) and any(record.usable_for_reference for record in records)
-    usable_for_operation = build_completeness_summary(records).usable_for_operation
+    usable_for_operation = False if quote_purpose == "reference" else build_completeness_summary(records).usable_for_operation
     return [
         f"- current quote_purpose: {quote_purpose or 'operation'}",
         f"- operation-grade records 数量: {counts.get('operation', 0)}",
@@ -880,12 +907,15 @@ def _quote_trust_diagnostic_lines(records: list[PriceRecord]) -> list[str]:
         return ["- 无"]
     counts = _quote_trust_counts(records)
     lines = [
+        f"- quote_purpose: {records[0].quote_purpose if records else 'operation'}",
         f"- quote_trust_tier summary: operation={counts.get('operation', 0)}, reference={counts.get('reference', 0)}, development={counts.get('development', 0)}",
         f"- operation-grade records: {_format_symbols([record.symbol for record in records if record.quote_trust_tier == 'operation'])}",
         f"- reference-grade records: {_format_symbols([record.symbol for record in records if record.quote_trust_tier == 'reference'])}",
         f"- development-grade records: {_format_symbols([record.symbol for record in records if record.quote_trust_tier == 'development'])}",
         f"- confirmation_required records: {_format_symbols([record.symbol for record in records if record.confirmation_required])}",
     ]
+    if any(record.quote_purpose == "reference" for record in records):
+        lines.append("- operation confirmation required: reference-grade records are not operation-grade permission.")
     yfinance_records = [record for record in records if record.source == "yfinance" or record.selected_provider == "yfinance"]
     if yfinance_records:
         lines.append(
@@ -1042,6 +1072,14 @@ def _provider_policy_from_records(records: list[PriceRecord]) -> str:
         if policy:
             return str(policy)
     return ""
+
+
+def _quote_purpose_from_records(records: list[PriceRecord]) -> str:
+    for record in records:
+        purpose = record.provider_diagnostics.get("quote_purpose") or record.quote_purpose
+        if purpose:
+            return str(purpose)
+    return "operation"
 
 
 def _records_status(records: list[PriceRecord]) -> str:
