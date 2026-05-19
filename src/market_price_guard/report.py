@@ -404,6 +404,11 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
         "",
         "## Strict blocking records",
     ]
+    if any(record.source == "eastmoney_direct" or record.selected_provider == "eastmoney_direct" for record in records):
+        lines.insert(
+            7,
+            "Eastmoney Direct source limitation: Eastmoney public web quote endpoint; reference / operation-candidate only in this version; not operation-grade by itself.",
+        )
     if quote_purpose == "reference":
         lines.extend(
             [
@@ -489,6 +494,8 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
     )
     lines.extend(["", "## YFinance 港股 / A股"])
     lines.extend(_yfinance_health_group(records))
+    lines.extend(["", "## Eastmoney Direct"])
+    lines.extend(_eastmoney_direct_health_group(records))
     lines.extend(["", "## Manual"])
     lines.extend(_manual_health_group(records))
     if provider_mode == "mock":
@@ -791,6 +798,44 @@ def _yfinance_health_group(records: list[PriceRecord]) -> list[str]:
     return lines
 
 
+def _eastmoney_direct_health_group(records: list[PriceRecord]) -> list[str]:
+    eastmoney_records = [
+        record
+        for record in records
+        if record.source == "eastmoney_direct"
+        or record.selected_provider == "eastmoney_direct"
+        or _record_has_attempt_function(record, ["eastmoney_direct.stock_get"])
+    ]
+    if not eastmoney_records:
+        return ["- provider: eastmoney_direct", "- market_category: ETF/A_SHARE", "- status: not_called"]
+    lines = [
+        "- provider: eastmoney_direct",
+        "- market_category: ETF/A_SHARE",
+        f"- affected_symbols: {_symbols(eastmoney_records)}",
+        f"- quote_time_status: {_quote_time_status(eastmoney_records)}",
+        f"- usable_for_operation: {_usable_for_operation(eastmoney_records)}",
+        "- source_limit_note: Eastmoney Direct uses Eastmoney public web quote endpoint; not an official exchange real-time feed; first version is reference-grade / operation-candidate only.",
+    ]
+    for record in eastmoney_records:
+        diagnostic = record.provider_diagnostics
+        lines.append(
+            "- function_name={function_name}, status={status}, secid={secid}, endpoint={endpoint}, matched_symbols={matched_symbols}, affected_symbols={affected_symbols}, exception_type={exception_type}, exception_message={exception_message}, quote_trust_tier={tier}, usable_for_operation={operation}, confirmation_required={confirmation}".format(
+                function_name=diagnostic.get("function_name", "eastmoney_direct.stock_get"),
+                status=_provider_health_status(diagnostic),
+                secid=diagnostic.get("secid", ""),
+                endpoint=diagnostic.get("endpoint", ""),
+                matched_symbols=record.symbol if record.price is not None else "",
+                affected_symbols=record.symbol,
+                exception_type=diagnostic.get("exception_type", ""),
+                exception_message=diagnostic.get("exception_message", ""),
+                tier=record.quote_trust_tier,
+                operation=record.usable_for_operation,
+                confirmation=record.confirmation_required,
+            )
+        )
+    return lines
+
+
 def _mock_health_group(records: list[PriceRecord]) -> list[str]:
     mock_records = [record for record in records if record.source == "mock"]
     if not mock_records:
@@ -841,10 +886,11 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
                 and str(attempt.get("provider", "")) == str(diagnostic.get("selected_provider", record.source))
             )
             lines.append(
-                "  - provider={provider}, function_name={function_name}, status={status}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, quote_trust_tier={quote_trust_tier}, usable_for_reference={usable_for_reference}, confirmation_required={confirmation_required}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
+                "  - provider={provider}, function_name={function_name}, status={status}, secid={secid}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, quote_trust_tier={quote_trust_tier}, usable_for_reference={usable_for_reference}, confirmation_required={confirmation_required}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
                     provider=attempt.get("provider", ""),
                     function_name=attempt.get("function_name", ""),
                     status=attempt.get("status", ""),
+                    secid=attempt.get("secid", ""),
                     from_cache=attempt.get("from_cache", ""),
                     price=attempt.get("price", ""),
                     quote_time=attempt.get("quote_time", ""),
@@ -1042,6 +1088,11 @@ def _quote_trust_diagnostic_lines(records: list[PriceRecord]) -> list[str]:
     if yfinance_records:
         lines.append(
             "- yfinance source limitation: open-source Yahoo Finance public API wrapper; research/educational use; not official exchange feed; use together with quote_time, freshness, and usable_for_operation."
+        )
+    eastmoney_records = [record for record in records if record.source == "eastmoney_direct" or record.selected_provider == "eastmoney_direct"]
+    if eastmoney_records:
+        lines.append(
+            "- eastmoney_direct source limitation: Eastmoney public web quote endpoint; reference / operation-candidate only in this version; not operation-grade by itself."
         )
     return lines
 
@@ -1286,6 +1337,10 @@ def _provider_routing_note_lines(records: list[PriceRecord]) -> list[str]:
         if diagnostics.get("selected_provider") == "yfinance":
             notes.append(
                 f"- {record.symbol}: 使用 yfinance secondary provider；数据源限制：open-source Yahoo Finance public API wrapper; research/educational use; not official exchange feed"
+            )
+        if diagnostics.get("selected_provider") == "eastmoney_direct":
+            notes.append(
+                f"- {record.symbol}: 使用 eastmoney_direct reference provider；source limitation: Eastmoney public web quote endpoint, not official exchange real-time feed; first version is reference-grade / operation-candidate only"
             )
         if "mock_fallback_not_allowed" in record.quality_issues:
             notes.append(f"- {record.symbol}: mock fallback 不可用于具体操作建议")

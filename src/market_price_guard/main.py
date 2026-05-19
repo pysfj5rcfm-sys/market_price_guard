@@ -10,6 +10,7 @@ from .normalize import load_watchlist, load_yaml, normalize_records
 from .provider_router import RouterConfig, collect_routed_prices
 from .models import WatchProject, Watchlist
 from .providers.akshare_provider import AkshareProvider
+from .providers.eastmoney_direct_provider import EastmoneyDirectProvider
 from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
 from .providers.yfinance_provider import YFinanceProvider
@@ -69,6 +70,7 @@ def collect_prices(
         "mock": MockProvider(mock_prices_path),
         "manual": ManualProvider(manual_prices_path),
         "akshare": AkshareProvider(),
+        "eastmoney_direct": EastmoneyDirectProvider(),
         "yfinance": YFinanceProvider(),
     }
     prices = collect_routed_prices(

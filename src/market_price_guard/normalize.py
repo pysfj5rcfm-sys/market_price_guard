@@ -154,6 +154,17 @@ def _quote_trust_fields(raw: RawPrice, is_stale: bool, required_for_operation: b
             "operation_blocking_reason": operation_blocking_reason or "development_price_not_operation_grade",
             "reference_note": raw.reference_note or "mock data is for development/testing only",
         }
+    if raw.source == "eastmoney_direct":
+        return {
+            "quote_trust_tier": raw.quote_trust_tier or "reference",
+            "usable_for_reference": usable_for_reference,
+            "usable_for_operation": False,
+            "quote_purpose": raw.quote_purpose,
+            "confirmation_required": True,
+            "operation_blocking_reason": operation_blocking_reason or "reference_tier_requires_operation_confirmation",
+            "reference_note": raw.reference_note
+            or "Eastmoney Direct uses Eastmoney public web quote endpoint; not an official exchange real-time feed; first version is reference-grade / operation-candidate only",
+        }
     if raw.source == "yfinance":
         yfinance_etf_symbols = {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}
         yfinance_operation_usable = usable_for_operation and raw.symbol not in yfinance_etf_symbols

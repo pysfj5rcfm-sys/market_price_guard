@@ -12,7 +12,7 @@ def pytest_collection_modifyitems(items):
         path = item.path.name
         if "live" in item.keywords:
             continue
-        if path in {"test_akshare_provider.py", "test_yfinance_provider.py", "test_provider_router.py", "test_batch_cache_and_profile_outputs.py"}:
+        if path in {"test_akshare_provider.py", "test_yfinance_provider.py", "test_eastmoney_direct_provider.py", "test_provider_router.py", "test_batch_cache_and_profile_outputs.py"}:
             item.add_marker(pytest.mark.provider)
         elif path in {"test_output_contract.py", "test_quote_trust_tier.py", "test_reference_mode.py", "test_bundles.py"}:
             item.add_marker(pytest.mark.contract)

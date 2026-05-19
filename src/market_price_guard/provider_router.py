@@ -8,6 +8,12 @@ from .freshness import now_utc
 from .models import Instrument, RawPrice, Watchlist
 
 
+ETF_SYMBOLS = {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}
+ENERGY_A_SHARE_SYMBOLS = {"601899.SH", "601985.SH", "003816.SZ"}
+HK_SYMBOLS = {"00883.HK"}
+EASTMONEY_DIRECT_SYMBOLS = ETF_SYMBOLS | ENERGY_A_SHARE_SYMBOLS
+
+
 class Provider(Protocol):
     def fetch(self, symbols: list[str]) -> dict[str, RawPrice]:
         ...
@@ -108,7 +114,7 @@ def _effective_priority(instrument: Instrument, provider_mode: str, provider_pol
     if provider_policy == "conservative":
         return _policy_priority(instrument, ["akshare", "yfinance", "mock"], quote_purpose=quote_purpose)
     if provider_policy == "diagnostic":
-        return priority or _policy_priority(instrument, ["akshare", "yfinance", "mock"], quote_purpose=quote_purpose)
+        return _diagnostic_priority(instrument, priority, quote_purpose)
     return priority or [instrument.provider]
 
 
@@ -143,6 +149,11 @@ def _selected_raw(
         "usable_for_operation": True,
         "selection_reason": "selected_provider_returned_usable_price",
     }
+    if selected_provider == "eastmoney_direct":
+        raw.provider_diagnostics["usable_for_operation"] = False
+        raw.provider_diagnostics["selection_reason"] = "eastmoney_direct_reference_candidate_selected"
+        raw.operation_blocking_reason = raw.operation_blocking_reason or "reference_tier_requires_operation_confirmation"
+        raw.confirmation_required = True
     if fallback_used and selected_provider == "mock" and not instrument.allow_mock_fallback_for_operation:
         raw.source = "mock_fallback"
         raw.provider_diagnostics["selected_source"] = "mock_fallback"
@@ -210,7 +221,7 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
     attempts = diagnostics.get("attempts")
     if not isinstance(attempts, list):
         return []
-    usable = _raw_usable_for_selection(raw)
+    usable = False if raw.source == "eastmoney_direct" else _raw_usable_for_selection(raw)
     return [
         {
             "symbol": raw.symbol,
@@ -316,20 +327,33 @@ def _missing_raw(instrument: Instrument, provider_name: str, attempts: list[dict
 def _policy_priority(instrument: Instrument, stock_chain: list[str], quote_purpose: str = "operation") -> list[str]:
     if instrument.symbol == "GOLD_CNY" or instrument.provider == "manual":
         return ["manual"]
-    if instrument.symbol in {"601899.SH", "601985.SH", "003816.SZ", "00883.HK"}:
+    if instrument.symbol in ENERGY_A_SHARE_SYMBOLS | HK_SYMBOLS:
+        if quote_purpose == "reference" and instrument.symbol in EASTMONEY_DIRECT_SYMBOLS:
+            return list(dict.fromkeys(["eastmoney_direct", *stock_chain]))
         return stock_chain
-    if instrument.symbol in {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}:
+    if instrument.symbol in ETF_SYMBOLS:
         if quote_purpose == "reference":
-            return ["yfinance", "akshare", "mock"]
+            return ["eastmoney_direct", "yfinance", "akshare", "mock"]
         return ["akshare", "mock"]
     return [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
+
+
+def _diagnostic_priority(instrument: Instrument, configured_priority: list[str], quote_purpose: str) -> list[str]:
+    if instrument.symbol == "GOLD_CNY" or instrument.provider == "manual":
+        return ["manual"]
+    base = configured_priority or _policy_priority(instrument, ["akshare", "yfinance", "mock"], quote_purpose=quote_purpose)
+    if instrument.symbol in EASTMONEY_DIRECT_SYMBOLS:
+        return list(dict.fromkeys(["eastmoney_direct", *base, "akshare", "yfinance", "mock"]))
+    return base
 
 
 def _skipped_after_success(symbol: str, priority: list[str], selected_provider: str, provider_policy: str, quote_purpose: str = "operation") -> list[dict[str, object]]:
     if selected_provider not in priority:
         return []
     skip_reason = f"selected_provider_success_policy_skip:{provider_policy}"
-    if quote_purpose == "reference" and selected_provider == "yfinance" and symbol in {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}:
+    if quote_purpose == "reference" and selected_provider == "eastmoney_direct" and symbol in EASTMONEY_DIRECT_SYMBOLS:
+        skip_reason = "skipped because eastmoney_direct reference quote succeeded in reference mode"
+    elif quote_purpose == "reference" and selected_provider == "yfinance" and symbol in ETF_SYMBOLS:
         skip_reason = "skipped because yfinance reference quote succeeded in reference mode"
     return [
         _attempt(

@@ -7,6 +7,7 @@ import pandas as pd
 from market_price_guard.main import EXIT_OK, parse_args, run_pipeline
 from market_price_guard.models import RawPrice
 from market_price_guard.providers.akshare_provider import AkshareProvider
+from market_price_guard.providers.eastmoney_direct_provider import EastmoneyDirectProvider
 from market_price_guard.providers.yfinance_provider import YFinanceProvider
 from market_price_guard.report import get_blocking_records
 
@@ -36,21 +37,26 @@ def test_tech_reference_script_contract():
     assert "outputs_tech_latest" in strict_script
 
 
-def test_reference_mode_uses_yfinance_for_tech_etfs_and_skips_akshare(monkeypatch, tmp_path):
-    calls = {"yfinance": 0, "akshare": 0}
+def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(monkeypatch, tmp_path):
+    calls = {"eastmoney": 0, "yfinance": 0, "akshare": 0}
 
-    def yfinance_fetch(self, symbols):
-        calls["yfinance"] += 1
+    def eastmoney_fetch(self, symbols):
+        calls["eastmoney"] += 1
         return {
-            symbol: _raw(symbol, price=1.0 + index / 100)
+            symbol: _raw(symbol, source="eastmoney_direct", price=1.0 + index / 100)
             for index, symbol in enumerate(symbols)
             if symbol in ETF_SYMBOLS
         }
 
+    def yfinance_fetch(self, symbols):
+        calls["yfinance"] += 1
+        raise AssertionError(f"yfinance should be skipped when Eastmoney reference succeeds: {symbols}")
+
     def akshare_fetch(self, symbols):
         calls["akshare"] += 1
-        raise AssertionError(f"AKShare should be skipped when yfinance reference succeeds: {symbols}")
+        raise AssertionError(f"AKShare should be skipped when Eastmoney reference succeeds: {symbols}")
 
+    monkeypatch.setattr(EastmoneyDirectProvider, "fetch", eastmoney_fetch)
     monkeypatch.setattr(YFinanceProvider, "fetch", yfinance_fetch)
     monkeypatch.setattr(AkshareProvider, "fetch", akshare_fetch)
 
@@ -69,8 +75,10 @@ def test_reference_mode_uses_yfinance_for_tech_etfs_and_skips_akshare(monkeypatc
     completeness = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
+    assert calls["eastmoney"] == len(ETF_SYMBOLS)
+    assert calls["yfinance"] == 0
     assert calls["akshare"] == 0
-    assert set(etf_rows["selected_provider"]) == {"yfinance"}
+    assert set(etf_rows["selected_provider"]) == {"eastmoney_direct"}
     assert set(etf_rows["quote_purpose"]) == {"reference"}
     assert set(etf_rows["quote_trust_tier"]) == {"reference"}
     assert set(etf_rows["usable_for_reference"].astype(str)) == {"True"}
@@ -79,10 +87,10 @@ def test_reference_mode_uses_yfinance_for_tech_etfs_and_skips_akshare(monkeypatc
     assert "可用于具体操作建议：否" in index
     assert "可用于快速参考：是" in index
     assert "operation confirmation required" in completeness
-    assert "not official exchange feed" in completeness
-    assert "effective_provider_chain: yfinance, akshare, mock" in health
-    assert "selected_provider: yfinance" in health
-    assert "skipped because yfinance reference quote succeeded in reference mode" in health
+    assert "not official exchange" in completeness
+    assert "effective_provider_chain: eastmoney_direct, yfinance, akshare, mock" in health
+    assert "selected_provider: eastmoney_direct" in health
+    assert "skipped because eastmoney_direct reference quote succeeded in reference mode" in health
     assert not (output_dir / "energy_price_block.md").exists()
     assert not (output_dir / "controller_price_summary.md").exists()
     assert (output_dir / "tech_price_block.md").exists()

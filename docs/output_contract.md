@@ -381,3 +381,15 @@ bundle、CSV 和关键报告必须保留或等价表达：
 ### 13.7 No Trading Advice
 
 所有报告和 bundle 均不得输出实质性交易建议。允许否定性或规则性表达，例如“不可用于具体操作建议”“禁止用于买入卖出”“不输出买卖建议”。
+
+### 13.8 Eastmoney Direct Provider
+
+`eastmoney_direct` 是 v0.7.0 新增的快速指定标的报价 provider，覆盖 A股 ETF 与部分 A股股票。它属于 reference / operation-candidate：
+
+- `quote_trust_tier=reference`
+- `usable_for_reference=true`，前提是 price 与 quote_time 基本有效
+- `usable_for_operation=false`
+- `confirmation_required=true`
+- `operation_blocking_reason=reference_tier_requires_operation_confirmation`
+
+Eastmoney Direct 使用东方财富公开网页行情接口路径，不是官方交易所实时行情源。它不得单独作为 operation-grade 数据，也不得让 operation strict 放行。若被选中，`0_upload_bundle.md`、`debug_bundle.md`、`provider_health_report.md` 与 `data_completeness_report.md` 必须披露 source limitation。

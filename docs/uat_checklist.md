@@ -160,3 +160,17 @@ Tech Reference UAT：
 - controller 输出完整明细。
 - 缺少 strict / blocking 说明。
 - 输出实质性交易建议。
+# Eastmoney Direct UAT (v0.7.0)
+
+运行：
+
+```powershell
+.\scripts\run_tech_fast_reference.ps1
+```
+
+检查：
+- reference mode 中可尝试 `eastmoney_direct`；
+- 如果 `eastmoney_direct` 被选中，必须显示 `quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`；
+- `0_upload_bundle.md` 必须明确不可用于具体操作建议；
+- `debug_bundle.md` / `provider_health_report.md` 必须包含 `eastmoney_direct` 的 provider 明细；
+- operation strict 输出不得因为 `eastmoney_direct` 改变放行标准。

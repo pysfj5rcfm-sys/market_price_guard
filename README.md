@@ -300,3 +300,9 @@ v0.6.3 只追加价格用途分层诊断字段，不改变现有一键脚本、p
 用途：operation / strict 输出，若通过可进入完整操作级分析。
 
 Codex smoke test passed.
+
+## Eastmoney Direct Provider
+
+v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。
+
+科技 reference 模式可优先使用 Eastmoney Direct；operation strict 路径仍保持原有放行标准。Eastmoney Direct 来源于东方财富公开网页行情接口路径，不是官方交易所实时行情源；后续 v0.7.1 计划增加多源价格差异检查后再评估是否提升信任等级。

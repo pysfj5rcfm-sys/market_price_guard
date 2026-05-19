@@ -27,7 +27,7 @@ def test_provider_priority_only_akshare_matches_live_path():
     raw = _raw("601899.SH", "akshare", 18.42)
     instrument = _instrument("601899.SH", provider_priority=["akshare"])
 
-    selected = route_symbol(instrument, {"akshare": StaticProvider(raw)}, RouterConfig(provider_mode="live", provider_policy="diagnostic"))
+    selected = route_symbol(instrument, {"akshare": StaticProvider(raw)}, RouterConfig(provider_mode="live", provider_policy="conservative"))
 
     assert selected.source == "akshare"
     assert selected.provider_diagnostics["selected_provider"] == "akshare"
@@ -68,10 +68,11 @@ def test_fast_policy_etf_keeps_akshare_first():
     assert raw.provider_diagnostics["selected_provider"] == "akshare"
 
 
-def test_reference_purpose_uses_yfinance_first_for_tech_etf():
+def test_reference_purpose_uses_eastmoney_first_for_tech_etf():
     raw = route_symbol(
         _instrument("159819.SZ", provider_priority=["akshare", "mock"]),
         {
+            "eastmoney_direct": StaticProvider(_raw("159819.SZ", "eastmoney_direct", 0.923)),
             "akshare": StaticProvider(_raw("159819.SZ", "akshare", 0.921)),
             "yfinance": StaticProvider(_raw("159819.SZ", "yfinance", 0.922)),
             "mock": StaticProvider(_raw("159819.SZ", "mock", 0.90)),
@@ -79,11 +80,11 @@ def test_reference_purpose_uses_yfinance_first_for_tech_etf():
         RouterConfig(provider_mode="live", provider_policy="fast", quote_purpose="reference"),
     )
 
-    assert raw.provider_diagnostics["effective_provider_chain"] == ["yfinance", "akshare", "mock"]
-    assert raw.provider_diagnostics["selected_provider"] == "yfinance"
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["eastmoney_direct", "yfinance", "akshare", "mock"]
+    assert raw.provider_diagnostics["selected_provider"] == "eastmoney_direct"
     assert raw.provider_diagnostics["quote_purpose"] == "reference"
     assert any(
-        attempt["reason"] == "skipped because yfinance reference quote succeeded in reference mode"
+        attempt["reason"] == "skipped because eastmoney_direct reference quote succeeded in reference mode"
         for attempt in raw.provider_diagnostics["provider_attempts"]
         if attempt["status"] == "skipped"
     )
@@ -212,7 +213,8 @@ def test_all_attempts_fail_final_record_contains_attempts():
 
     assert "provider_error" in selected.quality_issues or "symbol_not_found" in selected.quality_issues
     assert selected.provider_diagnostics["selected_attempt_status"] == "failed"
-    assert len(selected.provider_diagnostics["provider_attempts"]) == 2
+    assert len(selected.provider_diagnostics["provider_attempts"]) >= 2
+    assert selected.provider_diagnostics["provider_attempts"][0]["provider"] == "eastmoney_direct"
 
 
 def test_provider_health_report_shows_attempts_by_symbol_and_fallback_used():
