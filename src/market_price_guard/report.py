@@ -17,11 +17,20 @@ OUTPUT_COLUMNS = [
     "price",
     "currency",
     "source",
+    "selected_provider",
     "quote_time",
     "fetch_time",
     "market_status",
     "is_stale",
     "stale_reason",
+    "usable_for_operation",
+    "required_for_operation",
+    "quote_trust_tier",
+    "usable_for_reference",
+    "quote_purpose",
+    "confirmation_required",
+    "operation_blocking_reason",
+    "reference_note",
 ]
 
 GOLD_NOTE = (
@@ -200,6 +209,8 @@ def build_index_report(
         lines.append("- 无")
     lines.extend(["", "## 核心价格覆盖摘要"])
     lines.extend(_coverage_summary_lines(records, str(runtime.get("profile", ""))))
+    lines.extend(["", "## Quote trust summary"])
+    lines.extend(_quote_trust_summary_lines(records, str(runtime.get("quote_purpose", "operation"))))
     lines.extend(
         [
             "",
@@ -262,6 +273,8 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(_provider_diagnostics_lines(summary.akshare_records))
     lines.extend(["", "## Provider routing notes"])
     lines.extend(_provider_routing_note_lines(records))
+    lines.extend(["", "## Quote trust tier diagnostics"])
+    lines.extend(_quote_trust_diagnostic_lines(records))
     lines.extend(["", "## Runtime freshness diagnostics"])
     lines.extend(_runtime_freshness_lines(runtime or {}))
     lines.extend(["", "## AKShare price records"])
@@ -356,6 +369,7 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- provider_mode: {runtime.get('provider_mode', '')}",
         f"- provider_policy: {runtime.get('provider_policy', '')}",
         f"- strict: {runtime.get('strict', '')}",
+        f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
         f"- max_run_seconds: {runtime.get('max_run_seconds', '')}",
         f"- max_data_lag_seconds: {runtime.get('max_data_lag_seconds', '')}",
@@ -425,6 +439,9 @@ def build_controller_summary(records: list[PriceRecord]) -> str:
     tech_ok = _required_records_ok(tech_records)
     gold_ok = _record_ok(gold)
     broad_ok = _record_ok(broad)
+    operation_grade_complete = all(record.quote_trust_tier == "operation" for record in records if record.required_for_operation)
+    reference_count = sum(1 for record in records if record.quote_trust_tier == "reference")
+    confirmation_count = sum(1 for record in records if record.confirmation_required)
     allocation_allowed = "是" if energy_ok and tech_ok and gold_ok else "否"
     concrete_forbidden = "否" if allocation_allowed == "是" else "是"
 
@@ -441,6 +458,9 @@ def build_controller_summary(records: list[PriceRecord]) -> str:
         f"| 非科技宽基价格是否可用 | {_yes_no(broad_ok)} |",
         f"| 是否允许做资产配置判断 | {allocation_allowed} |",
         f"| 是否禁止具体操作判断 | {concrete_forbidden} |",
+        f"| operation-grade 覆盖是否完整 | {_yes_no(operation_grade_complete)} |",
+        f"| reference-grade records 数量 | {reference_count} |",
+        f"| confirmation_required 是否存在 | {_yes_no(confirmation_count > 0)} |",
         "",
         "说明：若 required_for_operation 指标缺失或过期，相关项目不可用于具体操作建议。",
     ]
@@ -652,6 +672,11 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
         lines.append(f"- selected_source: {diagnostic.get('selected_source', record.source)}")
         lines.append(f"- fallback_used: {diagnostic.get('fallback_used', False)}")
         lines.append(f"- usable_for_operation: {diagnostic.get('usable_for_operation', _record_ok(record))}")
+        lines.append(f"- quote_trust_tier: {record.quote_trust_tier}")
+        lines.append(f"- usable_for_reference: {record.usable_for_reference}")
+        lines.append(f"- confirmation_required: {record.confirmation_required}")
+        if record.reference_note:
+            lines.append(f"- reference_note: {record.reference_note}")
         lines.append(f"- selection_reason: {diagnostic.get('selection_reason', '')}")
         blocking_reason = _blocking_reason(record)
         lines.append(f"- final_blocking_reason: {blocking_reason}")
@@ -662,8 +687,12 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
         for attempt in attempts:
             if not isinstance(attempt, dict):
                 continue
+            attempt_is_selected_success = (
+                attempt.get("status") == "success"
+                and str(attempt.get("provider", "")) == str(diagnostic.get("selected_provider", record.source))
+            )
             lines.append(
-                "  - provider={provider}, function_name={function_name}, status={status}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
+                "  - provider={provider}, function_name={function_name}, status={status}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, quote_trust_tier={quote_trust_tier}, usable_for_reference={usable_for_reference}, confirmation_required={confirmation_required}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
                     provider=attempt.get("provider", ""),
                     function_name=attempt.get("function_name", ""),
                     status=attempt.get("status", ""),
@@ -671,6 +700,9 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
                     price=attempt.get("price", ""),
                     quote_time=attempt.get("quote_time", ""),
                     usable_for_operation=attempt.get("usable_for_operation", ""),
+                    quote_trust_tier=attempt.get("quote_trust_tier", record.quote_trust_tier if attempt_is_selected_success else ""),
+                    usable_for_reference=attempt.get("usable_for_reference", record.usable_for_reference if attempt_is_selected_success else ""),
+                    confirmation_required=attempt.get("confirmation_required", record.confirmation_required if attempt_is_selected_success else ""),
                     elapsed_seconds=attempt.get("elapsed_seconds", ""),
                     slow_provider_attempt=attempt.get("slow_provider_attempt", ""),
                     reason=attempt.get("reason", ""),
@@ -825,6 +857,49 @@ def _coverage_summary_lines(records: list[PriceRecord], profile: str) -> list[st
         f"- 黄金参考价：{_symbol_coverage(records, 'GOLD_CNY', profile)}",
         f"- 非科技宽基：{_symbol_coverage(records, '510300.SH', profile)}",
     ]
+
+
+def _quote_trust_summary_lines(records: list[PriceRecord], quote_purpose: str) -> list[str]:
+    counts = _quote_trust_counts(records)
+    confirmation_required = sum(1 for record in records if record.confirmation_required)
+    usable_for_reference = bool(records) and any(record.usable_for_reference for record in records)
+    usable_for_operation = build_completeness_summary(records).usable_for_operation
+    return [
+        f"- current quote_purpose: {quote_purpose or 'operation'}",
+        f"- operation-grade records 数量: {counts.get('operation', 0)}",
+        f"- reference-grade records 数量: {counts.get('reference', 0)}",
+        f"- development-grade records 数量: {counts.get('development', 0)}",
+        f"- confirmation_required 数量: {confirmation_required}",
+        f"- 可用于快速参考: {_yes_no(usable_for_reference)}",
+        f"- 可用于具体操作建议: {_yes_no(usable_for_operation)}",
+    ]
+
+
+def _quote_trust_diagnostic_lines(records: list[PriceRecord]) -> list[str]:
+    if not records:
+        return ["- 无"]
+    counts = _quote_trust_counts(records)
+    lines = [
+        f"- quote_trust_tier summary: operation={counts.get('operation', 0)}, reference={counts.get('reference', 0)}, development={counts.get('development', 0)}",
+        f"- operation-grade records: {_format_symbols([record.symbol for record in records if record.quote_trust_tier == 'operation'])}",
+        f"- reference-grade records: {_format_symbols([record.symbol for record in records if record.quote_trust_tier == 'reference'])}",
+        f"- development-grade records: {_format_symbols([record.symbol for record in records if record.quote_trust_tier == 'development'])}",
+        f"- confirmation_required records: {_format_symbols([record.symbol for record in records if record.confirmation_required])}",
+    ]
+    yfinance_records = [record for record in records if record.source == "yfinance" or record.selected_provider == "yfinance"]
+    if yfinance_records:
+        lines.append(
+            "- yfinance source limitation: open-source Yahoo Finance public API wrapper; research/educational use; not official exchange feed; use together with quote_time, freshness, and usable_for_operation."
+        )
+    return lines
+
+
+def _quote_trust_counts(records: list[PriceRecord]) -> dict[str, int]:
+    counts = {"operation": 0, "reference": 0, "development": 0}
+    for record in records:
+        tier = record.quote_trust_tier or "development"
+        counts[tier] = counts.get(tier, 0) + 1
+    return counts
 
 
 def _project_coverage(records: list[PriceRecord], project: str, profile: str) -> str:
@@ -1092,26 +1167,31 @@ def _akshare_freshness_lines(records: list[PriceRecord]) -> list[str]:
 
 def _price_table(records: list[PriceRecord]) -> list[str]:
     lines = [
-        "| symbol | name | price | currency | source | quote_time | fetch_time | market_status | is_stale | stale_reason |",
-        "|---|---|---:|---|---|---|---|---|---|---|",
+        "| symbol | name | price | currency | source | selected_provider | quote_time | fetch_time | market_status | is_stale | stale_reason | usable_for_operation | quote_trust_tier | usable_for_reference | confirmation_required |",
+        "|---|---|---:|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for record in records:
         lines.append(
-            "| {symbol} | {name} | {price} | {currency} | {source} | {quote_time} | {fetch_time} | {market_status} | {is_stale} | {stale_reason} |".format(
+            "| {symbol} | {name} | {price} | {currency} | {source} | {selected_provider} | {quote_time} | {fetch_time} | {market_status} | {is_stale} | {stale_reason} | {usable_for_operation} | {quote_trust_tier} | {usable_for_reference} | {confirmation_required} |".format(
                 symbol=record.symbol,
                 name=record.name,
                 price="" if record.price is None else record.price,
                 currency=record.currency,
                 source=record.source,
+                selected_provider=record.selected_provider or record.provider_diagnostics.get("selected_provider", record.source),
                 quote_time=record.quote_time.isoformat() if record.quote_time else "",
                 fetch_time=record.fetch_time.isoformat() if record.fetch_time else "",
                 market_status=record.market_status,
                 is_stale=record.is_stale,
                 stale_reason=record.stale_reason,
+                usable_for_operation=record.usable_for_operation,
+                quote_trust_tier=record.quote_trust_tier,
+                usable_for_reference=record.usable_for_reference,
+                confirmation_required=record.confirmation_required,
             )
         )
     if not records:
-        lines.append("|  |  |  |  |  |  |  |  |  | 无 |")
+        lines.append("|  |  |  |  |  |  |  |  |  |  | 无 |  |  |  |  |")
     return lines
 
 

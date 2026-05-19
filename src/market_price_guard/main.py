@@ -190,6 +190,7 @@ def _runtime_diagnostics(
         "provider_mode": provider_mode,
         "provider_policy": provider_policy,
         "strict": strict,
+        "quote_purpose": "operation",
         "max_run_seconds": max_run_seconds,
         "max_data_lag_seconds": max_data_lag_seconds,
         "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,

@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 MarketStatus = Literal["open", "closed", "manual", "unknown"]
+QuoteTrustTier = Literal["operation", "reference", "development"]
+QuotePurpose = Literal["operation", "reference"]
 
 
 class Instrument(BaseModel):
@@ -53,6 +55,12 @@ class RawPrice(BaseModel):
     required_for_operation: bool | None = None
     quality_issues: list[str] = Field(default_factory=list)
     provider_diagnostics: dict[str, object] = Field(default_factory=dict)
+    quote_trust_tier: QuoteTrustTier | None = None
+    usable_for_reference: bool | None = None
+    quote_purpose: QuotePurpose = "operation"
+    confirmation_required: bool | None = None
+    operation_blocking_reason: str = ""
+    reference_note: str = ""
 
     @field_validator("price")
     @classmethod
@@ -87,11 +95,18 @@ class PriceRecord(BaseModel):
     asset_role: str | None = None
     quality_issues: list[str] = Field(default_factory=list)
     provider_diagnostics: dict[str, object] = Field(default_factory=dict)
+    selected_provider: str = ""
+    usable_for_operation: bool = False
+    quote_trust_tier: QuoteTrustTier = "development"
+    usable_for_reference: bool = False
+    quote_purpose: QuotePurpose = "operation"
+    confirmation_required: bool = True
+    operation_blocking_reason: str = ""
+    reference_note: str = ""
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()
         data.pop("core", None)
-        data.pop("required_for_operation", None)
         data.pop("source_note", None)
         data.pop("product_type", None)
         data.pop("price_type", None)

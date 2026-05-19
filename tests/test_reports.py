@@ -44,7 +44,7 @@ def make_record(
 def test_dataframe_contains_required_columns():
     df = records_to_dataframe([make_record()])
 
-    assert list(df.columns) == [
+    old_columns = [
         "project",
         "symbol",
         "name",
@@ -58,6 +58,20 @@ def test_dataframe_contains_required_columns():
         "is_stale",
         "stale_reason",
     ]
+    new_columns = [
+        "selected_provider",
+        "usable_for_operation",
+        "required_for_operation",
+        "quote_trust_tier",
+        "usable_for_reference",
+        "quote_purpose",
+        "confirmation_required",
+        "operation_blocking_reason",
+        "reference_note",
+    ]
+
+    for column in old_columns + new_columns:
+        assert column in df.columns
 
 
 def test_completeness_report_blocks_specific_advice_when_required_stale():

@@ -225,4 +225,10 @@ UAT 说明：
 - 如果未来修改 `index.md`、price block 或报告格式，必须同步更新 `docs/output_contract.md`、`docs/uat_checklist.md` 和 `tests/test_output_contract.py`。
 - 科技账户项目已经 UAT pass，因此 `tech_price_block.md` 的分组名称和分类边界不得随意改变。
 
+## v0.6.3 Quote Trust Tier Foundation
+
+v0.6.3 只追加价格用途分层诊断字段，不改变现有一键脚本、provider-policy、strict 或 freshness 语义。
+
+新增字段包括 `quote_trust_tier`、`usable_for_reference`、`quote_purpose`、`confirmation_required`、`operation_blocking_reason`、`reference_note`。当前 `quote_purpose` 默认仍为 `operation`，`run_tech_fast_strict.ps1` 和 `outputs_tech_latest` 的既有使用方式保持不变。
+
 Codex smoke test passed.

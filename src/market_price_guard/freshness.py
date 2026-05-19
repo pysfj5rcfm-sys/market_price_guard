@@ -84,6 +84,8 @@ def _to_utc(value: datetime) -> datetime:
 def market_status_for_now(raw: RawPrice, market: str, now: datetime) -> str:
     if raw.market_status == "manual" or raw.source == "manual" or market == "MANUAL":
         return raw.market_status
+    if raw.source == "mock" and raw.market_status in {"open", "closed"}:
+        return raw.market_status
     if market == "CN" and raw.symbol.endswith((".SH", ".SZ")):
         current = _to_utc(now).astimezone(SHANGHAI_TZ).time()
         return "open" if _in_ranges(current, [(time(9, 30), time(11, 30)), (time(13, 0), time(15, 0))]) else "closed"

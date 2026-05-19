@@ -93,6 +93,14 @@
 
 ## 6. 回归标准
 
+Quote Trust Tier 检查：
+
+- `prices_snapshot.csv` 保留旧关键列，并追加 quote_trust_tier、usable_for_reference、quote_purpose、confirmation_required、operation_blocking_reason、reference_note。
+- `index.md` 包含 Quote trust summary，且原有“可用于具体操作建议”结论仍存在。
+- `data_completeness_report.md` 包含 Quote trust tier diagnostics，且 strict / blocking records 语义未改变。
+- 科技账户 UAT 仍通过；tech_price_block.md 的固定分组和 GOLD_CNY / 510300.SH 分类边界不得改变。
+- reference-grade 不得被描述成 operation-grade；yfinance ETF 如未来出现，不得用于 operation strict。
+
 通过标准：
 
 - pytest 全部通过。
