@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from market_price_guard.main import PROJECT_ROOT, run_pipeline
 from market_price_guard.report import TECH_GROUPS
@@ -38,8 +39,8 @@ def test_index_contract_fields_and_links(tmp_path):
         assert expected in index
 
 
-def test_strict_blocked_index_contract_has_blocking_summary(tmp_path):
-    stale_rules = _write_stale_rules(tmp_path, default_max_age=900, manual_max_age=1)
+def test_strict_blocked_index_contract_has_blocking_summary(tmp_path, stale_rules_factory):
+    stale_rules = stale_rules_factory(default_max_age=900, manual_max_age=1)
     output_dir = tmp_path / "blocked"
 
     run_pipeline(
@@ -154,6 +155,7 @@ def test_generated_markdown_has_no_actionable_advice_phrases(tmp_path):
             assert phrase not in content
 
 
+@pytest.mark.uat
 def test_run_uat_script_contract():
     script = (PROJECT_ROOT / "scripts" / "run_uat.ps1").read_text(encoding="utf-8")
 
@@ -174,21 +176,3 @@ def test_run_uat_script_contract():
 
 def _section(report: str, start: str, end: str) -> str:
     return report.split(f"## {start}", 1)[1].split(f"## {end}", 1)[0]
-
-
-def _write_stale_rules(tmp_path, default_max_age: int, manual_max_age: int):
-    stale_rules = tmp_path / "stale_rules.yaml"
-    stale_rules.write_text(
-        f"""
-default:
-  max_age_seconds_open: {default_max_age}
-  max_age_seconds_closed: {default_max_age}
-manual:
-  max_age_seconds: {manual_max_age}
-MANUAL:
-  max_age_seconds: {manual_max_age}
-markets: {{}}
-""".strip(),
-        encoding="utf-8",
-    )
-    return stale_rules

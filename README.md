@@ -190,6 +190,19 @@ strict 模式会把工具当作价格新鲜度守门员：只要 `required_for_o
 pytest
 ```
 
+日常开发默认测试（排除慢速和 live 网络类测试）：
+
+```bash
+pytest -m "not slow and not live"
+```
+
+完整验收仍使用：
+
+```powershell
+pytest
+.\scripts\run_uat.ps1
+```
+
 ## 输出契约与 UAT
 
 输出契约文档：

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pandas as pd
 
 from market_price_guard.main import run_pipeline
@@ -11,14 +9,14 @@ from market_price_guard.providers.akshare_provider import AkshareProvider
 from market_price_guard.report import build_provider_health_report
 
 
-def test_akshare_etf_full_interface_called_once_for_multiple_etfs():
+def test_akshare_etf_full_interface_called_once_for_multiple_etfs(ak_factory, sample_etf_df):
     calls = {"fund_etf_spot_em": 0}
 
     def fund_etf_spot_em():
         calls["fund_etf_spot_em"] += 1
-        return _etf_df()
+        return sample_etf_df()
 
-    ak = _ak(fund_etf_spot_em=fund_etf_spot_em)
+    ak = ak_factory(fund_etf_spot_em=fund_etf_spot_em)
     provider = AkshareProvider(ak)
 
     prices = provider.fetch(["159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"])
@@ -40,15 +38,15 @@ def test_akshare_etf_full_interface_called_once_for_multiple_etfs():
     }
 
 
-def test_cached_etf_dataframe_is_rematched_for_each_symbol_through_router():
+def test_cached_etf_dataframe_is_rematched_for_each_symbol_through_router(ak_factory, sample_etf_df, failing_provider):
     calls = {"fund_etf_spot_em": 0}
 
     def fund_etf_spot_em():
         calls["fund_etf_spot_em"] += 1
-        return _etf_df()
+        return sample_etf_df()
 
-    akshare = AkshareProvider(_ak(fund_etf_spot_em=fund_etf_spot_em))
-    providers = {"akshare": akshare, "mock": _FailingProvider()}
+    akshare = AkshareProvider(ak_factory(fund_etf_spot_em=fund_etf_spot_em))
+    providers = {"akshare": akshare, "mock": failing_provider}
     selected = {}
     for symbol in ["159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"]:
         selected[symbol] = route_symbol(_instrument(symbol, required=symbol != "510300.SH"), providers, RouterConfig(provider_mode="live"))
@@ -71,14 +69,14 @@ def test_cached_etf_dataframe_is_rematched_for_each_symbol_through_router():
     assert not providers["mock"].called
 
 
-def test_akshare_cache_reuses_etf_failure():
+def test_akshare_cache_reuses_etf_failure(ak_factory):
     calls = {"fund_etf_spot_em": 0}
 
     def fund_etf_spot_em():
         calls["fund_etf_spot_em"] += 1
         raise RuntimeError("etf down")
 
-    ak = _ak(fund_etf_spot_em=fund_etf_spot_em)
+    ak = ak_factory(fund_etf_spot_em=fund_etf_spot_em)
     provider = AkshareProvider(ak)
 
     first = provider.fetch(["159819.SZ"])["159819.SZ"]
@@ -90,8 +88,8 @@ def test_akshare_cache_reuses_etf_failure():
     assert second.provider_diagnostics["attempts"][0]["from_cache"] is True
 
 
-def test_provider_health_report_shows_akshare_call_summary():
-    ak = _ak(fund_etf_spot_em=lambda: _etf_df())
+def test_provider_health_report_shows_akshare_call_summary(ak_factory, sample_etf_df):
+    ak = ak_factory(fund_etf_spot_em=sample_etf_df)
     provider = AkshareProvider(ak)
     prices = provider.fetch(["159819.SZ"])
     prices.update(provider.fetch(["515880.SH"]))
@@ -106,7 +104,7 @@ def test_provider_health_report_shows_akshare_call_summary():
     assert "from_cache=True" in report
 
 
-def test_akshare_sh_and_sz_fallback_interfaces_called_once_each():
+def test_akshare_sh_and_sz_fallback_interfaces_called_once_each(ak_factory):
     calls = {"stock_zh_a_spot_em": 0, "stock_sh_a_spot_em": 0, "stock_sz_a_spot_em": 0}
 
     def primary():
@@ -126,7 +124,7 @@ def test_akshare_sh_and_sz_fallback_interfaces_called_once_each():
         calls["stock_sz_a_spot_em"] += 1
         return pd.DataFrame([{"code": "003816", "name": "CGN", "price": 4.27, "update_time": "2026-05-18 14:59:00+08:00"}])
 
-    provider = AkshareProvider(_ak(stock_zh_a_spot_em=primary, stock_sh_a_spot_em=sh, stock_sz_a_spot_em=sz))
+    provider = AkshareProvider(ak_factory(stock_zh_a_spot_em=primary, stock_sh_a_spot_em=sh, stock_sz_a_spot_em=sz))
     prices = provider.fetch(["601899.SH"])
     prices.update(provider.fetch(["601985.SH"]))
     prices.update(provider.fetch(["003816.SZ"]))
@@ -197,29 +195,6 @@ def test_diagnostic_policy_outputs_no_project_blocks(tmp_path):
     assert "tech_price_block.md" not in index
 
 
-def _ak(**overrides):
-    defaults = {
-        "stock_zh_a_spot_em": lambda: pd.DataFrame(),
-        "stock_sh_a_spot_em": lambda: pd.DataFrame(),
-        "stock_sz_a_spot_em": lambda: pd.DataFrame(),
-        "stock_hk_spot_em": lambda: pd.DataFrame(),
-        "stock_hk_main_board_spot_em": lambda: pd.DataFrame(),
-        "stock_hsgt_sh_hk_spot_em": lambda: pd.DataFrame(),
-        "fund_etf_spot_em": lambda: pd.DataFrame(),
-    }
-    defaults.update(overrides)
-    return SimpleNamespace(**defaults)
-
-
-class _FailingProvider:
-    def __init__(self):
-        self.called = False
-
-    def fetch(self, symbols):
-        self.called = True
-        raise AssertionError(f"fallback should not be called for {symbols}")
-
-
 def _instrument(symbol: str, required: bool = True) -> Instrument:
     return Instrument(
         symbol=symbol,
@@ -228,18 +203,6 @@ def _instrument(symbol: str, required: bool = True) -> Instrument:
         provider="akshare",
         provider_priority=["akshare", "mock"],
         required_for_operation=required,
-    )
-
-
-def _etf_df():
-    return pd.DataFrame(
-        [
-            {"code": "159632", "name": "Nasdaq ETF", "price": 1.432, "update_time": "2026-05-18 15:34:03+08:00"},
-            {"code": "513300", "name": "Nasdaq ETF", "price": 1.671, "update_time": "2026-05-18 15:34:03+08:00"},
-            {"code": "159819", "name": "AI ETF", "price": 0.921, "update_time": "2026-05-18 15:34:21+08:00"},
-            {"code": "515880", "name": "Communication ETF", "price": 1.084, "update_time": "2026-05-18 15:34:21+08:00"},
-            {"code": "510300", "name": "CSI300 ETF", "price": 3.921, "update_time": "2026-05-18 15:34:21+08:00"},
-        ]
     )
 
 

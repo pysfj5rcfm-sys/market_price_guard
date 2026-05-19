@@ -1,42 +1,28 @@
 from __future__ import annotations
 
-from pathlib import Path
+import pytest
 
 from market_price_guard.main import EXIT_OK, EXIT_STRICT_BLOCKED, PROJECT_ROOT, run_pipeline
 
 
-def test_profile_energy_generates_index(tmp_path):
-    output_dir = tmp_path / "energy"
+@pytest.mark.parametrize(
+    ("profile", "recommended_file"),
+    [
+        ("energy", "energy_price_block.md"),
+        ("tech", "tech_price_block.md"),
+        ("all", "controller_price_summary.md"),
+    ],
+)
+def test_profile_generates_index_with_recommended_file(tmp_path, profile, recommended_file):
+    output_dir = tmp_path / profile
 
-    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile="energy", strict=True)
+    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile=profile, strict=True)
     index = (output_dir / "index.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
     assert "# market_price_guard 本轮刷新索引" in index
-    assert "profile: energy" in index
-    assert "energy_price_block.md" in index
-
-
-def test_profile_tech_generates_index(tmp_path):
-    output_dir = tmp_path / "tech"
-
-    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True)
-    index = (output_dir / "index.md").read_text(encoding="utf-8")
-
-    assert result.exit_code == EXIT_OK
-    assert "profile: tech" in index
-    assert "tech_price_block.md" in index
-
-
-def test_profile_all_generates_index(tmp_path):
-    output_dir = tmp_path / "all"
-
-    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile="all", strict=True)
-    index = (output_dir / "index.md").read_text(encoding="utf-8")
-
-    assert result.exit_code == EXIT_OK
-    assert "profile: all" in index
-    assert "controller_price_summary.md" in index
+    assert f"profile: {profile}" in index
+    assert recommended_file in index
 
 
 def test_index_contains_basic_fields_and_report_links(tmp_path):
@@ -57,8 +43,8 @@ def test_index_contains_basic_fields_and_report_links(tmp_path):
     assert "可用于具体操作建议：是" in index
 
 
-def test_strict_blocked_index_contains_blocking_summary(tmp_path):
-    stale_rules = _write_stale_rules(tmp_path, default_max_age=900, manual_max_age=1)
+def test_strict_blocked_index_contains_blocking_summary(tmp_path, stale_rules_factory):
+    stale_rules = stale_rules_factory(default_max_age=900, manual_max_age=1)
     output_dir = tmp_path / "blocked"
 
     result = run_pipeline(
@@ -87,6 +73,7 @@ def test_index_utf8_readable_and_no_investment_action_terms(tmp_path):
         assert forbidden not in index
 
 
+@pytest.mark.script
 def test_scripts_exist_and_use_expected_arguments():
     scripts_dir = PROJECT_ROOT / "scripts"
     expected = {
@@ -110,21 +97,3 @@ def test_scripts_exist_and_use_expected_arguments():
         assert ".venv\\Scripts\\python.exe" in content
         for snippet in snippets:
             assert snippet in content
-
-
-def _write_stale_rules(tmp_path: Path, default_max_age: int, manual_max_age: int) -> Path:
-    stale_rules = tmp_path / "stale_rules.yaml"
-    stale_rules.write_text(
-        f"""
-default:
-  max_age_seconds_open: {default_max_age}
-  max_age_seconds_closed: {default_max_age}
-manual:
-  max_age_seconds: {manual_max_age}
-MANUAL:
-  max_age_seconds: {manual_max_age}
-markets: {{}}
-""".strip(),
-        encoding="utf-8",
-    )
-    return stale_rules

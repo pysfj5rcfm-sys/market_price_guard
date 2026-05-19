@@ -27,3 +27,12 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "unit: fast isolated tests for models, freshness, reports, and CLI helpers",
+    "provider: provider adapter, routing, and provider-cache tests using mocks only",
+    "contract: output contract and cross-project interface tests",
+    "script: PowerShell script static contract tests",
+    "uat: end-to-end UAT-oriented tests or checks",
+    "slow: tests that are intentionally slower than the default suite",
+    "live: tests that may touch live network data and are excluded from default development runs",
+]
