@@ -130,6 +130,8 @@ def records_to_dataframe(records: list[PriceRecord]) -> pd.DataFrame:
 def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: str = "mock", runtime: dict[str, Any] | None = None) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     runtime = runtime or {}
+    emit_files = _files_for_profile(runtime)
+    _remove_unscoped_outputs(output_dir, emit_files)
     df = records_to_dataframe(records)
     df.to_csv(output_dir / "prices_snapshot.csv", index=False, encoding="utf-8-sig")
     (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records, runtime=runtime), encoding="utf-8")
@@ -138,9 +140,12 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
         build_provider_health_report(records, provider_mode=provider_mode),
         encoding="utf-8",
     )
-    (output_dir / "energy_price_block.md").write_text(build_project_block(records, "energy", "能源账户价格事实块"), encoding="utf-8")
-    (output_dir / "tech_price_block.md").write_text(build_tech_block(records), encoding="utf-8")
-    (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
+    if "energy_price_block.md" in emit_files:
+        (output_dir / "energy_price_block.md").write_text(build_project_block(records, "energy", "能源账户价格事实块"), encoding="utf-8")
+    if "tech_price_block.md" in emit_files:
+        (output_dir / "tech_price_block.md").write_text(build_tech_block(records), encoding="utf-8")
+    if "controller_price_summary.md" in emit_files:
+        (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
     (output_dir / "index.md").write_text(
         build_index_report(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime),
         encoding="utf-8",
@@ -203,6 +208,8 @@ def build_index_report(
             f"- max_quote_lag_seconds: {runtime.get('max_quote_lag_seconds', '')}",
             f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
             f"- slow_provider_attempts 数量: {issue_counts['slow_provider_attempts']}",
+            f"- provider calls: {_provider_call_total(records)}",
+            f"- cache hits: {_provider_cache_hits(records)}",
             f"- oldest_quote_time: {_oldest_quote_time(records)}",
             f"- newest_quote_time: {_newest_quote_time(records)}",
             "",
@@ -327,6 +334,8 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
     if provider_mode == "mock":
         lines.extend(["", "## Mock"])
         lines.extend(_mock_health_group(records))
+    lines.extend(["", "## Provider call summary"])
+    lines.extend(_provider_call_summary_lines(records))
     lines.extend(["", "## Provider attempts by symbol"])
     lines.extend(_provider_attempts_by_symbol(records))
     return "\n".join(lines) + "\n"
@@ -381,6 +390,8 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
             )
     else:
         lines.append("- 无")
+    lines.extend(["", "## provider_call_cache"])
+    lines.extend(_runtime_provider_cache_lines(records))
     if runtime.get("provider_policy") == "diagnostic":
         lines.extend(["", "## provider_policy_note", "- diagnostic mode active: may run slower than fast mode."])
     return "\n".join(lines) + "\n"
@@ -632,7 +643,7 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
     lines: list[str] = []
     for record in records:
         diagnostic = record.provider_diagnostics
-        attempts = diagnostic.get("provider_attempts", [])
+        attempts = diagnostic.get("provider_attempts", []) or diagnostic.get("attempts", [])
         lines.append(f"### {record.symbol}")
         lines.append(f"- provider_policy: {diagnostic.get('provider_policy', '')}")
         lines.append(f"- configured_provider_priority: {_format_symbols(diagnostic.get('configured_provider_priority', []))}")
@@ -652,10 +663,11 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
             if not isinstance(attempt, dict):
                 continue
             lines.append(
-                "  - provider={provider}, function_name={function_name}, status={status}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
+                "  - provider={provider}, function_name={function_name}, status={status}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
                     provider=attempt.get("provider", ""),
                     function_name=attempt.get("function_name", ""),
                     status=attempt.get("status", ""),
+                    from_cache=attempt.get("from_cache", ""),
                     price=attempt.get("price", ""),
                     quote_time=attempt.get("quote_time", ""),
                     usable_for_operation=attempt.get("usable_for_operation", ""),
@@ -680,6 +692,106 @@ def _runtime_freshness_lines(runtime: dict[str, Any]) -> list[str]:
     ]
     if runtime.get("run_time_budget_exceeded"):
         lines.append("- 本轮刷新耗时超过预算，价格不宜用于盘中精确做T或高频操作。")
+    return lines
+
+
+def _files_for_profile(runtime: dict[str, Any]) -> set[str]:
+    common = {
+        "index.md",
+        "prices_snapshot.csv",
+        "data_completeness_report.md",
+        "provider_health_report.md",
+        "runtime_diagnostics.md",
+    }
+    if runtime.get("provider_policy") == "diagnostic":
+        return common
+    profile = str(runtime.get("profile", "all"))
+    if profile == "tech":
+        return {*common, "tech_price_block.md"}
+    if profile == "energy":
+        return {*common, "energy_price_block.md"}
+    if profile in {"all", "controller"}:
+        return {*common, "controller_price_summary.md"}
+    return common
+
+
+def _remove_unscoped_outputs(output_dir: Path, emit_files: set[str]) -> None:
+    managed = {
+        "energy_price_block.md",
+        "tech_price_block.md",
+        "controller_price_summary.md",
+    }
+    for filename in managed - emit_files:
+        path = output_dir / filename
+        if path.exists():
+            path.unlink()
+
+
+def _provider_call_summary_lines(records: list[PriceRecord]) -> list[str]:
+    attempts = [attempt for attempt in _all_provider_attempts(records) if attempt.get("provider") == "akshare"]
+    if not attempts:
+        return ["- 无"]
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for attempt in attempts:
+        function_name = str(attempt.get("function_name", ""))
+        if function_name:
+            grouped.setdefault(function_name, []).append(attempt)
+    lines: list[str] = []
+    for function_name, function_attempts in sorted(grouped.items()):
+        call_ids = {
+            str(attempt.get("call_id"))
+            for attempt in function_attempts
+            if attempt.get("call_id") not in {"", None} and not attempt.get("from_cache")
+        }
+        if not call_ids:
+            call_ids = {
+                str(attempt.get("call_id"))
+                for attempt in function_attempts
+                if attempt.get("call_id") not in {"", None}
+            }
+        first = function_attempts[0]
+        matched_symbols = _format_symbols(
+            sorted({str(attempt.get("symbol", "")) for attempt in function_attempts if attempt.get("status") == "success"})
+        )
+        lines.append(
+            "- function_name={function_name}, call_count={call_count}, cache_hits={cache_hits}, returned_rows={returned_rows}, matched_symbols={matched_symbols}, elapsed_seconds_first_call={elapsed}, failed={failed}, exception_type={exception_type}, exception_message={exception_message}".format(
+                function_name=function_name,
+                call_count=len(call_ids),
+                cache_hits=sum(1 for attempt in function_attempts if attempt.get("from_cache")),
+                returned_rows=first.get("returned_rows", ""),
+                matched_symbols=matched_symbols,
+                elapsed=first.get("elapsed_seconds_first_call", ""),
+                failed=not any(attempt.get("status") == "success" for attempt in function_attempts),
+                exception_type=first.get("exception_type", ""),
+                exception_message=first.get("exception_message", ""),
+            )
+        )
+    return lines
+
+
+def _runtime_provider_cache_lines(records: list[PriceRecord]) -> list[str]:
+    attempts = [attempt for attempt in _all_provider_attempts(records) if attempt.get("provider") == "akshare"]
+    if not attempts:
+        return [
+            "- total_provider_calls: 0",
+            "- cache_hits: 0",
+            "- provider_call_count_by_function: 无",
+        ]
+    grouped: dict[str, set[str]] = {}
+    for attempt in attempts:
+        function_name = str(attempt.get("function_name", ""))
+        call_id = str(attempt.get("call_id", ""))
+        if function_name and call_id and not attempt.get("from_cache"):
+            grouped.setdefault(function_name, set()).add(call_id)
+    lines = [
+        f"- total_provider_calls: {sum(len(call_ids) for call_ids in grouped.values())}",
+        f"- cache_hits: {sum(1 for attempt in attempts if attempt.get('from_cache'))}",
+        "- provider_call_count_by_function:",
+    ]
+    for function_name, call_ids in sorted(grouped.items()):
+        lines.append(f"  - {function_name}: {len(call_ids)}")
+        if len(call_ids) > 1:
+            lines.append(f"  - warning: {function_name} called more than once")
     return lines
 
 
@@ -741,14 +853,31 @@ def _selected_provider_counts(records: list[PriceRecord]) -> dict[str, int]:
     return counts
 
 
+def _provider_call_total(records: list[PriceRecord]) -> int:
+    call_ids = {
+        str(attempt.get("call_id"))
+        for attempt in _all_provider_attempts(records)
+        if attempt.get("provider") == "akshare" and attempt.get("call_id") not in {"", None} and not attempt.get("from_cache")
+    }
+    return len(call_ids)
+
+
+def _provider_cache_hits(records: list[PriceRecord]) -> int:
+    return sum(
+        1
+        for attempt in _all_provider_attempts(records)
+        if attempt.get("provider") == "akshare" and attempt.get("from_cache")
+    )
+
+
 def _recommended_files(profile: str, provider_policy: str) -> list[str]:
     if provider_policy == "diagnostic":
-        return ["provider_health_report.md", "runtime_diagnostics.md", "data_completeness_report.md"]
+        return ["provider_health_report.md", "runtime_diagnostics.md", "data_completeness_report.md", "prices_snapshot.csv"]
     if profile == "energy":
-        return ["energy_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md"]
+        return ["energy_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "prices_snapshot.csv"]
     if profile == "tech":
-        return ["tech_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md"]
-    return ["controller_price_summary.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md"]
+        return ["tech_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "prices_snapshot.csv"]
+    return ["controller_price_summary.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "prices_snapshot.csv"]
 
 
 def _oldest_quote_time(records: list[PriceRecord]) -> str:
@@ -764,6 +893,9 @@ def _newest_quote_time(records: list[PriceRecord]) -> str:
 def _all_provider_attempts(records: list[PriceRecord]) -> list[dict[str, object]]:
     attempts: list[dict[str, object]] = []
     for record in records:
+        for attempt in record.provider_diagnostics.get("attempts", []) or []:
+            if isinstance(attempt, dict):
+                attempts.append({"symbol": record.symbol, "provider": record.source, **attempt})
         for attempt in record.provider_diagnostics.get("provider_attempts", []) or []:
             if isinstance(attempt, dict):
                 attempts.append(attempt)

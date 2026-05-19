@@ -17,7 +17,10 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host 'Venv python could not start. Falling back to python on PATH.'
     $PathPython = Get-Command python -ErrorAction SilentlyContinue
     if ($null -eq $PathPython) {
-        Write-Host 'Program error: fallback python not found on PATH.'
+        $PathPython = Get-Command py -ErrorAction SilentlyContinue
+    }
+    if ($null -eq $PathPython) {
+        Write-Host 'Program error: fallback python launcher not found on PATH.'
         exit 1
     }
     $Python = $PathPython.Source
@@ -36,7 +39,7 @@ Write-Host ('exit code: ' + $ExitCode)
 Write-Host ('index.md: ' + $IndexPath)
 if ($ExitCode -eq 2) {
     Write-Host ('Strict blocked: see ' + $OutputDir + '/index.md')
-} elseif ($ExitCode -eq 1) {
+} elseif ($ExitCode -ne 0) {
     Write-Host 'Program error: see console output.'
 }
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta, timezone
+import time as time_module
 from typing import Any, Callable
 
 import pandas as pd
@@ -24,6 +25,8 @@ QUOTE_TIME_COLUMNS = ["更新时间", "update_time", "quote_time", "时间", "�
 class AkshareProvider(PriceProvider):
     def __init__(self, ak_module: Any | None = None):
         self.ak_module = ak_module
+        self._call_cache: dict[str, tuple[pd.DataFrame | None, dict[str, object]]] = {}
+        self._call_seq = 0
 
     def fetch(self, symbols: list[str]) -> dict[str, RawPrice]:
         fetch_time = now_utc()
@@ -75,7 +78,7 @@ class AkshareProvider(PriceProvider):
         if not symbols:
             return {}
 
-        primary_df, primary_attempt = _call_akshare(ak, "stock_zh_a_spot_em", "A_SHARE", fetch_time)
+        primary_df, primary_attempt = self._call_akshare_cached(ak, "stock_zh_a_spot_em", "A_SHARE", fetch_time)
         if primary_df is not None:
             return self._rows_to_prices(
                 symbols=symbols,
@@ -96,7 +99,7 @@ class AkshareProvider(PriceProvider):
         for function_name, group_symbols in fallback_groups:
             if not group_symbols:
                 continue
-            fallback_df, fallback_attempt = _call_akshare(ak, function_name, "A_SHARE", fetch_time)
+            fallback_df, fallback_attempt = self._call_akshare_cached(ak, function_name, "A_SHARE", fetch_time)
             attempts = [primary_attempt, fallback_attempt]
             if fallback_df is not None:
                 prices.update(
@@ -134,7 +137,7 @@ class AkshareProvider(PriceProvider):
         for index, function_name in enumerate(
             ["stock_hk_spot_em", "stock_hk_main_board_spot_em", "stock_hsgt_sh_hk_spot_em"]
         ):
-            df, attempt = _call_akshare(ak, function_name, "HK", fetch_time)
+            df, attempt = self._call_akshare_cached(ak, function_name, "HK", fetch_time)
             attempts.append(attempt)
             if df is None:
                 continue
@@ -176,7 +179,7 @@ class AkshareProvider(PriceProvider):
     ) -> dict[str, RawPrice]:
         if not symbols:
             return {}
-        df, attempt = _call_akshare(ak, function_name, category, fetch_time)
+        df, attempt = self._call_akshare_cached(ak, function_name, category, fetch_time)
         if df is None:
             return {
                 symbol: _error_price(
@@ -284,6 +287,31 @@ class AkshareProvider(PriceProvider):
             provider_diagnostics=row_diagnostics,
         )
 
+    def _call_akshare_cached(
+        self,
+        ak: Any,
+        function_name: str,
+        category: str,
+        fetch_time: datetime,
+    ) -> tuple[pd.DataFrame | None, dict[str, object]]:
+        if function_name in self._call_cache:
+            df, cached_attempt = self._call_cache[function_name]
+            attempt = dict(cached_attempt)
+            attempt["from_cache"] = True
+            attempt["cache_hits"] = int(attempt.get("cache_hits", 0)) + 1
+            attempt["fetch_time_utc"] = fetch_time.isoformat()
+            if "_exception" in cached_attempt:
+                attempt["_exception"] = cached_attempt["_exception"]
+            return df, attempt
+
+        self._call_seq += 1
+        df, attempt = _call_akshare(ak, function_name, category, fetch_time, call_id=self._call_seq)
+        attempt["from_cache"] = False
+        attempt["cache_hits"] = 0
+        attempt["call_count"] = 1
+        self._call_cache[function_name] = (df, dict(attempt))
+        return df, attempt
+
 
 def _import_akshare() -> Any:
     try:
@@ -293,17 +321,20 @@ def _import_akshare() -> Any:
     return ak
 
 
-def _call_akshare(ak: Any, function_name: str, category: str, fetch_time: datetime) -> tuple[pd.DataFrame | None, dict[str, object]]:
+def _call_akshare(ak: Any, function_name: str, category: str, fetch_time: datetime, call_id: int) -> tuple[pd.DataFrame | None, dict[str, object]]:
     attempt = {
         "provider": "akshare",
         "function_name": function_name,
         "category": category,
         "fetch_time_utc": fetch_time.isoformat(),
+        "call_id": call_id,
     }
+    start = time_module.perf_counter()
     try:
         fetch_fn: Callable[[], pd.DataFrame] = getattr(ak, function_name)
         df = fetch_fn()
     except Exception as exc:
+        elapsed = time_module.perf_counter() - start
         attempt.update(
             {
                 "status": "fail",
@@ -311,16 +342,19 @@ def _call_akshare(ak: Any, function_name: str, category: str, fetch_time: dateti
                 "exception_type": type(exc).__name__,
                 "exception_message": str(exc),
                 "_exception": exc,
+                "elapsed_seconds_first_call": round(elapsed, 3),
             }
         )
         return None, attempt
 
+    elapsed = time_module.perf_counter() - start
     attempt.update(
         {
             "status": "success",
             "provider_status": "success",
             "returned_rows": 0 if df is None else len(df),
             "matched_symbols": [],
+            "elapsed_seconds_first_call": round(elapsed, 3),
         }
     )
     return df, attempt

@@ -92,7 +92,7 @@ foreach ($Item in $Items) {
     if ($ExitCode -eq 2) {
         $Status = 'strict_blocked_but_reported'
     }
-    if ($ExitCode -eq 1 -or $MissingFiles.Count -gt 0 -or $AdviceHits.Count -gt 0) {
+    if (($ExitCode -ne 0 -and $ExitCode -ne 2) -or $MissingFiles.Count -gt 0 -or $AdviceHits.Count -gt 0) {
         $Status = 'failed'
         $AnyFailed = $true
     }

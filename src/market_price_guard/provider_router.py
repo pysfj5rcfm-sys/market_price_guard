@@ -216,6 +216,14 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
             "quote_time": raw.quote_time.isoformat() if raw.quote_time and attempt.get("status") == "success" else "",
             "usable_for_operation": usable,
             "reason": attempt.get("exception_message", "") or ",".join(raw.quality_issues),
+            "from_cache": attempt.get("from_cache", ""),
+            "call_id": attempt.get("call_id", ""),
+            "call_count": attempt.get("call_count", ""),
+            "cache_hits": attempt.get("cache_hits", ""),
+            "returned_rows": attempt.get("returned_rows", ""),
+            "category": attempt.get("category", ""),
+            "provider_status": attempt.get("provider_status", ""),
+            "elapsed_seconds_first_call": attempt.get("elapsed_seconds_first_call", ""),
         }
         for attempt in attempts
         if isinstance(attempt, dict)

@@ -50,6 +50,10 @@ exit code 说明：
 - `data_completeness_report.md` 是正式数据完整度报告。
 - `provider_health_report.md` 是行情源健康报告。
 - `runtime_diagnostics.md` 是运行耗时报告。
+- `outputs_tech_latest` 可直接全选上传到科技项目；目录内只包含科技项目需要的价格块和公共诊断报告。
+- `outputs_energy_latest` 可直接全选上传到能源项目；目录内只包含能源项目需要的价格块和公共诊断报告。
+- `outputs_all_latest` 可直接全选上传到总控项目；目录内只包含总控摘要和公共诊断报告。
+- `outputs_diagnostic` 用于排障，不直接作为项目操作依据。
 
 Windows PowerShell 查看中文报告建议：
 ```powershell
