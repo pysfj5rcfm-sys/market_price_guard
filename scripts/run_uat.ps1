@@ -13,6 +13,12 @@ $Items = @(
         PriceBlock = 'tech_price_block.md'
     },
     @{
+        Name = 'tech_fast_reference'
+        Script = 'run_tech_fast_reference.ps1'
+        OutputDir = 'outputs_tech_reference_latest'
+        PriceBlock = 'tech_price_block.md'
+    },
+    @{
         Name = 'energy_fast_strict'
         Script = 'run_energy_fast_strict.ps1'
         OutputDir = 'outputs_energy_latest'
@@ -62,6 +68,8 @@ foreach ($Item in $Items) {
     $ExitCode = $LASTEXITCODE
     $OutputPath = Join-Path $ProjectRoot $Item.OutputDir
     $RequiredFiles = @(
+        '0_upload_bundle.md',
+        'debug_bundle.md',
         'index.md',
         'data_completeness_report.md',
         'provider_health_report.md',
@@ -87,6 +95,14 @@ foreach ($Item in $Items) {
             }
         }
     }
+    $IndexPath = Join-Path $OutputPath 'index.md'
+    $QuotePurpose = ''
+    if (Test-Path $IndexPath) {
+        $IndexContent = Get-Content $IndexPath -Raw -Encoding UTF8
+        if ($IndexContent -match 'quote_purpose:\s*([A-Za-z_]+)') {
+            $QuotePurpose = $Matches[1]
+        }
+    }
 
     $Status = 'passed'
     if ($ExitCode -eq 2) {
@@ -104,10 +120,13 @@ foreach ($Item in $Items) {
         Status = $Status
         OutputDir = $Item.OutputDir
         IndexExists = Test-Path (Join-Path $OutputPath 'index.md')
+        UploadBundleExists = Test-Path (Join-Path $OutputPath '0_upload_bundle.md')
+        DebugBundleExists = Test-Path (Join-Path $OutputPath 'debug_bundle.md')
         CompletenessExists = Test-Path (Join-Path $OutputPath 'data_completeness_report.md')
         HealthExists = Test-Path (Join-Path $OutputPath 'provider_health_report.md')
         RuntimeExists = Test-Path (Join-Path $OutputPath 'runtime_diagnostics.md')
         PriceBlockExists = Test-Path (Join-Path $OutputPath $Item.PriceBlock)
+        QuotePurpose = $QuotePurpose
         MissingFiles = $MissingFiles
         AdviceHits = $AdviceHits
     }
@@ -139,6 +158,9 @@ foreach ($Result in $Results) {
     $Lines += ('- status: ' + $Result.Status)
     $Lines += ('- output_dir: ' + $Result.OutputDir)
     $Lines += ('- index.md exists: ' + $Result.IndexExists)
+    $Lines += ('- 0_upload_bundle.md exists: ' + $Result.UploadBundleExists)
+    $Lines += ('- debug_bundle.md exists: ' + $Result.DebugBundleExists)
+    $Lines += ('- quote_purpose: ' + $Result.QuotePurpose)
     $Lines += ('- data_completeness_report.md exists: ' + $Result.CompletenessExists)
     $Lines += ('- provider_health_report.md exists: ' + $Result.HealthExists)
     $Lines += ('- runtime_diagnostics.md exists: ' + $Result.RuntimeExists)

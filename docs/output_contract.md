@@ -1,4 +1,4 @@
-# market_price_guard 输出契约
+# market_price_guard 输出契约 v2
 
 ## 1. 总原则
 
@@ -303,3 +303,81 @@ reference 模式语义：
 - `run_tech_fast_strict.ps1` 不得改成 reference。
 - `outputs_tech_latest` 语义不变。
 - operation strict 不得因 reference-grade quote 而通过。
+
+## 13. Output Contract v2: Upload / Debug Bundle
+
+每个 relevant output directory 必须额外生成：
+
+- `0_upload_bundle.md`
+- `debug_bundle.md`
+
+原始报告仍必须保留；bundle 只是聚合入口，不替代 `index.md`、price block、`data_completeness_report.md`、`provider_health_report.md`、`runtime_diagnostics.md` 或 `prices_snapshot.csv`。
+
+### 13.1 Quote Purpose
+
+- `operation`: 用于具体操作前的数据完整度与 operation-grade confirmation。
+- `reference`: 用于快速参考，不可用于具体操作建议或高精度执行型判断。
+
+### 13.2 Quote Trust Tier
+
+- `operation`: price、quote_time、freshness、provider_health 与 strict 语义满足当前 operation 要求。
+- `reference`: 可快速参考，但需要 operation confirmation。
+- `development`: mock、provider_error、invalid_price、quote_time_missing 或测试用途记录。
+
+### 13.3 Required Fields
+
+bundle、CSV 和关键报告必须保留或等价表达：
+
+- quote_purpose
+- quote_trust_tier
+- usable_for_reference
+- usable_for_operation
+- confirmation_required
+- operation_blocking_reason
+- reference_note
+- selected_provider
+- price
+- currency
+- quote_time
+- is_stale
+- stale_reason
+- required_for_operation
+
+### 13.4 0_upload_bundle.md Contract
+
+`0_upload_bundle.md` 是日常上传给 GPT 项目的最小包。必须包含：
+
+- generated_at、profile、provider_mode、provider_policy、quote_purpose、strict、exit_code、output_dir。
+- 可用于快速参考：是/否。
+- 可用于具体操作建议：是/否。
+- 当前用途级别：reference-only / operation-ready / operation-blocked / diagnostic-only。
+- 数据完整度摘要、blocking records 摘要、Quote Trust Tier 摘要。
+- 对应 profile 的核心 price block 或 controller summary 摘要。
+- reference / operation 使用提示。
+- debug_bundle.md 补充上传条件。
+
+`quote_purpose=reference` 时必须明确不可用于具体操作建议。`quote_purpose=operation` 且 strict / operation-grade 通过时，才可进入完整操作级分析。
+
+### 13.5 debug_bundle.md Contract
+
+`debug_bundle.md` 仅在排障时上传。必须包含：
+
+- Provider Health 摘要。
+- Runtime Diagnostics 摘要。
+- prices_snapshot 关键明细摘要。
+- Blocking / Error 摘要。
+- provider attempts、selected_provider、fallback_used、skipped providers、provider_error、exception_type / exception_message、from_cache、call_count / cache_hits、matched_symbols、usable_for_operation、usable_for_reference、quote_trust_tier、confirmation_required。
+
+### 13.6 Profile-scoped Bundle
+
+- `outputs_tech_latest`: tech operation bundle。
+- `outputs_tech_reference_latest`: tech reference bundle。
+- `outputs_energy_latest`: energy operation bundle。
+- `outputs_all_latest`: controller summary bundle。
+- `outputs_diagnostic`: diagnostic bundle。
+
+各目录继续遵守 profile 输出隔离规则。总控 bundle 只包含摘要，不包含能源/科技完整逐标的 price block。
+
+### 13.7 No Trading Advice
+
+所有报告和 bundle 均不得输出实质性交易建议。允许否定性或规则性表达，例如“不可用于具体操作建议”“禁止用于买入卖出”“不输出买卖建议”。

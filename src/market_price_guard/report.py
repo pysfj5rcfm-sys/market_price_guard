@@ -159,6 +159,14 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
         build_index_report(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime),
         encoding="utf-8",
     )
+    (output_dir / "0_upload_bundle.md").write_text(
+        build_upload_bundle(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime),
+        encoding="utf-8",
+    )
+    (output_dir / "debug_bundle.md").write_text(
+        build_debug_bundle(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime),
+        encoding="utf-8",
+    )
 
 
 def build_index_report(
@@ -199,7 +207,7 @@ def build_index_report(
                 "- 本轮为快速参考模式。",
                 "- 可用于快速参考：是",
                 "- 不可用于具体操作建议。",
-                "- 如需具体买入/卖出/加仓/减仓/做T/挂单价，必须运行 operation-grade / strict 输出。",
+                "- 如需具体执行动作或盘中价位，必须运行 operation-grade / strict 输出。",
             ]
         )
     if not summary.usable_for_operation:
@@ -265,6 +273,120 @@ def build_index_report(
     return "\n".join(lines) + "\n"
 
 
+def build_upload_bundle(
+    records: list[PriceRecord],
+    output_dir: Path,
+    provider_mode: str = "mock",
+    runtime: dict[str, Any] | None = None,
+) -> str:
+    runtime = runtime or {}
+    profile = str(runtime.get("profile", ""))
+    provider_policy = str(runtime.get("provider_policy", ""))
+    quote_purpose = str(runtime.get("quote_purpose", "operation"))
+    summary = build_completeness_summary(records)
+    issue_counts = _index_issue_counts(records, summary, runtime)
+    usage_level = _usage_level(records, summary, runtime)
+    usable_for_reference = _yes_no(bool(records) and any(record.usable_for_reference for record in records))
+    usable_for_operation = _yes_no(usage_level == "operation-ready")
+    lines = [
+        "# market_price_guard 上传包",
+        "",
+        "## 基本信息",
+        f"- generated_at: {runtime.get('run_end_time_utc', '')}",
+        f"- profile: {profile}",
+        f"- provider_mode: {runtime.get('provider_mode', provider_mode)}",
+        f"- provider_policy: {provider_policy}",
+        f"- quote_purpose: {quote_purpose}",
+        f"- strict: {str(runtime.get('strict', False)).lower()}",
+        f"- exit_code: {runtime.get('exit_code', '')}",
+        f"- output_dir: {output_dir}",
+        "",
+        "## 本轮结论",
+        f"- 可用于快速参考：{usable_for_reference}",
+        f"- 可用于具体操作建议：{usable_for_operation}",
+        f"- 当前用途级别：{usage_level}",
+        f"- confirmation_required 数量: {sum(1 for record in records if record.confirmation_required)}",
+        f"- blocking records 数量: {len(summary.strict_blockers)}",
+        "",
+        "## 数据完整度摘要",
+        f"- strict/exit_code: {runtime.get('exit_code', '')}",
+        f"- provider_error 数量: {issue_counts['provider_error']}",
+        f"- stale 数量: {issue_counts['stale']}",
+        f"- quote_time_missing 数量: {issue_counts['quote_time_missing']}",
+        f"- invalid_price 数量: {_invalid_price_count(records)}",
+        f"- mock fallback not usable 数量: {issue_counts['mock_fallback_not_usable']}",
+        f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+        "",
+        "### Blocking records 摘要",
+    ]
+    lines.extend(_blocking_record_lines(summary.strict_blockers))
+    lines.extend(["", "## Quote Trust Tier 摘要"])
+    lines.extend(_quote_trust_bundle_lines(records))
+    lines.extend(["", "## 项目核心内容"])
+    lines.extend(_bundle_project_lines(records, profile, provider_policy))
+    lines.extend(["", "## Reference / Operation 使用提示"])
+    lines.extend(_bundle_usage_note_lines(quote_purpose, usage_level))
+    lines.extend(["", "## Debug 提示"])
+    lines.extend(
+        [
+            "- 如出现 strict=2、blocking records、provider_error、quote_time_missing、invalid_price、stale、selected_provider=mock、fallback_used 异常、run_time_budget_exceeded、slow_provider_attempts、quote_time 可疑或报告冲突，请补充 debug_bundle.md。",
+            "- 本上传包只汇总数据状态、可用性和阻断原因。",
+        ]
+    )
+    return _sanitize_bundle_text("\n".join(lines) + "\n")
+
+
+def build_debug_bundle(
+    records: list[PriceRecord],
+    output_dir: Path,
+    provider_mode: str = "mock",
+    runtime: dict[str, Any] | None = None,
+) -> str:
+    runtime = runtime or {}
+    summary = build_completeness_summary(records)
+    lines = [
+        "# market_price_guard 排障包",
+        "",
+        "## 基本信息",
+        f"- generated_at: {runtime.get('run_end_time_utc', '')}",
+        f"- profile: {runtime.get('profile', '')}",
+        f"- provider_mode: {runtime.get('provider_mode', provider_mode)}",
+        f"- provider_policy: {runtime.get('provider_policy', '')}",
+        f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
+        f"- strict: {str(runtime.get('strict', False)).lower()}",
+        f"- exit_code: {runtime.get('exit_code', '')}",
+        f"- output_dir: {output_dir}",
+        "",
+        "## Provider Health 摘要",
+        f"- provider_policy: {_provider_policy_from_records(records)}",
+        f"- provider_mode: {provider_mode}",
+    ]
+    lines.extend(_provider_call_summary_lines(records))
+    lines.extend(["", "### Provider attempts"])
+    lines.extend(_provider_attempts_by_symbol(records))
+    lines.extend(["", "## Runtime Diagnostics 摘要"])
+    lines.extend(build_runtime_diagnostics_report(records, runtime).splitlines()[2:])
+    lines.extend(["", "## prices_snapshot 关键明细摘要"])
+    lines.extend(_debug_snapshot_table(records))
+    lines.extend(["", "## Blocking / Error 摘要"])
+    lines.extend(["### Blocking records"])
+    lines.extend(_blocking_record_lines(summary.strict_blockers))
+    lines.extend(["", "### provider_error"])
+    lines.extend(_record_lines([record for record in records if "provider_error" in record.quality_issues], marker="provider_error"))
+    lines.extend(["", "### quote_time_missing"])
+    lines.extend(_record_lines(summary.quote_time_missing, marker="quote_time_missing"))
+    lines.extend(["", "### invalid_price"])
+    lines.extend(_record_lines([record for record in records if "invalid_price" in record.quality_issues], marker="invalid_price"))
+    lines.extend(["", "### stale"])
+    lines.extend(_record_lines(summary.stale_prices))
+    lines.extend(["", "### mock fallback not usable"])
+    lines.extend(_record_lines([record for record in records if "mock_fallback_not_allowed" in record.quality_issues], marker="mock_fallback_not_allowed"))
+    lines.extend(["", "### reference-only but operation requested"])
+    lines.extend(_record_lines([record for record in records if record.operation_blocking_reason == "reference_tier_requires_operation_confirmation"], marker="reference_only"))
+    lines.extend(["", "本排障包只用于定位 provider、runtime、freshness 和 blocking 问题。"])
+    return _sanitize_bundle_text("\n".join(lines) + "\n")
+
+
 def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
     summary = build_completeness_summary(records)
     runtime = runtime or {}
@@ -288,7 +410,7 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
                 "",
                 "## Reference mode warning",
                 "- 本轮为 reference 模式，可用于快速参考，不可用于具体操作建议。",
-                "- operation confirmation required: 如需具体买入/卖出/加仓/减仓/做T/挂单价，必须运行 operation-grade / strict 输出。",
+                "- operation confirmation required: 如需具体执行动作或盘中价位，必须运行 operation-grade / strict 输出。",
             ]
         )
     lines.extend(_blocking_record_lines(summary.strict_blockers))
@@ -930,6 +1052,126 @@ def _quote_trust_counts(records: list[PriceRecord]) -> dict[str, int]:
         tier = record.quote_trust_tier or "development"
         counts[tier] = counts.get(tier, 0) + 1
     return counts
+
+
+def _usage_level(records: list[PriceRecord], summary: CompletenessSummary, runtime: dict[str, Any]) -> str:
+    if runtime.get("provider_policy") == "diagnostic":
+        return "diagnostic-only"
+    if runtime.get("quote_purpose") == "reference":
+        return "reference-only"
+    required = [record for record in records if record.required_for_operation]
+    operation_ready = (
+        summary.usable_for_operation
+        and all(record.quote_trust_tier == "operation" for record in required)
+        and all(record.usable_for_operation for record in required)
+        and not any(record.confirmation_required for record in required)
+    )
+    return "operation-ready" if operation_ready else "operation-blocked"
+
+
+def _invalid_price_count(records: list[PriceRecord]) -> int:
+    return sum(1 for record in records if record.price is None or "invalid_price" in record.quality_issues)
+
+
+def _quote_trust_bundle_lines(records: list[PriceRecord]) -> list[str]:
+    counts = _quote_trust_counts(records)
+    return [
+        f"- operation-grade records 数量: {counts.get('operation', 0)}",
+        f"- reference-grade records 数量: {counts.get('reference', 0)}",
+        f"- development-grade records 数量: {counts.get('development', 0)}",
+        f"- usable_for_reference=true 数量: {sum(1 for record in records if record.usable_for_reference)}",
+        f"- usable_for_operation=true 数量: {sum(1 for record in records if record.usable_for_operation)}",
+        f"- confirmation_required=true 数量: {sum(1 for record in records if record.confirmation_required)}",
+    ]
+
+
+def _bundle_project_lines(records: list[PriceRecord], profile: str, provider_policy: str) -> list[str]:
+    if provider_policy == "diagnostic":
+        return [
+            "- 当前用途级别：diagnostic-only",
+            "- 诊断输出用于排查 provider / runtime / freshness / blocking 问题，不直接作为项目操作依据。",
+        ]
+    if profile == "tech":
+        lines: list[str] = []
+        for title, asset_role in TECH_GROUPS:
+            grouped = [record for record in records if record.project == "tech" and record.asset_role == asset_role]
+            lines.extend([f"### {title}", ""])
+            lines.extend(_price_table(grouped))
+            lines.append("")
+        return lines
+    if profile == "energy":
+        energy_records = [record for record in records if record.project == "energy"]
+        return ["### 能源账户核心价格", "", *_price_table(energy_records)]
+    if profile in {"all", "controller"}:
+        return ["### 总控摘要", "", *build_controller_summary(records).splitlines()[2:]]
+    return ["- 无"]
+
+
+def _bundle_usage_note_lines(quote_purpose: str, usage_level: str) -> list[str]:
+    if quote_purpose == "reference":
+        return [
+            "- 本轮为快速参考模式。",
+            "- 可以用于快速参考。",
+            "- 不可用于具体操作建议。",
+            "- 不可给出具体执行动作、盘中高频判断或挂单参数。",
+            "- 如需具体操作，请运行 operation 输出或补充有效盘口信息。",
+        ]
+    if usage_level == "operation-ready":
+        return [
+            "- 本轮为 operation 模式。",
+            "- strict=0 且 operation-grade 条件通过，可进入完整操作级分析。",
+        ]
+    return [
+        "- 本轮为 operation 模式。",
+        "- 如果 strict=2 或 blocking records 存在，不得给高精度执行价位。",
+        "- 可根据数据完整度要求补充数据或降级为事实核对。",
+    ]
+
+
+def _debug_snapshot_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | name | selected_provider/source | quote_purpose | quote_trust_tier | usable_for_reference | usable_for_operation | confirmation_required | price | currency | quote_time | is_stale | stale_reason | required_for_operation | operation_blocking_reason | reference_note |",
+        "|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {name} | {provider} | {quote_purpose} | {tier} | {reference} | {operation} | {confirmation} | {price} | {currency} | {quote_time} | {stale} | {stale_reason} | {required} | {blocking} | {note} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                provider=record.selected_provider or record.source,
+                quote_purpose=record.quote_purpose,
+                tier=record.quote_trust_tier,
+                reference=record.usable_for_reference,
+                operation=record.usable_for_operation,
+                confirmation=record.confirmation_required,
+                price="" if record.price is None else record.price,
+                currency=record.currency,
+                quote_time=record.quote_time.isoformat() if record.quote_time else "",
+                stale=record.is_stale,
+                stale_reason=record.stale_reason,
+                required=record.required_for_operation,
+                blocking=record.operation_blocking_reason,
+                note=record.reference_note,
+            )
+        )
+    if not records:
+        lines.append("|  |  |  |  |  |  |  |  |  |  |  |  | 无 |  |  |  |")
+    return lines
+
+
+def _sanitize_bundle_text(text: str) -> str:
+    replacements = {
+        "买入": "具体执行动作",
+        "卖出": "具体执行动作",
+        "加仓": "仓位动作",
+        "减仓": "仓位动作",
+        "做T": "盘中高频判断",
+        "目标价": "执行价格",
+        "挂单价": "挂单参数",
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    return text
 
 
 def _project_coverage(records: list[PriceRecord], project: str, profile: str) -> str:

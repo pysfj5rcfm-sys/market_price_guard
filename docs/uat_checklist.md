@@ -18,6 +18,8 @@
 检查：
 
 - `outputs_tech_latest/index.md` 存在。
+- `outputs_tech_latest/0_upload_bundle.md` 存在。
+- `outputs_tech_latest/debug_bundle.md` 存在。
 - `outputs_tech_latest/tech_price_block.md` 存在。
 - `outputs_tech_latest/data_completeness_report.md` 存在。
 - `outputs_tech_latest/provider_health_report.md` 存在。
@@ -31,6 +33,8 @@
 - `provider_health_report.md` 显示 selected_provider。
 - `runtime_diagnostics.md` 显示耗时。
 - 报告不输出实质性交易建议。
+- `0_upload_bundle.md` 包含 tech price block 核心摘要。
+- quote_purpose=operation 可见。
 
 ## 3. 能源账户 UAT
 
@@ -43,6 +47,8 @@
 检查：
 
 - `outputs_energy_latest/index.md` 存在。
+- `outputs_energy_latest/0_upload_bundle.md` 存在。
+- `outputs_energy_latest/debug_bundle.md` 存在。
 - `outputs_energy_latest/energy_price_block.md` 存在。
 - `outputs_energy_latest` 不包含 `tech_price_block.md`。
 - `outputs_energy_latest` 不包含 `controller_price_summary.md`。
@@ -52,6 +58,7 @@
 - strict=2 时，项目不得给具体操作。
 - strict=0 时，仍要检查 quote_time / stale / runtime。
 - 报告不输出实质性交易建议。
+- `0_upload_bundle.md` 包含 energy price block 核心摘要。
 
 ## 4. 总控项目 UAT
 
@@ -64,6 +71,8 @@
 检查：
 
 - `outputs_all_latest/index.md` 存在。
+- `outputs_all_latest/0_upload_bundle.md` 存在。
+- `outputs_all_latest/debug_bundle.md` 存在。
 - `outputs_all_latest/controller_price_summary.md` 存在。
 - `outputs_all_latest` 不包含 `energy_price_block.md`。
 - `outputs_all_latest` 不包含 `tech_price_block.md`。
@@ -72,6 +81,8 @@
 - 能看出能源 / 科技 / 黄金 / 非科技宽基状态。
 - strict 结果明确。
 - 报告不输出实质性交易建议。
+- `0_upload_bundle.md` 包含 controller summary 核心摘要。
+- `0_upload_bundle.md` 不包含能源/科技完整逐标的 price block。
 
 ## 5. 诊断模式 UAT
 
@@ -84,12 +95,15 @@
 检查：
 
 - `outputs_diagnostic/index.md` 存在。
+- `outputs_diagnostic/0_upload_bundle.md` 存在。
+- `outputs_diagnostic/debug_bundle.md` 存在。
 - `provider_health_report.md` 存在。
 - `runtime_diagnostics.md` 存在。
 - `outputs_diagnostic` 不包含能源/科技/总控项目块。
 - provider_policy=diagnostic 可见。
 - 诊断模式可能较慢，应能从 runtime_diagnostics.md 看到耗时。
 - 报告不输出实质性交易建议。
+- diagnostic bundle 明确是排障用途，不直接作为操作依据。
 
 ## 6. 回归标准
 
@@ -112,6 +126,8 @@ Tech Reference UAT：
 检查：
 
 - `outputs_tech_reference_latest/index.md` 存在。
+- `outputs_tech_reference_latest/0_upload_bundle.md` 存在。
+- `outputs_tech_reference_latest/debug_bundle.md` 存在。
 - `outputs_tech_reference_latest/tech_price_block.md` 存在。
 - `outputs_tech_reference_latest` 不包含 `energy_price_block.md` 或 `controller_price_summary.md`。
 - `quote_purpose=reference` 可见。
@@ -119,6 +135,8 @@ Tech Reference UAT：
 - `usable_for_operation=false` 和 `confirmation_required=true` 可见。
 - 报告明确不可用于具体操作建议。
 - 报告不输出实质性交易建议。
+- `0_upload_bundle.md` 显示 reference-only / 快速参考。
+- `debug_bundle.md` 包含 provider / runtime / snapshot 摘要。
 
 通过标准：
 

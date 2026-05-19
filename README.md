@@ -264,4 +264,39 @@ v0.6.3 只追加价格用途分层诊断字段，不改变现有一键脚本、p
 .\scripts\run_tech_fast_strict.ps1
 ```
 
+## 最小上传口径
+
+日常只需上传对应目录里的 `0_upload_bundle.md`：
+
+- 科技 operation：`outputs_tech_latest/0_upload_bundle.md`
+- 科技 reference：`outputs_tech_reference_latest/0_upload_bundle.md`
+- 能源 operation：`outputs_energy_latest/0_upload_bundle.md`
+- 总控摘要：`outputs_all_latest/0_upload_bundle.md`
+
+异常时再补充同目录的 `debug_bundle.md`，例如 strict 阻断、provider 异常、运行超时、quote_time 可疑、价格 stale 或报告之间存在冲突。
+
+科技 reference：
+
+```powershell
+.\scripts\run_tech_fast_reference.ps1
+```
+
+上传：
+
+- `outputs_tech_reference_latest/0_upload_bundle.md`
+
+用途：快速参考，不可用于具体操作价位。
+
+科技 operation：
+
+```powershell
+.\scripts\run_tech_fast_strict.ps1
+```
+
+上传：
+
+- `outputs_tech_latest/0_upload_bundle.md`
+
+用途：operation / strict 输出，若通过可进入完整操作级分析。
+
 Codex smoke test passed.
