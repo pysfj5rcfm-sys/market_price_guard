@@ -174,3 +174,14 @@ Tech Reference UAT：
 - `0_upload_bundle.md` 必须明确不可用于具体操作建议；
 - `debug_bundle.md` / `provider_health_report.md` 必须包含 `eastmoney_direct` 的 provider 明细；
 - operation strict 输出不得因为 `eastmoney_direct` 改变放行标准。
+
+# Reconciliation UAT (v0.7.1)
+
+检查：
+- `price_reconciliation_report.md` 存在；
+- aligned / minor_diff / warning_diff / major_diff 阈值测试通过；
+- `0_upload_bundle.md` 包含 reconciliation summary；
+- `debug_bundle.md` 包含 reconciliation details；
+- `operation_candidate_agreed=true` 不改变 strict 结果；
+- reference-grade 不得因为多源一致性被写成 operation-grade；
+- 报告不输出实质性交易建议。

@@ -14,7 +14,7 @@ def pytest_collection_modifyitems(items):
             continue
         if path in {"test_akshare_provider.py", "test_yfinance_provider.py", "test_eastmoney_direct_provider.py", "test_provider_router.py", "test_batch_cache_and_profile_outputs.py"}:
             item.add_marker(pytest.mark.provider)
-        elif path in {"test_output_contract.py", "test_quote_trust_tier.py", "test_reference_mode.py", "test_bundles.py"}:
+        elif path in {"test_output_contract.py", "test_quote_trust_tier.py", "test_reference_mode.py", "test_bundles.py", "test_price_reconciliation.py"}:
             item.add_marker(pytest.mark.contract)
         elif path == "test_index_and_scripts.py":
             item.add_marker(pytest.mark.script)

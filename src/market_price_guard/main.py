@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .normalize import load_watchlist, load_yaml, normalize_records
+from .price_reconciliation import apply_reconciliation
 from .provider_router import RouterConfig, collect_routed_prices
 from .models import WatchProject, Watchlist
 from .providers.akshare_provider import AkshareProvider
@@ -114,7 +115,7 @@ def run_pipeline(
         quote_purpose,
     )
     rules = load_yaml(stale_rules_path)
-    records = normalize_records(collected["watchlist"], collected["prices"], rules)
+    records = apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules))
     elapsed = time.perf_counter() - perf_start
     runtime = _runtime_diagnostics(
         records=records,

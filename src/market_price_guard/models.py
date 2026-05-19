@@ -103,6 +103,16 @@ class PriceRecord(BaseModel):
     confirmation_required: bool = True
     operation_blocking_reason: str = ""
     reference_note: str = ""
+    reconciliation_enabled: bool = False
+    source_agreement_status: str = ""
+    compared_sources: str = ""
+    reference_source: str = ""
+    candidate_source: str = ""
+    price_diff_abs: float | None = None
+    price_diff_pct: float | None = None
+    quote_time_gap_seconds: float | None = None
+    reconciliation_note: str = ""
+    operation_candidate_agreed: bool = False
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

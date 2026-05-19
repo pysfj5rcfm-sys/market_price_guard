@@ -88,7 +88,11 @@ def test_reference_tech_chain_uses_eastmoney_before_yfinance_and_akshare(monkeyp
 
     def yfinance_fetch(self, symbols):
         calls["yfinance"] += 1
-        raise AssertionError(f"yfinance should be skipped after Eastmoney reference success: {symbols}")
+        return {
+            symbol: _raw(symbol, "yfinance", 1.0 + index / 100)
+            for index, symbol in enumerate(symbols)
+            if symbol in ETF_SYMBOLS
+        }
 
     def akshare_fetch(self, symbols):
         calls["akshare"] += 1
@@ -113,7 +117,7 @@ def test_reference_tech_chain_uses_eastmoney_before_yfinance_and_akshare(monkeyp
     completeness = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
-    assert calls["yfinance"] == 0
+    assert calls["yfinance"] == len(ETF_SYMBOLS)
     assert calls["akshare"] == 0
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["selected_provider"]) == {"eastmoney_direct"}
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["quote_trust_tier"]) == {"reference"}
@@ -122,6 +126,7 @@ def test_reference_tech_chain_uses_eastmoney_before_yfinance_and_akshare(monkeyp
     assert "selected_provider=eastmoney_direct" in upload or "eastmoney_direct" in upload
     assert "eastmoney_direct" in debug
     assert "not official exchange real-time feed" in completeness
+    assert (output_dir / "price_reconciliation_report.md").exists()
     assert not (output_dir / "energy_price_block.md").exists()
     assert not (output_dir / "controller_price_summary.md").exists()
 

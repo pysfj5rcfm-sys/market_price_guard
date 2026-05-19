@@ -306,3 +306,9 @@ Codex smoke test passed.
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。
 
 科技 reference 模式可优先使用 Eastmoney Direct；operation strict 路径仍保持原有放行标准。Eastmoney Direct 来源于东方财富公开网页行情接口路径，不是官方交易所实时行情源；后续 v0.7.1 计划增加多源价格差异检查后再评估是否提升信任等级。
+
+## Multi-source Price Reconciliation
+
+v0.7.1 新增 `price_reconciliation_report.md`，用于比较 `eastmoney_direct`、`akshare`、`yfinance` 等真实源的同标的价格差异。该报告只做数据质量诊断，不构成交易建议，也不会自动把 reference-grade 提升为 operation-grade。
+
+如果出现 `major_diff`，请查看同目录的 `debug_bundle.md` 和 `price_reconciliation_report.md`。operation 输出仍必须以 strict、freshness、quote_trust_tier、usable_for_operation 等既有规则为准。

@@ -7,6 +7,7 @@ from typing import Any
 import pandas as pd
 
 from .models import PriceRecord
+from .price_reconciliation import build_reconciliation_report, reconciliation_summary
 
 
 OUTPUT_COLUMNS = [
@@ -31,6 +32,16 @@ OUTPUT_COLUMNS = [
     "confirmation_required",
     "operation_blocking_reason",
     "reference_note",
+    "reconciliation_enabled",
+    "source_agreement_status",
+    "compared_sources",
+    "reference_source",
+    "candidate_source",
+    "price_diff_abs",
+    "price_diff_pct",
+    "quote_time_gap_seconds",
+    "reconciliation_note",
+    "operation_candidate_agreed",
 ]
 
 GOLD_NOTE = (
@@ -145,6 +156,7 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
     df.to_csv(output_dir / "prices_snapshot.csv", index=False, encoding="utf-8-sig")
     (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records, runtime=runtime), encoding="utf-8")
     (output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics_report(records, runtime), encoding="utf-8")
+    (output_dir / "price_reconciliation_report.md").write_text(build_price_reconciliation_report(records, runtime), encoding="utf-8")
     (output_dir / "provider_health_report.md").write_text(
         build_provider_health_report(records, provider_mode=provider_mode),
         encoding="utf-8",
@@ -230,6 +242,8 @@ def build_index_report(
     lines.extend(_coverage_summary_lines(records, str(runtime.get("profile", ""))))
     lines.extend(["", "## Quote trust summary"])
     lines.extend(_quote_trust_summary_lines(records, quote_purpose))
+    lines.extend(["", "## Reconciliation summary"])
+    lines.extend(_reconciliation_summary_lines(records))
     lines.extend(
         [
             "",
@@ -322,6 +336,8 @@ def build_upload_bundle(
     lines.extend(_blocking_record_lines(summary.strict_blockers))
     lines.extend(["", "## Quote Trust Tier 摘要"])
     lines.extend(_quote_trust_bundle_lines(records))
+    lines.extend(["", "## Reconciliation Summary"])
+    lines.extend(_reconciliation_summary_lines(records))
     lines.extend(["", "## 项目核心内容"])
     lines.extend(_bundle_project_lines(records, profile, provider_policy))
     lines.extend(["", "## Reference / Operation 使用提示"])
@@ -366,6 +382,8 @@ def build_debug_bundle(
     lines.extend(_provider_attempts_by_symbol(records))
     lines.extend(["", "## Runtime Diagnostics 摘要"])
     lines.extend(build_runtime_diagnostics_report(records, runtime).splitlines()[2:])
+    lines.extend(["", "## Price Reconciliation 摘要"])
+    lines.extend(_reconciliation_detail_lines(records))
     lines.extend(["", "## prices_snapshot 关键明细摘要"])
     lines.extend(_debug_snapshot_table(records))
     lines.extend(["", "## Blocking / Error 摘要"])
@@ -425,6 +443,9 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(_provider_routing_note_lines(records))
     lines.extend(["", "## Quote trust tier diagnostics"])
     lines.extend(_quote_trust_diagnostic_lines(records))
+    lines.extend(["", "## Source agreement diagnostics"])
+    lines.extend(_reconciliation_detail_lines(records))
+    lines.append("- See price_reconciliation_report.md for full multi-source comparison details.")
     lines.extend(["", "## Runtime freshness diagnostics"])
     lines.extend(_runtime_freshness_lines(runtime))
     lines.extend(["", "## AKShare price records"])
@@ -506,6 +527,10 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
     lines.extend(["", "## Provider attempts by symbol"])
     lines.extend(_provider_attempts_by_symbol(records))
     return "\n".join(lines) + "\n"
+
+
+def build_price_reconciliation_report(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
+    return build_reconciliation_report(records, runtime)
 
 
 def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
@@ -874,6 +899,9 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
         lines.append(f"- selection_reason: {diagnostic.get('selection_reason', '')}")
         blocking_reason = _blocking_reason(record)
         lines.append(f"- final_blocking_reason: {blocking_reason}")
+        lines.append(f"- reconciliation_enabled: {record.reconciliation_enabled}")
+        lines.append(f"- source_agreement_status: {record.source_agreement_status}")
+        lines.append(f"- operation_candidate_agreed: {record.operation_candidate_agreed}")
         if not attempts:
             lines.append("- attempts: 无")
             continue
@@ -929,6 +957,7 @@ def _files_for_profile(runtime: dict[str, Any]) -> set[str]:
         "data_completeness_report.md",
         "provider_health_report.md",
         "runtime_diagnostics.md",
+        "price_reconciliation_report.md",
     }
     if runtime.get("provider_policy") == "diagnostic":
         return common
@@ -1136,6 +1165,40 @@ def _quote_trust_bundle_lines(records: list[PriceRecord]) -> list[str]:
     ]
 
 
+def _reconciliation_summary_lines(records: list[PriceRecord]) -> list[str]:
+    summary = reconciliation_summary(records)
+    lines = [
+        "- reconciliation_enabled: true",
+        f"- source_agreement_status summary: aligned={summary.get('aligned', 0)}, minor_diff={summary.get('minor_diff', 0)}, warning_diff={summary.get('warning_diff', 0)}, major_diff={summary.get('major_diff', 0)}, single_source_only={summary.get('single_source_only', 0)}, insufficient_data={summary.get('insufficient_data', 0)}, provider_error={summary.get('provider_error', 0)}",
+        f"- operation_candidate_agreed count: {sum(1 for record in records if record.operation_candidate_agreed)}",
+        "- multi-source reconciliation is diagnostic only and does not upgrade reference-grade to operation-grade.",
+        "- full report: price_reconciliation_report.md",
+    ]
+    if summary.get("major_diff", 0):
+        lines.append("- major_diff present: review debug_bundle.md and price_reconciliation_report.md.")
+    return lines
+
+
+def _reconciliation_detail_lines(records: list[PriceRecord]) -> list[str]:
+    scoped = [record for record in records if record.reconciliation_enabled]
+    if not scoped:
+        return ["- reconciliation_enabled: true", "- status: insufficient_data", "- full report: price_reconciliation_report.md"]
+    lines = ["- full report: price_reconciliation_report.md"]
+    for record in scoped:
+        lines.append(
+            "- {symbol}: compared_sources={sources}, source_agreement_status={status}, price_diff_pct={pct}, quote_time_gap_seconds={gap}, operation_candidate_agreed={agreed}, note={note}".format(
+                symbol=record.symbol,
+                sources=record.compared_sources,
+                status=record.source_agreement_status,
+                pct="" if record.price_diff_pct is None else record.price_diff_pct,
+                gap="" if record.quote_time_gap_seconds is None else record.quote_time_gap_seconds,
+                agreed=record.operation_candidate_agreed,
+                note=record.reconciliation_note,
+            )
+        )
+    return lines
+
+
 def _bundle_project_lines(records: list[PriceRecord], profile: str, provider_policy: str) -> list[str]:
     if provider_policy == "diagnostic":
         return [
@@ -1270,12 +1333,12 @@ def _provider_cache_hits(records: list[PriceRecord]) -> int:
 
 def _recommended_files(profile: str, provider_policy: str) -> list[str]:
     if provider_policy == "diagnostic":
-        return ["provider_health_report.md", "runtime_diagnostics.md", "data_completeness_report.md", "prices_snapshot.csv"]
+        return ["provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "data_completeness_report.md", "prices_snapshot.csv"]
     if profile == "energy":
-        return ["energy_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "prices_snapshot.csv"]
+        return ["energy_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "prices_snapshot.csv"]
     if profile == "tech":
-        return ["tech_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "prices_snapshot.csv"]
-    return ["controller_price_summary.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "prices_snapshot.csv"]
+        return ["tech_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "prices_snapshot.csv"]
+    return ["controller_price_summary.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "prices_snapshot.csv"]
 
 
 def _oldest_quote_time(records: list[PriceRecord]) -> str:

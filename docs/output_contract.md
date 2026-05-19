@@ -393,3 +393,19 @@ bundle、CSV 和关键报告必须保留或等价表达：
 - `operation_blocking_reason=reference_tier_requires_operation_confirmation`
 
 Eastmoney Direct 使用东方财富公开网页行情接口路径，不是官方交易所实时行情源。它不得单独作为 operation-grade 数据，也不得让 operation strict 放行。若被选中，`0_upload_bundle.md`、`debug_bundle.md`、`provider_health_report.md` 与 `data_completeness_report.md` 必须披露 source limitation。
+
+### 13.9 price_reconciliation_report.md Contract
+
+`price_reconciliation_report.md` 是 v0.7.1 新增的多源价格差异检查报告。它必须包含或等价表达：
+
+- `source_agreement_status`
+- `compared_sources`
+- `reference_source`
+- `candidate_source`
+- `price_diff_abs`
+- `price_diff_pct`
+- `quote_time_gap_seconds`
+- `operation_candidate_agreed`
+- `reconciliation_note`
+
+多源一致性检查只用于数据质量诊断，不自动构成交易建议，不自动提升 reference-grade 到 operation-grade。即使 `operation_candidate_agreed=true`，operation strict 仍以原有 strict / freshness / quote_trust_tier / usable_for_operation 规则为准。

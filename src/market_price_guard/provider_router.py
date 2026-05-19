@@ -97,6 +97,7 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
         attempts.extend(stamped_attempts)
         last_raw = raw
         if _raw_usable_for_selection(raw):
+            _attach_reconciliation_candidates(instrument, providers, config, raw, provider_name, priority, attempts)
             return _selected_raw(instrument, raw, provider_name, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
 
     return _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
@@ -129,7 +130,17 @@ def _selected_raw(
     attempts: list[dict[str, object]],
 ) -> RawPrice:
     fallback_used = bool(priority and selected_provider != priority[0])
-    attempts = [*attempts, *_skipped_after_success(raw.symbol, priority, selected_provider, provider_policy, quote_purpose)]
+    attempted_after_selection = {
+        str(attempt.get("provider", ""))
+        for attempt in attempts
+        if attempt.get("provider") != selected_provider and attempt.get("status") != "skipped"
+    }
+    skipped = [
+        attempt
+        for attempt in _skipped_after_success(raw.symbol, priority, selected_provider, provider_policy, quote_purpose)
+        if attempt.get("provider") not in attempted_after_selection
+    ]
+    attempts = [*attempts, *skipped]
     raw.quote_purpose = quote_purpose
     raw.provider_diagnostics = {
         **raw.provider_diagnostics,
@@ -214,6 +225,105 @@ def _raw_usable_for_selection(raw: RawPrice) -> bool:
         "provider_timeout",
     }
     return raw.price is not None and raw.quote_time is not None and not (set(raw.quality_issues) & blocking_issues)
+
+
+def _attach_reconciliation_candidates(
+    instrument: Instrument,
+    providers: dict[str, Provider],
+    config: RouterConfig,
+    selected_raw: RawPrice,
+    selected_provider: str,
+    priority: list[str],
+    attempts: list[dict[str, object]],
+) -> None:
+    if config.provider_mode != "live" or instrument.symbol not in EASTMONEY_DIRECT_SYMBOLS:
+        return
+    candidate_providers = _reconciliation_candidate_providers(instrument, config, selected_provider, priority)
+    if not candidate_providers:
+        return
+    sources: list[dict[str, object]] = []
+    for provider_name in candidate_providers:
+        provider = providers.get(provider_name)
+        if provider is None:
+            continue
+        start = time.perf_counter()
+        try:
+            fetched = provider.fetch([instrument.symbol])
+            candidate = fetched.get(instrument.symbol)
+        except Exception as exc:
+            elapsed = time.perf_counter() - start
+            attempts.append(
+                _attempt(
+                    instrument.symbol,
+                    provider_name,
+                    "failed",
+                    function_name=f"{provider_name}.reconciliation",
+                    exception_type=type(exc).__name__,
+                    exception_message=str(exc),
+                    reason="reconciliation_provider_exception",
+                    elapsed_seconds=elapsed,
+                    timeout_seconds=config.timeout_seconds,
+                )
+            )
+            sources.append(
+                {
+                    "source": provider_name,
+                    "status": "provider_error",
+                    "quality_issues": ["provider_error"],
+                    "exception_type": type(exc).__name__,
+                    "exception_message": str(exc),
+                }
+            )
+            continue
+        elapsed = time.perf_counter() - start
+        if candidate is None:
+            attempts.append(
+                _attempt(
+                    instrument.symbol,
+                    provider_name,
+                    "failed",
+                    function_name=f"{provider_name}.reconciliation",
+                    reason="reconciliation_symbol_not_found",
+                    elapsed_seconds=elapsed,
+                    timeout_seconds=config.timeout_seconds,
+                )
+            )
+            sources.append({"source": provider_name, "status": "symbol_not_found", "quality_issues": ["symbol_not_found"]})
+            continue
+        attempts.extend(_stamp_elapsed(_provider_attempts(candidate) or [_raw_attempt(candidate, provider_name)], elapsed, config.timeout_seconds))
+        sources.append(
+            {
+                "source": candidate.source,
+                "provider": provider_name,
+                "status": "success" if _raw_usable_for_selection(candidate) else "failed",
+                "price": candidate.price if candidate.price is not None else "",
+                "quote_time": candidate.quote_time.isoformat() if candidate.quote_time else "",
+                "quality_issues": candidate.quality_issues,
+                "quote_trust_tier": candidate.quote_trust_tier or "",
+            }
+        )
+    if sources:
+        selected_raw.provider_diagnostics = {
+            **selected_raw.provider_diagnostics,
+            "reconciliation_enabled": True,
+            "reconciliation_sources": sources,
+        }
+
+
+def _reconciliation_candidate_providers(instrument: Instrument, config: RouterConfig, selected_provider: str, priority: list[str]) -> list[str]:
+    if config.provider_policy == "diagnostic":
+        ordered = ["eastmoney_direct", "akshare", "yfinance"]
+    elif config.quote_purpose == "reference" and selected_provider == "eastmoney_direct":
+        ordered = ["yfinance"]
+    else:
+        return []
+    if instrument.symbol in ETF_SYMBOLS:
+        candidates = ordered
+    elif instrument.symbol in ENERGY_A_SHARE_SYMBOLS:
+        candidates = [provider for provider in ordered if provider in {"eastmoney_direct", "yfinance"}]
+    else:
+        candidates = []
+    return [provider for provider in candidates if provider != selected_provider and provider in priority + ["yfinance", "akshare", "eastmoney_direct"]]
 
 
 def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:

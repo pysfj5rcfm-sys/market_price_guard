@@ -50,7 +50,11 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
 
     def yfinance_fetch(self, symbols):
         calls["yfinance"] += 1
-        raise AssertionError(f"yfinance should be skipped when Eastmoney reference succeeds: {symbols}")
+        return {
+            symbol: _raw(symbol, source="yfinance", price=1.0 + index / 100)
+            for index, symbol in enumerate(symbols)
+            if symbol in ETF_SYMBOLS
+        }
 
     def akshare_fetch(self, symbols):
         calls["akshare"] += 1
@@ -76,7 +80,7 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
 
     assert result.exit_code == EXIT_OK
     assert calls["eastmoney"] == len(ETF_SYMBOLS)
-    assert calls["yfinance"] == 0
+    assert calls["yfinance"] == len(ETF_SYMBOLS)
     assert calls["akshare"] == 0
     assert set(etf_rows["selected_provider"]) == {"eastmoney_direct"}
     assert set(etf_rows["quote_purpose"]) == {"reference"}
@@ -91,6 +95,7 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
     assert "effective_provider_chain: eastmoney_direct, yfinance, akshare, mock" in health
     assert "selected_provider: eastmoney_direct" in health
     assert "skipped because eastmoney_direct reference quote succeeded in reference mode" in health
+    assert "price_reconciliation_report.md" in completeness
     assert not (output_dir / "energy_price_block.md").exists()
     assert not (output_dir / "controller_price_summary.md").exists()
     assert (output_dir / "tech_price_block.md").exists()
