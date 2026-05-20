@@ -434,6 +434,12 @@ Additional output contracts:
 
 When the registry layer is active, `0_upload_bundle.md` and `debug_bundle.md` must include `universe_name`, `universe_type`, and unsupported symbol counts.
 
+### 13.12 API Field Capability Matrix
+
+`docs/api_field_capability_matrix.md` is an audit document, not an output contract. It describes current provider and guard field capability.
+
+If a future version adds fields from the matrix into `prices_snapshot.csv`, bundles, or reports, this output contract must be upgraded separately.
+
 ### 13.10 Tech Reconcile Output
 
 `outputs_tech_reconcile_latest/` 是 v0.7.1.1 新增的科技多源对账目录：

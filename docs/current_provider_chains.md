@@ -81,3 +81,9 @@ Add `debug_bundle.md` only when the upload bundle shows strict blocking, provide
 - `scan_universe`: reference scan pool; does not affect core strict.
 
 Provider chains can vary by `quote_purpose` and universe metadata, but candidate and scan records remain non-strict until promoted to `core_holdings`.
+
+## Field Capability Matrix
+
+`docs/api_field_capability_matrix.md` tracks provider field support separately from provider chain selection.
+
+A provider being selected for price does not mean it supports minute bars, IOPV, bid/ask, or every scan field. Likewise, a field being supported does not make a record operation-grade; operation use still depends on `quote_trust_tier`, `usable_for_operation`, strict, freshness, and provider health.

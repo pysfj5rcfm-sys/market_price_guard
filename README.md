@@ -319,6 +319,20 @@ python -m market_price_guard.main --profile tech --symbols 512480.SH,159995.SZ -
 
 Unknown symbols go to `unsupported_symbols_report.md` and remain non-strict reference records. See `docs/symbol_registry.md` for the registry fields and universe workflow.
 
+## API Field Capability Matrix
+
+The field capability audit is in `docs/api_field_capability_matrix.md`.
+
+Read it as a provider/field support map:
+
+- `supported`: currently standardized in models, CSV, reports, or runtime diagnostics.
+- `partially_supported`: some provider or guard layer has pieces, but the field is not fully standardized.
+- `provider_dependent`: provider capability needs validation or varies by endpoint.
+- `missing`: not implemented.
+- `planned`: future guard-derived or decision-layer field.
+
+v0.7.1.3 does not develop the requested fields. It documents what exists now and what should move into later versions: v0.7.1.4 base quote field normalization, v0.7.1.5 provider capability expansion, v0.7.1.6 scan ranking, v0.7.2 advice-level gating, v0.7.3 minute bars/VWAP, and v0.7.4 QDII premium.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。
