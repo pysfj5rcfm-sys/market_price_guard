@@ -640,3 +640,19 @@ Minute probe details should include:
 Eastmoney Direct successful bars use `minute_bar_provider=eastmoney_direct` and `minute_bar_validation_status=provider_dependent` or equivalent. `minute_bars_snapshot.csv` may contain rows with `provider=eastmoney_direct`.
 
 Eastmoney Direct minute bars are diagnostic/reference only. They must not upgrade trust tier, change strict, change freshness, or change operation readiness.
+
+### 13.20 YFinance Reference Minute Fallback Contract
+
+v0.7.2a.2b adds YFinance as the third optional minute-bars fallback after AKShare and Eastmoney Direct both fail to return usable bars.
+
+Minute probe details may include:
+
+- `yfinance_ticker`
+- `yfinance_status`
+- `yfinance_reason`
+- `yfinance_error_type`
+- `yfinance_error_message`
+
+YFinance successful bars use `minute_bar_provider=yfinance` and `minute_bar_validation_status=provider_dependent`. `minute_bars_snapshot.csv` may contain rows with `provider=yfinance`.
+
+YFinance minute bars are diagnostic/reference only. They must not upgrade trust tier, change strict, change freshness, change usable_for_operation, or calculate VWAP.

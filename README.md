@@ -467,3 +467,9 @@ YFinance minute fallback is not implemented in this version; it remains referenc
 v0.7.2a.2 adds Eastmoney Direct as a diagnostic minute-bars fallback in the optional minute probe path. The probe order is AKShare first, then Eastmoney Direct when AKShare returns provider error, empty response, or unparseable bars.
 
 Eastmoney Direct minute bars use Eastmoney `secid` mapping such as `513300.SH -> 1.513300` and `159632.SZ -> 0.159632`. Any successful Eastmoney minute bars remain reference/diagnostic only. They do not change strict, freshness, quote trust tier, usable_for_operation, or operation readiness. VWAP and intraday derived fields are still not calculated until a future version.
+
+## YFinance Reference Minute Fallback
+
+v0.7.2a.2b adds YFinance as the third optional minute-bars fallback after AKShare and Eastmoney Direct both fail to return usable bars. The fallback reuses the existing YFinance ticker mapping, records `yfinance_ticker` in diagnostics, and marks successful bars as `provider_dependent` / reference-only.
+
+YFinance minute bars do not change strict, freshness, quote trust tier, usable_for_operation, or operation/reference semantics. VWAP and intraday derived fields are still not calculated.

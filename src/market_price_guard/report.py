@@ -121,6 +121,7 @@ OUTPUT_COLUMNS = [
     "minute_bar_after_close_possible",
     "minute_bar_retry_suggested",
     "minute_bar_retry_reason",
+    "yfinance_ticker",
 ]
 
 GOLD_NOTE = (
@@ -1136,7 +1137,11 @@ def _manual_health_group(records: list[PriceRecord]) -> list[str]:
 
 
 def _yfinance_health_group(records: list[PriceRecord]) -> list[str]:
-    yfinance_records = [record for record in records if record.source == "yfinance"]
+    yfinance_records = [
+        record
+        for record in records
+        if record.source == "yfinance" or record.selected_provider == "yfinance" or "yfinance" in _minute_bar_attempted_set(record)
+    ]
     if not yfinance_records:
         return ["- provider: yfinance", "- market_category: HK/A_SHARE", "- status: not_called"]
     lines = [
@@ -1148,7 +1153,7 @@ def _yfinance_health_group(records: list[PriceRecord]) -> list[str]:
         "- source_limit_note: yfinance is an open-source Yahoo Finance public API wrapper for research/educational use; not an official exchange feed",
     ]
     for record in yfinance_records:
-        diagnostic = record.provider_diagnostics
+        diagnostic = _record_provider_attempt(record, "yfinance.Ticker") or record.provider_diagnostics
         lines.append(
             "- function_name={function_name}, status={status}, returned_rows={returned_rows}, matched_symbols={matched_symbols}, affected_symbols={affected_symbols}, exception_type={exception_type}, exception_message={exception_message}".format(
                 function_name=diagnostic.get("function_name", "yfinance.Ticker"),
@@ -1160,6 +1165,17 @@ def _yfinance_health_group(records: list[PriceRecord]) -> list[str]:
                 exception_message=diagnostic.get("exception_message", ""),
             )
         )
+        if "yfinance" in _minute_bar_attempted_set(record):
+            lines.append(
+                "- function_name=yfinance.history, status={status}, yfinance_ticker={ticker}, count={count}, reason={reason}, exception_type={exception_type}, exception_message={message}".format(
+                    status=_yfinance_minute_status(record),
+                    ticker=_minute_note_value(record, "yfinance_ticker") or record.yfinance_ticker,
+                    count=record.minute_bar_count if record.minute_bar_provider == "yfinance" else 0,
+                    reason=_yfinance_minute_reason(record),
+                    exception_type=_minute_note_value(record, "yfinance_error_type"),
+                    message=_minute_note_value(record, "yfinance_error_message"),
+                )
+            )
     return lines
 
 
@@ -2521,7 +2537,7 @@ def _minute_bars_summary_table(records: list[PriceRecord]) -> list[str]:
 
 def _minute_bars_probe_note_lines() -> list[str]:
     return [
-        "- Minute bars are diagnostic in v0.7.2a.2.",
+        "- Minute bars are diagnostic in v0.7.2a.2b.",
         "- Minute bars do not change strict or operation readiness in this version.",
         "- VWAP and intraday derived fields are not calculated in v0.7.2a.",
         "- Operation decisions still depend on quote_trust_tier / usable_for_operation / strict / freshness.",
@@ -2531,12 +2547,12 @@ def _minute_bars_probe_note_lines() -> list[str]:
 
 def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
     lines = [
-        "| symbol | provider_attempted | provider_success | normalized_symbol | eastmoney_secid | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | retry_suggested | retry_reason | notes |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|",
+        "| symbol | provider_attempted | provider_success | normalized_symbol | eastmoney_secid | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | yfinance_ticker | yfinance_status | yfinance_reason | yfinance_error_type | yfinance_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | retry_suggested | retry_reason | notes |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|",
     ]
     for record in records:
         lines.append(
-            "| {symbol} | {provider} | {success} | {normalized} | {secid} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {retry} | {retry_reason} | {notes} |".format(
+            "| {symbol} | {provider} | {success} | {normalized} | {secid} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {yf_ticker} | {yf_status} | {yf_reason} | {yf_type} | {yf_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {retry} | {retry_reason} | {notes} |".format(
                 symbol=record.symbol,
                 provider=_fmt(_minute_bar_provider_attempted(record)),
                 success=_fmt(record.minute_bar_provider if record.minute_bars_available else "none"),
@@ -2547,6 +2563,11 @@ def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
                 east_endpoint=_fmt(_minute_note_value(record, "eastmoney_endpoint")),
                 east_type=_fmt(_minute_note_value(record, "eastmoney_error_type")),
                 east_message=_fmt(_minute_note_value(record, "eastmoney_error_message")),
+                yf_ticker=_fmt(_minute_note_value(record, "yfinance_ticker") or record.yfinance_ticker),
+                yf_status=_fmt(_minute_note_value(record, "yfinance_status")),
+                yf_reason=_fmt(_minute_note_value(record, "yfinance_reason")),
+                yf_type=_fmt(_minute_note_value(record, "yfinance_error_type")),
+                yf_message=_fmt(_minute_note_value(record, "yfinance_error_message")),
                 status=_fmt(record.minute_bar_status),
                 interval=_fmt(record.minute_bar_interval),
                 count=record.minute_bar_count,
@@ -2562,7 +2583,7 @@ def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
             )
         )
     if not records:
-        lines.append("| none | missing | none | - | - | - | - | - | - | - | missing | not_available | 0 | - | - | missing | no_records | - | false | - | - | no records |")
+        lines.append("| none | missing | none | - | - | - | - | - | - | - | - | - | - | - | - | missing | not_available | 0 | - | - | missing | no_records | - | false | - | - | no records |")
     return lines
 
 
@@ -2571,6 +2592,7 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
     providers = _minute_bar_provider_counts(records)
     akshare_attempted = [record for record in records if "akshare" in _minute_bar_attempted_set(record)]
     eastmoney_attempted = [record for record in records if "eastmoney_direct" in _minute_bar_attempted_set(record)]
+    yfinance_attempted = [record for record in records if "yfinance" in _minute_bar_attempted_set(record)]
     session_counts: dict[str, int] = {}
     for record in records:
         session = record.minute_bar_market_session or "missing"
@@ -2586,8 +2608,11 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
         f"- akshare_attempted_count: {len(akshare_attempted)}",
         f"- akshare_success_count: {sum(1 for record in akshare_attempted if _akshare_minute_status(record) == 'available')}",
         f"- akshare_error_count: {sum(1 for record in akshare_attempted if _akshare_minute_status(record) == 'provider_error')}",
-        f"- yfinance_attempted_count: {sum(1 for record in records if record.minute_bar_provider == 'yfinance')}",
-        f"- yfinance_success_count: {sum(1 for record in records if record.minute_bar_provider == 'yfinance' and record.minute_bars_available)}",
+        f"- yfinance_attempted_count: {len(yfinance_attempted)}",
+        f"- yfinance_success_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_status(record) == 'available')}",
+        f"- yfinance_error_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_status(record) in {'provider_error', 'parse_error'})}",
+        f"- yfinance_empty_response_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_reason(record) == 'empty_response')}",
+        f"- yfinance_parse_error_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_reason(record) == 'parse_error')}",
         f"- eastmoney_attempted_count: {len(eastmoney_attempted)}",
         f"- eastmoney_success_count: {sum(1 for record in eastmoney_attempted if _eastmoney_minute_status(record) == 'available')}",
         f"- eastmoney_error_count: {sum(1 for record in eastmoney_attempted if _eastmoney_minute_status(record) in {'provider_error', 'parse_error'})}",
@@ -2618,7 +2643,7 @@ def _minute_bars_capability_lines(records: list[PriceRecord], runtime: dict[str,
         f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
         "- akshare: ETF minute bars attempted through fund_etf_hist_min_em when --include-minute-bars is enabled.",
         "- eastmoney_direct: minute bars attempted as diagnostic fallback; provider_dependent and not operation-grade.",
-        "- yfinance: not_implemented_in_guard for minute probe in this version; reference-only if added later.",
+        "- yfinance: attempted_reference_fallback / provider_dependent_reference after AKShare and Eastmoney fail; not operation-grade.",
         "- manual: not_supported.",
         "- mock: supported_for_tests when --include-minute-bars is used with provider-mode=mock.",
     ]
@@ -2694,6 +2719,24 @@ def _eastmoney_minute_reason(record: PriceRecord) -> str:
     if reason:
         return reason
     if record.minute_bar_provider == "eastmoney_direct":
+        return record.minute_bar_missing_reason or ""
+    return ""
+
+
+def _yfinance_minute_status(record: PriceRecord) -> str:
+    status = _minute_note_value(record, "yfinance_status")
+    if status:
+        return status
+    if record.minute_bar_provider == "yfinance":
+        return record.minute_bar_status or "missing"
+    return "not_called"
+
+
+def _yfinance_minute_reason(record: PriceRecord) -> str:
+    reason = _minute_note_value(record, "yfinance_reason")
+    if reason:
+        return reason
+    if record.minute_bar_provider == "yfinance":
         return record.minute_bar_missing_reason or ""
     return ""
 

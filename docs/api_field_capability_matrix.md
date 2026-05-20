@@ -294,4 +294,10 @@ Provider capability remains separate from operation trust tier. Minute-bar avail
 
 Eastmoney Direct `minute_bars` moves from not validated to attempted / provider-dependent in the optional minute probe path. It is used only as a diagnostic fallback after AKShare minute probe failures.
 
+## v0.7.2a.2b YFinance Minute Fallback Update
+
+YFinance `minute_bars` is now attempted as a reference fallback after AKShare and Eastmoney Direct both fail in the optional minute probe path. It remains provider-dependent, reference-only, and does not change operation readiness.
+
+`intraday_vwap`, `distance_to_vwap_pct`, `day_position`, and other VWAP-derived fields remain planned for a later version.
+
 Eastmoney minute bars do not change operation trust tier, strict, freshness, or usable_for_operation. `intraday_vwap`, `distance_to_vwap_pct`, and `day_position` remain planned for v0.7.2b.

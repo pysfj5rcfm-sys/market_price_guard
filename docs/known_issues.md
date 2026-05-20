@@ -74,3 +74,9 @@ Eastmoney Direct minute bars are not operation-grade, do not change strict, and 
 AKShare minute probe may fail outside CN continuous trading hours, including after the A-share close. The `after_close_possible` flag is diagnostic only and is not a confirmed root cause.
 
 Before declaring AKShare minute bars unusable, rerun `run_tech_minute_probe.ps1` during CN continuous trading hours when practical. This retry suggestion does not change strict, operation readiness, quote trust tier, or usable_for_operation.
+
+## v0.7.2a.2b YFinance Minute Fallback Caveats
+
+YFinance minute bars are attempted only as a reference fallback after AKShare and Eastmoney Direct fail in the optional minute probe path. Intraday ranges are limited, provider-dependent, and not operation-grade.
+
+YFinance fallback success does not change strict, operation readiness, quote trust tier, or usable_for_operation. VWAP and intraday derived fields remain not implemented.

@@ -105,10 +105,10 @@ When the probe is enabled, reports show minute-bar availability, interval, count
 
 The optional minute probe may call AKShare `fund_etf_hist_min_em` for ETF / QDII ETF symbols. This does not alter `run_tech_fast_strict.ps1`, default provider chains, strict, or operation readiness.
 
-v0.7.2a.2 minute probe order:
+v0.7.2a.2b minute probe order:
 
 1. AKShare ETF minute probe.
 2. Eastmoney Direct minute probe fallback.
-3. Optional YFinance remains not implemented in guard.
+3. YFinance reference minute fallback.
 
-Eastmoney Direct minute bars do not alter the default fast strict provider chain and do not upgrade operation readiness.
+Eastmoney Direct and YFinance minute bars do not alter the default fast strict provider chain and do not upgrade operation readiness.

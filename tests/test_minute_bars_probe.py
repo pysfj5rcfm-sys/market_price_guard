@@ -31,6 +31,7 @@ MINUTE_COLUMNS = [
     "minute_bar_after_close_possible",
     "minute_bar_retry_suggested",
     "minute_bar_retry_reason",
+    "yfinance_ticker",
 ]
 
 
@@ -168,11 +169,13 @@ def test_akshare_minute_probe_empty_and_exception(monkeypatch):
         raise ConnectionError("eastmoney down")
 
     monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", failing_eastmoney)
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: (_ for _ in ()).throw(ConnectionError("yfinance down")))
     monkeypatch.setattr(minute_bars, "_import_akshare", lambda: EmptyAk)
     empty_records, _rows = apply_minute_bars_probe([base_record], include_minute_bars=True, provider_mode="live")
-    assert empty_records[0].minute_bar_provider == "eastmoney_direct"
+    assert empty_records[0].minute_bar_provider == "yfinance"
     assert empty_records[0].minute_bar_status == "provider_error"
     assert "akshare_reason=empty_response" in empty_records[0].minute_bar_notes
+    assert "eastmoney_status=provider_error" in empty_records[0].minute_bar_notes
 
     class FailingAk:
         @staticmethod
@@ -181,7 +184,7 @@ def test_akshare_minute_probe_empty_and_exception(monkeypatch):
 
     monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
     failed_records, _rows = apply_minute_bars_probe([base_record], include_minute_bars=True, provider_mode="live")
-    assert failed_records[0].minute_bar_provider == "eastmoney_direct"
+    assert failed_records[0].minute_bar_provider == "yfinance"
     assert failed_records[0].minute_bar_status == "provider_error"
     assert failed_records[0].minute_bar_missing_reason == "provider_error"
 
@@ -259,15 +262,16 @@ def test_eastmoney_minute_empty_exception_parse_and_bad_symbol(monkeypatch):
     )
 
     monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: (_ for _ in ()).throw(ConnectionError("yfinance down")))
     monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: {"data": {"klines": []}})
     empty_records, _rows = apply_minute_bars_probe([base_record], include_minute_bars=True, provider_mode="live")
-    assert empty_records[0].minute_bar_status == "unavailable"
-    assert empty_records[0].minute_bar_missing_reason == "empty_response"
+    assert empty_records[0].minute_bar_status == "provider_error"
+    assert "eastmoney_reason=empty_response" in empty_records[0].minute_bar_notes
 
     monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: {"data": {"klines": ["bad"]}})
     parse_records, _rows = apply_minute_bars_probe([base_record], include_minute_bars=True, provider_mode="live")
-    assert parse_records[0].minute_bar_status == "parse_error"
-    assert parse_records[0].minute_bar_missing_reason == "parse_error"
+    assert parse_records[0].minute_bar_status == "provider_error"
+    assert "eastmoney_reason=parse_error" in parse_records[0].minute_bar_notes
 
     monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: (_ for _ in ()).throw(ConnectionError("down")))
     error_records, _rows = apply_minute_bars_probe([base_record], include_minute_bars=True, provider_mode="live")
@@ -371,6 +375,113 @@ def test_minute_probe_trading_hours_provider_error_not_after_close(monkeypatch):
     assert records[0].minute_bar_retry_suggested == "retry_or_try_fallback_provider"
 
 
+def test_yfinance_fallback_is_not_attempted_when_akshare_succeeds(monkeypatch):
+    class FakeAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            return pd.DataFrame([{"datetime": "2026-05-20 10:01:00", "close": 1.22}])
+
+    calls = {"yfinance": 0, "eastmoney": 0}
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FakeAk)
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: calls.__setitem__("eastmoney", calls["eastmoney"] + 1))
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: calls.__setitem__("yfinance", calls["yfinance"] + 1))
+
+    records, _rows = apply_minute_bars_probe([_minute_record()], include_minute_bars=True, provider_mode="live")
+
+    assert records[0].minute_bar_provider == "akshare"
+    assert calls == {"yfinance": 0, "eastmoney": 0}
+
+
+def test_yfinance_fallback_is_not_attempted_when_eastmoney_succeeds(monkeypatch):
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("akshare down")
+
+    calls = {"yfinance": 0}
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+    monkeypatch.setattr(
+        minute_bars,
+        "_call_eastmoney_minute_bars",
+        lambda secid, klt: {"data": {"klines": ["2026-05-20 10:01,1.20,1.22,1.23,1.19,1000,1220"]}},
+    )
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: calls.__setitem__("yfinance", calls["yfinance"] + 1))
+
+    records, _rows = apply_minute_bars_probe([_minute_record()], include_minute_bars=True, provider_mode="live")
+
+    assert records[0].minute_bar_provider == "eastmoney_direct"
+    assert calls["yfinance"] == 0
+
+
+def test_yfinance_reference_fallback_success_writes_rows_and_preserves_semantics(monkeypatch):
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("akshare down")
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: (_ for _ in ()).throw(ConnectionError("eastmoney down")))
+
+    def yfinance_success(ticker, period, interval):
+        assert ticker == "588200.SS"
+        assert interval == "1m"
+        return pd.DataFrame(
+            [{"Open": 1.20, "High": 1.23, "Low": 1.19, "Close": 1.22, "Volume": 1000}],
+            index=[pd.Timestamp("2026-05-20 10:01:00", tz="Asia/Shanghai")],
+        )
+
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", yfinance_success)
+
+    records, rows = apply_minute_bars_probe([_minute_record()], include_minute_bars=True, provider_mode="live")
+
+    assert records[0].minute_bars_available is True
+    assert records[0].minute_bar_provider == "yfinance"
+    assert records[0].minute_bar_validation_status == "provider_dependent"
+    assert records[0].yfinance_ticker == "588200.SS"
+    assert "provider_attempted=akshare,eastmoney_direct,yfinance" in records[0].minute_bar_notes
+    assert "provider_success=yfinance" in records[0].minute_bar_notes
+    assert "not_operation_grade" in records[0].minute_bar_notes
+    assert records[0].quote_trust_tier == "reference"
+    assert records[0].usable_for_operation is False
+    assert rows[0]["provider"] == "yfinance"
+
+
+def test_yfinance_reference_fallback_empty_exception_and_parse(monkeypatch):
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("akshare down")
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: (_ for _ in ()).throw(ConnectionError("eastmoney down")))
+    base = [_minute_record()]
+
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: pd.DataFrame())
+    empty_records, _rows = apply_minute_bars_probe(base, include_minute_bars=True, provider_mode="live")
+    assert empty_records[0].minute_bar_provider == "yfinance"
+    assert empty_records[0].minute_bar_missing_reason == "empty_response"
+
+    monkeypatch.setattr(
+        minute_bars,
+        "_call_yfinance_minute_bars",
+        lambda ticker, period, interval: pd.DataFrame([{"Close": None}], index=["bad_time"]),
+    )
+    parse_records, _rows = apply_minute_bars_probe(base, include_minute_bars=True, provider_mode="live")
+    assert parse_records[0].minute_bar_status == "parse_error"
+    assert parse_records[0].minute_bar_missing_reason == "parse_error"
+
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: (_ for _ in ()).throw(RuntimeError("yf down")))
+    error_records, _rows = apply_minute_bars_probe(base, include_minute_bars=True, provider_mode="live")
+    assert error_records[0].minute_bar_status == "provider_error"
+    assert "yfinance_error_type=RuntimeError" in error_records[0].minute_bar_notes
+
+
+def test_yfinance_ticker_mapping_follows_quote_mapping():
+    assert minute_bars._yfinance_minute_ticker_for_symbol("513300.SH") == "513300.SS"
+    assert minute_bars._yfinance_minute_ticker_for_symbol("159632.SZ") == "159632.SZ"
+    assert minute_bars._yfinance_minute_ticker_for_symbol("588200.SH") == "588200.SS"
+
+
 def test_provider_health_sections_do_not_mix_fallback_functions():
     yfinance_record = _minute_record("159819.SZ").model_copy(
         update={
@@ -412,8 +523,17 @@ def test_provider_health_sections_do_not_mix_fallback_functions():
             "minute_bar_notes": "provider_attempted=akshare,eastmoney_direct; akshare_status=provider_error; akshare_reason=provider_error; eastmoney_status=provider_error; eastmoney_reason=provider_error",
         }
     )
+    yfinance_minute_record = _minute_record("515880.SH").model_copy(
+        update={
+            "minute_bar_provider": "yfinance",
+            "minute_bar_status": "available",
+            "minute_bars_available": True,
+            "minute_bar_count": 1,
+            "minute_bar_notes": "provider_attempted=akshare,eastmoney_direct,yfinance; provider_success=yfinance; yfinance_status=available; yfinance_ticker=515880.SS; yfinance_reason=",
+        }
+    )
 
-    report = build_provider_health_report([yfinance_record, eastmoney_record, akshare_minute_record])
+    report = build_provider_health_report([yfinance_record, eastmoney_record, akshare_minute_record, yfinance_minute_record])
     eastmoney_section = report.split("## Eastmoney Direct", 1)[1].split("## Manual", 1)[0]
     yfinance_section = report.split("## YFinance", 1)[1].split("## Eastmoney Direct", 1)[0]
     akshare_minute_section = report.split("## AKShare Minute Bars", 1)[1].split("## AKShare A", 1)[0]
@@ -421,6 +541,7 @@ def test_provider_health_sections_do_not_mix_fallback_functions():
     assert "yfinance.Ticker" not in eastmoney_section
     assert "eastmoney_direct.stock_get" in eastmoney_section
     assert "yfinance.Ticker" in yfinance_section
+    assert "yfinance.history" in yfinance_section
     assert "fund_etf_hist_min_em" in akshare_minute_section
 
 

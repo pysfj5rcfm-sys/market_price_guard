@@ -91,7 +91,7 @@ yfinance:
       bid1_price: {status: missing_or_not_validated, operation_fit: no, reference_fit: false}
       ask1_price: {status: missing_or_not_validated, operation_fit: no, reference_fit: false}
       turnover_rate: {status: missing, operation_fit: no, reference_fit: false}
-      minute_bars: {status: not_implemented_in_guard, operation_fit: no, reference_fit: false}
+      minute_bars: {status: attempted_reference_fallback, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: no, reference_fit: true, validation_status: provider_dependent, notes: "YFinance intraday bars are attempted only as reference fallback after AKShare and Eastmoney minute probes fail; ranges are limited and do not upgrade operation."}
       intraday_vwap: {status: not_implemented, operation_fit: no, reference_fit: false}
       iopv: {status: missing, operation_fit: no, reference_fit: false}
       premium_pct: {status: missing, operation_fit: no, reference_fit: false}

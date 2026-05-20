@@ -8,6 +8,7 @@ import pandas as pd
 
 from .models import PriceRecord
 from .providers.eastmoney_direct_provider import _default_http_get, eastmoney_secid_for_symbol
+from .providers.yfinance_provider import yahoo_ticker_for_symbol
 
 
 TIME_COLUMNS = ["时间", "日期时间", "datetime", "time", "timestamp"]
@@ -46,6 +47,7 @@ class MinuteBarsSnapshot:
     after_close_possible: bool = False
     retry_suggested: str = ""
     retry_reason: str = ""
+    yfinance_ticker: str = ""
 
 
 def apply_minute_bars_probe(
@@ -107,7 +109,15 @@ def _snapshot_for_record(
         return _etf_snapshot_with_fallback(record, fetch_time)
 
     if _is_cn_security(record.symbol):
-        return _eastmoney_snapshot(record, fetch_time, previous_note="akshare_not_applicable_for_stock_minute_probe")
+        eastmoney_snapshot = _eastmoney_snapshot(record, fetch_time, previous_note="akshare_not_applicable_for_stock_minute_probe")
+        if eastmoney_snapshot.status == "available":
+            return eastmoney_snapshot
+        return _yfinance_snapshot(
+            record,
+            fetch_time,
+            previous_note=_eastmoney_attempt_note(eastmoney_snapshot),
+            previous_snapshot=eastmoney_snapshot,
+        )
 
     if "symbol_not_found" in record.quality_issues:
         return MinuteBarsSnapshot(
@@ -157,11 +167,19 @@ def _etf_snapshot_with_fallback(record: PriceRecord, fetch_time: datetime) -> Mi
     akshare_snapshot = _akshare_etf_snapshot(record, fetch_time)
     if akshare_snapshot.status == "available":
         return akshare_snapshot
-    return _eastmoney_snapshot(
+    eastmoney_snapshot = _eastmoney_snapshot(
         record,
         fetch_time,
         previous_note=_snapshot_attempt_note(akshare_snapshot),
         previous_snapshot=akshare_snapshot,
+    )
+    if eastmoney_snapshot.status == "available":
+        return eastmoney_snapshot
+    return _yfinance_snapshot(
+        record,
+        fetch_time,
+        previous_note=_eastmoney_attempt_note(eastmoney_snapshot),
+        previous_snapshot=eastmoney_snapshot,
     )
 
 
@@ -203,6 +221,7 @@ def _record_with_snapshot(record: PriceRecord, snapshot: MinuteBarsSnapshot) -> 
             "minute_bar_after_close_possible": snapshot.after_close_possible,
             "minute_bar_retry_suggested": snapshot.retry_suggested,
             "minute_bar_retry_reason": snapshot.retry_reason,
+            "yfinance_ticker": snapshot.yfinance_ticker,
         }
     )
 
@@ -410,6 +429,172 @@ def _call_eastmoney_minute_bars(secid: str, klt: str) -> dict[str, Any]:
     return _default_http_get(url, params, timeout_seconds=5.0)
 
 
+def _yfinance_snapshot(
+    record: PriceRecord,
+    fetch_time: datetime,
+    previous_note: str = "",
+    previous_snapshot: MinuteBarsSnapshot | None = None,
+) -> MinuteBarsSnapshot:
+    inherited_diagnostic = _snapshot_diagnostic(previous_snapshot) if previous_snapshot else _market_session_diagnostic(record, fetch_time, akshare_failed=False)
+    try:
+        ticker_symbol = _yfinance_minute_ticker_for_symbol(record.symbol)
+    except ValueError as exc:
+        error_message = _short_error_message(exc)
+        return MinuteBarsSnapshot(
+            symbol=record.symbol,
+            provider="yfinance",
+            interval="not_available",
+            bars=[],
+            latest_time=None,
+            fetch_time=fetch_time,
+            status="symbol_not_found",
+            validation_status="missing",
+            missing_reason="yfinance_ticker_mapping_failed",
+            notes=(
+                "provider_attempted=akshare,eastmoney_direct,yfinance; provider_success=none; "
+                "yfinance_status=symbol_not_found; yfinance_reason=yfinance_ticker_mapping_failed; "
+                f"yfinance_ticker=; yfinance_error_type={type(exc).__name__}; yfinance_error_message={error_message}; "
+                f"{previous_note}; {_diagnostic_note(inherited_diagnostic)}"
+            ),
+            yfinance_ticker="",
+            **inherited_diagnostic,
+        )
+
+    last_error = ""
+    last_reason = "provider_error"
+    last_error_type = ""
+    last_error_message = ""
+    for interval, period in [("1m", "1d"), ("5m", "5d")]:
+        try:
+            df = _call_yfinance_minute_bars(ticker_symbol, period=period, interval=interval)
+        except ImportError as exc:
+            last_error_type = type(exc).__name__
+            last_error_message = _short_error_message(exc)
+            last_error = f"{last_error_type}: {last_error_message}"
+            last_reason = "provider_error"
+            break
+        except Exception as exc:
+            last_error_type = type(exc).__name__
+            last_error_message = _short_error_message(exc)
+            last_error = f"{last_error_type}: {last_error_message}"
+            last_reason = "provider_error"
+            continue
+        if df is None or df.empty:
+            last_error_type = ""
+            last_error_message = "empty_response"
+            last_error = "empty_response"
+            last_reason = "empty_response"
+            continue
+        bars, reason, raw_count = _yfinance_bars_from_frame(df)
+        if bars:
+            latest = max(bar.timestamp for bar in bars)
+            return MinuteBarsSnapshot(
+                symbol=record.symbol,
+                provider="yfinance",
+                interval=interval,
+                bars=bars,
+                latest_time=latest,
+                fetch_time=fetch_time,
+                status="available",
+                validation_status="provider_dependent",
+                missing_reason="",
+                notes=(
+                    "provider_attempted=akshare,eastmoney_direct,yfinance; provider_success=yfinance; "
+                    "yfinance_status=available; yfinance_reason=; "
+                    f"yfinance_ticker={ticker_symbol}; yfinance_error_type=; yfinance_error_message=; "
+                    f"interval={interval}; raw_count={raw_count}; parsed_count={len(bars)}; "
+                    "reference_only; provider_dependent; not_operation_grade; yfinance_intraday_limit; "
+                    f"{previous_note}; {_diagnostic_note(inherited_diagnostic)}"
+                ),
+                yfinance_ticker=ticker_symbol,
+                **inherited_diagnostic,
+            )
+        last_error_type = "ParseError" if reason == "parse_error" else ""
+        last_error_message = reason
+        last_error = f"{reason}; raw_count={raw_count}"
+        last_reason = reason
+
+    status = "unavailable" if last_reason in {"empty_response", "no_recent_bars"} else "provider_error"
+    if last_reason == "parse_error":
+        status = "parse_error"
+    return MinuteBarsSnapshot(
+        symbol=record.symbol,
+        provider="yfinance",
+        interval="not_available",
+        bars=[],
+        latest_time=None,
+        fetch_time=fetch_time,
+        status=status,
+        validation_status="provider_dependent",
+        missing_reason=last_reason,
+        notes=(
+            "provider_attempted=akshare,eastmoney_direct,yfinance; provider_success=none; "
+            f"yfinance_status={status}; yfinance_reason={last_reason}; "
+            f"yfinance_ticker={ticker_symbol}; yfinance_error_type={last_error_type}; "
+            f"yfinance_error_message={_short_text(last_error_message or last_error or 'unknown')}; "
+            "reference_only; provider_dependent; not_operation_grade; yfinance_intraday_limit; "
+            f"{previous_note}; {last_error or 'unknown'}; {_diagnostic_note(inherited_diagnostic)}"
+        ),
+        yfinance_ticker=ticker_symbol,
+        **inherited_diagnostic,
+    )
+
+
+def _call_yfinance_minute_bars(ticker_symbol: str, period: str, interval: str) -> pd.DataFrame:
+    yf = _import_yfinance()
+    ticker = yf.Ticker(ticker_symbol)
+    return ticker.history(period=period, interval=interval)
+
+
+def _yfinance_bars_from_frame(df: pd.DataFrame) -> tuple[list[MinuteBar], str, int]:
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return [], "empty_response", 0
+    bars: list[MinuteBar] = []
+    parse_errors = 0
+    for index, row in df.iterrows():
+        timestamp = _parse_timestamp(index)
+        if timestamp is None:
+            parse_errors += 1
+            continue
+        close = _to_float(_value(row, ["Close", "close"]))
+        if close is None:
+            parse_errors += 1
+            continue
+        bars.append(
+            MinuteBar(
+                timestamp=timestamp,
+                open=_to_float(_value(row, ["Open", "open"])),
+                high=_to_float(_value(row, ["High", "high"])),
+                low=_to_float(_value(row, ["Low", "low"])),
+                close=close,
+                volume=_to_float(_value(row, ["Volume", "volume"])),
+                amount=None,
+            )
+        )
+    if bars:
+        return bars, "", len(df)
+    return [], "parse_error" if parse_errors else "no_recent_bars", len(df)
+
+
+def _import_yfinance() -> Any:
+    try:
+        import yfinance as yf
+    except ImportError as exc:
+        raise ImportError("yfinance_not_installed") from exc
+    return yf
+
+
+def _yfinance_minute_ticker_for_symbol(symbol: str) -> str:
+    try:
+        return yahoo_ticker_for_symbol(symbol)
+    except ValueError:
+        if symbol.endswith(".SH"):
+            return f"{symbol.split('.')[0]}.SS"
+        if symbol.endswith(".SZ"):
+            return symbol
+        raise
+
+
 def _eastmoney_bars_from_payload(payload: dict[str, Any]) -> tuple[list[MinuteBar], str, int]:
     data = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(data, dict):
@@ -596,6 +781,13 @@ def _snapshot_attempt_note(snapshot: MinuteBarsSnapshot) -> str:
     return (
         f"akshare_status={snapshot.status}; akshare_reason={snapshot.missing_reason}; "
         f"akshare_note={snapshot.notes}"
+    )
+
+
+def _eastmoney_attempt_note(snapshot: MinuteBarsSnapshot) -> str:
+    return (
+        f"eastmoney_status={snapshot.status}; eastmoney_reason={snapshot.missing_reason}; "
+        f"eastmoney_note={snapshot.notes}"
     )
 
 
