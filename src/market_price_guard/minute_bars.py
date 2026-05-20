@@ -47,6 +47,8 @@ class MinuteBarsSnapshot:
     after_close_possible: bool = False
     retry_suggested: str = ""
     retry_reason: str = ""
+    after_close_applies_to: str = ""
+    upload_note: str = ""
     yfinance_ticker: str = ""
 
 
@@ -85,7 +87,8 @@ def _snapshot_for_record(
             status="not_attempted",
             validation_status="missing",
             missing_reason="not_attempted",
-            notes="minute probe not enabled",
+        notes="minute probe not enabled",
+        upload_note="minute_probe_not_enabled",
         )
 
     if record.source == "manual" or record.symbol == "GOLD_CNY":
@@ -100,6 +103,7 @@ def _snapshot_for_record(
             validation_status="not_supported",
             missing_reason="manual_price_only",
             notes="manual price only; minute bars are not supported",
+            upload_note="manual_price_only; minute_not_supported",
         )
 
     if provider_mode == "mock" and record.price is not None:
@@ -221,6 +225,8 @@ def _record_with_snapshot(record: PriceRecord, snapshot: MinuteBarsSnapshot) -> 
             "minute_bar_after_close_possible": snapshot.after_close_possible,
             "minute_bar_retry_suggested": snapshot.retry_suggested,
             "minute_bar_retry_reason": snapshot.retry_reason,
+            "minute_bar_after_close_applies_to": snapshot.after_close_applies_to,
+            "minute_bar_upload_note": snapshot.upload_note or _minute_bar_upload_note(snapshot),
             "yfinance_ticker": snapshot.yfinance_ticker,
         }
     )
@@ -255,6 +261,7 @@ def _akshare_etf_snapshot(record: PriceRecord, fetch_time: datetime) -> MinuteBa
         ak = _import_akshare()
     except ImportError as exc:
         diagnostic = _market_session_diagnostic(record, fetch_time, akshare_failed=True)
+        error_message = _short_error_message(exc)
         return MinuteBarsSnapshot(
             symbol=record.symbol,
             provider="akshare",
@@ -265,18 +272,25 @@ def _akshare_etf_snapshot(record: PriceRecord, fetch_time: datetime) -> MinuteBa
             status="provider_error",
             validation_status="missing",
             missing_reason="provider_error",
-            notes=f"akshare import failed: {exc}; {_diagnostic_note(diagnostic)}",
+            notes=(
+                f"akshare_error_type={type(exc).__name__}; akshare_error_message={error_message}; "
+                f"akshare import failed: {error_message}; {_diagnostic_note(diagnostic)}"
+            ),
             **diagnostic,
         )
 
     normalized = _normalize_symbol(record.symbol)
     last_error = ""
+    last_error_type = ""
+    last_error_message = ""
     for period in ["1", "5"]:
         interval = f"{period}m"
         try:
             df = _call_akshare_minute_bars(ak, normalized, period)
         except Exception as exc:
-            last_error = f"{type(exc).__name__}: {str(exc)[:160]}"
+            last_error_type = type(exc).__name__
+            last_error_message = _short_error_message(exc)
+            last_error = f"{last_error_type}: {last_error_message}"
             continue
         if df is None or df.empty:
             last_error = "empty_response"
@@ -293,10 +307,10 @@ def _akshare_etf_snapshot(record: PriceRecord, fetch_time: datetime) -> MinuteBa
             bars=bars,
             latest_time=latest,
             fetch_time=fetch_time,
-            status="available",
+        status="available",
             validation_status=validation_status,
             missing_reason="",
-            notes=f"fund_etf_hist_min_em normalized_symbol={normalized}; {_diagnostic_note(success_diagnostic)}",
+            notes=f"akshare_error_type=; akshare_error_message=; fund_etf_hist_min_em normalized_symbol={normalized}; {_diagnostic_note(success_diagnostic)}",
             **success_diagnostic,
         )
 
@@ -313,7 +327,10 @@ def _akshare_etf_snapshot(record: PriceRecord, fetch_time: datetime) -> MinuteBa
         status=status,
         validation_status="not_validated",
         missing_reason=reason,
-        notes=f"fund_etf_hist_min_em normalized_symbol={normalized}; {last_error or 'unknown'}; {_diagnostic_note(diagnostic)}",
+        notes=(
+            f"akshare_error_type={last_error_type}; akshare_error_message={_short_text(last_error_message or last_error or 'unknown')}; "
+            f"fund_etf_hist_min_em normalized_symbol={normalized}; {last_error or 'unknown'}; {_diagnostic_note(diagnostic)}"
+        ),
         **diagnostic,
     )
 
@@ -436,6 +453,8 @@ def _yfinance_snapshot(
     previous_snapshot: MinuteBarsSnapshot | None = None,
 ) -> MinuteBarsSnapshot:
     inherited_diagnostic = _snapshot_diagnostic(previous_snapshot) if previous_snapshot else _market_session_diagnostic(record, fetch_time, akshare_failed=False)
+    if inherited_diagnostic.get("after_close_possible"):
+        inherited_diagnostic["after_close_applies_to"] = "akshare,eastmoney_direct"
     try:
         ticker_symbol = _yfinance_minute_ticker_for_symbol(record.symbol)
     except ValueError as exc:
@@ -717,6 +736,7 @@ def _snapshot_diagnostic(snapshot: MinuteBarsSnapshot) -> dict[str, Any]:
         "after_close_possible": snapshot.after_close_possible,
         "retry_suggested": snapshot.retry_suggested,
         "retry_reason": snapshot.retry_reason,
+        "after_close_applies_to": snapshot.after_close_applies_to,
     }
 
 
@@ -741,6 +761,7 @@ def _market_session_diagnostic(record: PriceRecord, fetch_time: datetime, akshar
         "after_close_possible": after_close_possible,
         "retry_suggested": retry_suggested,
         "retry_reason": retry_reason,
+        "after_close_applies_to": "akshare" if after_close_possible else "",
     }
 
 
@@ -764,6 +785,7 @@ def _diagnostic_note(diagnostic: dict[str, Any]) -> str:
     return (
         f"market_session={diagnostic.get('market_session', '')}; "
         f"after_close_possible={str(bool(diagnostic.get('after_close_possible'))).lower()}; "
+        f"after_close_applies_to={diagnostic.get('after_close_applies_to', '')}; "
         f"retry_suggested={diagnostic.get('retry_suggested', '')}; "
         f"retry_reason={_short_text(str(diagnostic.get('retry_reason', '')))}"
     )
@@ -775,6 +797,29 @@ def _short_error_message(exc: Exception) -> str:
 
 def _short_text(text: str, limit: int = 160) -> str:
     return text.replace("\n", " ").replace("\r", " ").replace(";", ",")[:limit]
+
+
+def _minute_bar_upload_note(snapshot: MinuteBarsSnapshot) -> str:
+    if snapshot.provider == "manual" and snapshot.missing_reason == "manual_price_only":
+        return "manual_price_only; minute_not_supported"
+    if snapshot.status == "available":
+        interval = snapshot.interval or "minute"
+        if snapshot.provider == "akshare":
+            return f"akshare_{interval}_ok; diagnostic_only"
+        if snapshot.provider == "eastmoney_direct":
+            return f"eastmoney_{interval}_ok; diagnostic_only; not_operation_grade"
+        if snapshot.provider == "yfinance":
+            if snapshot.after_close_possible:
+                return "yf_ref_ok; ak/em after_close_possible; provider_dependent; not_operation_grade"
+            return "yf_ref_ok; provider_dependent; not_operation_grade"
+        return f"{snapshot.provider}_minute_ok; diagnostic_only"
+    if snapshot.status == "not_supported" and snapshot.missing_reason == "manual_price_only":
+        return "manual_price_only; minute_not_supported"
+    if snapshot.status == "not_attempted":
+        return "minute_probe_not_enabled"
+    if "yfinance" in snapshot.notes and "provider_attempted=akshare,eastmoney_direct,yfinance" in snapshot.notes:
+        return "all_minute_providers_failed; see_debug"
+    return f"{snapshot.status or 'minute_unavailable'}; see_debug"
 
 
 def _snapshot_attempt_note(snapshot: MinuteBarsSnapshot) -> str:

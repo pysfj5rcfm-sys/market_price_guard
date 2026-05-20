@@ -121,6 +121,8 @@ OUTPUT_COLUMNS = [
     "minute_bar_after_close_possible",
     "minute_bar_retry_suggested",
     "minute_bar_retry_reason",
+    "minute_bar_after_close_applies_to",
+    "minute_bar_upload_note",
     "yfinance_ticker",
 ]
 
@@ -449,6 +451,7 @@ def build_upload_bundle(
     lines.extend(_field_quality_note_lines())
     if _minute_probe_visible(records, runtime):
         lines.extend(["", "## 分钟线探测摘要 / Minute Bars Probe Summary"])
+        lines.append("Minute note is compact. Full provider failure details are in debug_bundle.md.")
         lines.extend(_minute_bars_summary_table(records))
         lines.extend(_minute_bars_probe_note_lines())
     if str(runtime.get("universe_type", "")) in {"candidate_watchlist", "scan_universe"}:
@@ -2527,7 +2530,7 @@ def _minute_bars_summary_table(records: list[PriceRecord]) -> list[str]:
                 latest=_fmt(record.minute_bar_latest_time),
                 status=_fmt(record.minute_bar_status),
                 validation=_fmt(record.minute_bar_validation_status),
-                note=_fmt(record.minute_bar_notes),
+                note=_fmt(_minute_bar_upload_note(record)),
             )
         )
     if not records:
@@ -2547,17 +2550,21 @@ def _minute_bars_probe_note_lines() -> list[str]:
 
 def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
     lines = [
-        "| symbol | provider_attempted | provider_success | normalized_symbol | eastmoney_secid | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | yfinance_ticker | yfinance_status | yfinance_reason | yfinance_error_type | yfinance_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | retry_suggested | retry_reason | notes |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|",
+        "| symbol | provider_attempted | provider_success | normalized_symbol | eastmoney_secid | akshare_status | akshare_reason | akshare_error_type | akshare_error_message | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | yfinance_ticker | yfinance_status | yfinance_reason | yfinance_error_type | yfinance_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | after_close_applies_to | retry_suggested | retry_reason | notes |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|---|",
     ]
     for record in records:
         lines.append(
-            "| {symbol} | {provider} | {success} | {normalized} | {secid} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {yf_ticker} | {yf_status} | {yf_reason} | {yf_type} | {yf_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {retry} | {retry_reason} | {notes} |".format(
+            "| {symbol} | {provider} | {success} | {normalized} | {secid} | {ak_status} | {ak_reason} | {ak_type} | {ak_message} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {yf_ticker} | {yf_status} | {yf_reason} | {yf_type} | {yf_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {applies_to} | {retry} | {retry_reason} | {notes} |".format(
                 symbol=record.symbol,
                 provider=_fmt(_minute_bar_provider_attempted(record)),
                 success=_fmt(record.minute_bar_provider if record.minute_bars_available else "none"),
                 normalized=_fmt(_minute_bar_normalized_symbol(record)),
                 secid=_fmt(_eastmoney_secid_from_record(record)),
+                ak_status=_fmt(_akshare_minute_status(record)),
+                ak_reason=_fmt(_akshare_minute_reason(record)),
+                ak_type=_fmt(_minute_note_value(record, "akshare_error_type")),
+                ak_message=_fmt(_minute_note_value(record, "akshare_error_message")),
                 east_status=_fmt(_minute_note_value(record, "eastmoney_status")),
                 east_reason=_fmt(_minute_note_value(record, "eastmoney_reason")),
                 east_endpoint=_fmt(_minute_note_value(record, "eastmoney_endpoint")),
@@ -2577,13 +2584,14 @@ def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
                 reason=_fmt(record.minute_bar_missing_reason),
                 session=_fmt(record.minute_bar_market_session),
                 after_close=record.minute_bar_after_close_possible,
+                applies_to=_fmt(record.minute_bar_after_close_applies_to or _minute_note_value(record, "after_close_applies_to")),
                 retry=_fmt(record.minute_bar_retry_suggested),
                 retry_reason=_fmt(record.minute_bar_retry_reason),
                 notes=_fmt(record.minute_bar_notes),
             )
         )
     if not records:
-        lines.append("| none | missing | none | - | - | - | - | - | - | - | - | - | - | - | - | missing | not_available | 0 | - | - | missing | no_records | - | false | - | - | no records |")
+        lines.append("| none | missing | none | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | missing | not_available | 0 | - | - | missing | no_records | - | false | - | - | - | no records |")
     return lines
 
 
@@ -2622,6 +2630,7 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
         f"- after_close_possible_count: {sum(1 for record in records if record.minute_bar_after_close_possible)}",
         f"- retry_during_trading_hours_count: {sum(1 for record in records if record.minute_bar_retry_suggested == 'rerun_during_cn_trading_hours')}",
         "- current session summary: " + (", ".join(f"{key}:{value}" for key, value in sorted(session_counts.items())) if session_counts else "none"),
+        "- upload bundle uses compact minute notes; full provider diagnostics remain in debug_bundle.md.",
         "- status counts:",
     ]
     lines.extend([f"  - {status}: {count}" for status, count in sorted(statuses.items())] or ["  - none: 0"])
@@ -2673,6 +2682,28 @@ def _minute_bar_provider_attempted(record: PriceRecord) -> str:
         if value:
             return value
     return record.minute_bar_provider or "missing"
+
+
+def _minute_bar_upload_note(record: PriceRecord) -> str:
+    if record.minute_bar_upload_note:
+        return record.minute_bar_upload_note[:120]
+    if record.minute_bars_available:
+        interval = record.minute_bar_interval or "minute"
+        if record.minute_bar_provider == "akshare":
+            return f"akshare_{interval}_ok; diagnostic_only"
+        if record.minute_bar_provider == "eastmoney_direct":
+            return f"eastmoney_{interval}_ok; diagnostic_only; not_operation_grade"
+        if record.minute_bar_provider == "yfinance":
+            if record.minute_bar_after_close_possible:
+                return "yf_ref_ok; ak/em after_close_possible; provider_dependent; not_operation_grade"
+            return "yf_ref_ok; provider_dependent; not_operation_grade"
+    if record.minute_bar_provider == "manual" and record.minute_bar_missing_reason == "manual_price_only":
+        return "manual_price_only; minute_not_supported"
+    if "yfinance" in _minute_bar_attempted_set(record):
+        return "all_minute_providers_failed; see_debug"
+    if record.minute_bar_status == "not_attempted":
+        return "minute_probe_not_enabled"
+    return f"{record.minute_bar_status or 'minute_unavailable'}; see_debug"
 
 
 def _minute_bar_attempted_set(record: PriceRecord) -> set[str]:

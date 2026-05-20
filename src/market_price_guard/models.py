@@ -218,6 +218,8 @@ class PriceRecord(BaseModel):
     minute_bar_after_close_possible: bool = False
     minute_bar_retry_suggested: str = ""
     minute_bar_retry_reason: str = ""
+    minute_bar_after_close_applies_to: str = ""
+    minute_bar_upload_note: str = ""
     yfinance_ticker: str = ""
 
     def output_dict(self) -> dict[str, object]:

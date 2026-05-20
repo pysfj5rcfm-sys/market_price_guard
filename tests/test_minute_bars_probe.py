@@ -10,6 +10,7 @@ from market_price_guard.main import parse_args, run_pipeline
 from market_price_guard.models import PriceRecord
 from market_price_guard.minute_bars import apply_minute_bars_probe
 from market_price_guard.report import (
+    build_upload_bundle,
     build_completeness_report,
     build_debug_bundle,
     build_provider_health_report,
@@ -31,6 +32,8 @@ MINUTE_COLUMNS = [
     "minute_bar_after_close_possible",
     "minute_bar_retry_suggested",
     "minute_bar_retry_reason",
+    "minute_bar_after_close_applies_to",
+    "minute_bar_upload_note",
     "yfinance_ticker",
 ]
 
@@ -438,12 +441,70 @@ def test_yfinance_reference_fallback_success_writes_rows_and_preserves_semantics
     assert records[0].minute_bar_provider == "yfinance"
     assert records[0].minute_bar_validation_status == "provider_dependent"
     assert records[0].yfinance_ticker == "588200.SS"
+    assert records[0].minute_bar_after_close_applies_to in {"", "akshare,eastmoney_direct"}
+    assert len(records[0].minute_bar_upload_note) <= 120
     assert "provider_attempted=akshare,eastmoney_direct,yfinance" in records[0].minute_bar_notes
     assert "provider_success=yfinance" in records[0].minute_bar_notes
     assert "not_operation_grade" in records[0].minute_bar_notes
     assert records[0].quote_trust_tier == "reference"
     assert records[0].usable_for_operation is False
     assert rows[0]["provider"] == "yfinance"
+
+
+def test_upload_bundle_uses_compact_minute_note_and_debug_keeps_details(monkeypatch, tmp_path):
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("RemoteDisconnected endpoint detail")
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: (_ for _ in ()).throw(ConnectionError("RemoteDisconnected https://push2his.eastmoney.com/detail")))
+    monkeypatch.setattr(
+        minute_bars,
+        "_call_yfinance_minute_bars",
+        lambda ticker, period, interval: pd.DataFrame(
+            [{"Open": 1.20, "High": 1.23, "Low": 1.19, "Close": 1.22, "Volume": 1000}],
+            index=[pd.Timestamp("2026-05-20 10:01:00", tz="Asia/Shanghai")],
+        ),
+    )
+
+    records, _rows = apply_minute_bars_probe([_minute_record()], include_minute_bars=True, provider_mode="live")
+    upload = build_upload_bundle(records, tmp_path, provider_mode="live", runtime={"include_minute_bars": True, "profile": "tech"})
+    debug = build_debug_bundle(records, tmp_path, provider_mode="live", runtime={"include_minute_bars": True})
+    snapshot = pd.DataFrame([record.output_dict() for record in records])
+
+    assert "Minute note is compact" in upload
+    assert "yf_ref_ok" in upload
+    assert "provider_dependent" in upload
+    assert "not_operation_grade" in upload
+    assert "RemoteDisconnected" not in upload
+    assert "push2his.eastmoney.com" not in upload
+    assert "RemoteDisconnected" in debug
+    assert "eastmoney_error_message" in debug
+    assert "yfinance_status" in debug
+    assert "akshare_error_message" in debug
+    assert "minute_bar_notes" in snapshot.columns
+    assert "minute_bar_upload_note" in snapshot.columns
+    assert records[0].minute_bar_upload_note
+
+
+def test_upload_bundle_all_minute_providers_failed_note_is_short(monkeypatch, tmp_path):
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("akshare down")
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: (_ for _ in ()).throw(ConnectionError("eastmoney down")))
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: (_ for _ in ()).throw(ConnectionError("yfinance down")))
+
+    records, _rows = apply_minute_bars_probe([_minute_record()], include_minute_bars=True, provider_mode="live")
+    upload = build_upload_bundle(records, tmp_path, provider_mode="live", runtime={"include_minute_bars": True, "profile": "tech"})
+
+    assert "all_minute_providers_failed; see_debug" in upload
+    assert "akshare down" not in upload
+    assert "eastmoney down" not in upload
+    assert "yfinance down" not in upload
 
 
 def test_yfinance_reference_fallback_empty_exception_and_parse(monkeypatch):
