@@ -4,8 +4,10 @@ from pathlib import Path
 
 import pandas as pd
 
+import market_price_guard.minute_bars as minute_bars
 from market_price_guard.main import parse_args, run_pipeline
 from market_price_guard.models import PriceRecord
+from market_price_guard.minute_bars import apply_minute_bars_probe
 
 
 MINUTE_COLUMNS = [
@@ -53,6 +55,98 @@ def test_minute_probe_outputs_reports_and_csv_columns(tmp_path):
     assert "Minute Bars Probe Detail" in (output_dir / "debug_bundle.md").read_text(encoding="utf-8")
     assert "Minute Bars Completeness" in (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
     assert "Minute Bars Capability" in (output_dir / "provider_capability_report.md").read_text(encoding="utf-8")
+
+
+def test_akshare_minute_probe_maps_etf_minute_dataframe(monkeypatch):
+    class FakeAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            assert symbol == "588200"
+            assert period == "1"
+            return pd.DataFrame(
+                [
+                    {
+                        "时间": "2026-05-20 10:01:00",
+                        "开盘": 1.20,
+                        "最高": 1.23,
+                        "最低": 1.19,
+                        "收盘": 1.22,
+                        "成交量": 1000,
+                        "成交额": 1220,
+                    }
+                ]
+            )
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FakeAk)
+    record = PriceRecord(
+        project="tech",
+        symbol="588200.SH",
+        name="Chip ETF",
+        market="CN",
+        price=1.22,
+        currency="CNY",
+        source="akshare",
+        selected_provider="akshare",
+        quote_time=None,
+        fetch_time=None,
+        market_status="open",
+        is_stale=False,
+        usable_for_reference=True,
+        quote_trust_tier="reference",
+        usable_for_operation=False,
+        required_for_operation=False,
+    )
+
+    records, rows = apply_minute_bars_probe([record], include_minute_bars=True, provider_mode="live")
+
+    assert records[0].minute_bars_available is True
+    assert records[0].minute_bar_provider == "akshare"
+    assert records[0].minute_bar_interval == "1m"
+    assert records[0].minute_bar_count == 1
+    assert records[0].minute_bar_status == "available"
+    assert rows[0]["symbol"] == "588200.SH"
+    assert rows[0]["close"] == 1.22
+
+
+def test_akshare_minute_probe_empty_and_exception(monkeypatch):
+    class EmptyAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            return pd.DataFrame()
+
+    base_record = PriceRecord(
+        project="tech",
+        symbol="588200.SH",
+        name="Chip ETF",
+        market="CN",
+        price=1.22,
+        currency="CNY",
+        source="akshare",
+        selected_provider="akshare",
+        quote_time=None,
+        fetch_time=None,
+        market_status="open",
+        is_stale=False,
+        usable_for_reference=True,
+        quote_trust_tier="reference",
+        usable_for_operation=False,
+        required_for_operation=False,
+    )
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: EmptyAk)
+    empty_records, _rows = apply_minute_bars_probe([base_record], include_minute_bars=True, provider_mode="live")
+    assert empty_records[0].minute_bar_status == "unavailable"
+    assert empty_records[0].minute_bar_missing_reason == "empty_response"
+
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("down")
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+    failed_records, _rows = apply_minute_bars_probe([base_record], include_minute_bars=True, provider_mode="live")
+    assert failed_records[0].minute_bar_status == "provider_error"
+    assert failed_records[0].minute_bar_missing_reason == "provider_error"
 
 
 def test_minute_probe_disabled_preserves_strict_result(tmp_path):

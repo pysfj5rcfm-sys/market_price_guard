@@ -53,6 +53,14 @@ def normalize_records(
                 else instrument.required_for_operation
             )
             trust = _quote_trust_fields(raw, is_stale, required_for_operation)
+            if instrument.universe_type in {"candidate_watchlist", "scan_universe"}:
+                trust = {
+                    **trust,
+                    "quote_trust_tier": "development" if trust["quote_trust_tier"] == "development" else "reference",
+                    "usable_for_operation": False,
+                    "confirmation_required": True,
+                    "operation_blocking_reason": str(trust["operation_blocking_reason"] or "reference_tier_requires_operation_confirmation"),
+                }
             provider_diagnostics.update(
                 {
                     "quote_trust_tier": trust["quote_trust_tier"],

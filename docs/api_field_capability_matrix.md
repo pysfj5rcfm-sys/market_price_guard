@@ -281,3 +281,11 @@ This ranking is a data quality and review-priority aid only. It does not impleme
 This is an ingestion probe only. `intraday_vwap`, `distance_to_vwap_pct`, `day_position`, `chase_risk`, `buy_zone`, and related intraday derived fields remain planned for v0.7.2b or later. QDII premium, action hints, preferred actions, and allowed advice level remain future modules.
 
 Provider capability remains separate from operation trust tier. Minute-bar availability does not upgrade a quote to operation-grade and does not change strict.
+
+## v0.7.2a.1 AKShare Coverage Update
+
+`minute_bars` moves from skeleton-only status to AKShare ETF probe attempted through `fund_etf_hist_min_em` for ETF / QDII ETF symbols when the optional minute probe is enabled.
+
+`tech_scan_ai` reference/scan quote coverage now attempts AKShare spot data for ETF / QDII ETF scan candidates and A-share stock scan candidates. This improves base quote coverage, but scan candidates remain reference/diagnostic and do not become operation holdings.
+
+`intraday_vwap`, `distance_to_vwap_pct`, `day_position`, `chase_risk`, and `buy_zone` remain planned for v0.7.2b or later.

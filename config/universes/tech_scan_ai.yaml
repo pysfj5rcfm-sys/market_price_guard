@@ -2,9 +2,77 @@ name: tech_scan_ai
 profile: tech
 universe_type: scan_universe
 quote_purpose: reference
+required_for_operation: false
+affect_core_strict: false
+description: 科技扫描池：半导体/芯片/设备、通信/CPO/光模块、AI/算力/云计算、港股科技/跨境科技。仅用于 scan/reference 观察排序，不用于
+  operation 操作放行。
 symbols:
-  - 159819.SZ
-  - 515880.SH
-  - 512480.SH
-  - 159995.SZ
-  - 588200.SH
+- 588200.SH
+- 512480.SH
+- 159995.SZ
+- 159516.SZ
+- 159558.SZ
+- 588170.SH
+- 588890.SH
+- 515880.SH
+- 515050.SH
+- 159994.SZ
+- 300308.SZ
+- 300502.SZ
+- 159819.SZ
+- 159363.SZ
+- 588760.SH
+- 588930.SH
+- 515980.SH
+- 516510.SH
+- 688256.SH
+- 513180.SH
+- 513130.SH
+- 513310.SH
+- 513150.SH
+- 513020.SH
+- 159792.SZ
+- 513320.SH
+layers:
+  layer1_semiconductor:
+    description: 半导体 / 科创芯片 / 半导体设备
+    report_group: 半导体 / 科创芯片 / 半导体设备
+    symbols:
+    - 588200.SH
+    - 512480.SH
+    - 159995.SZ
+    - 159516.SZ
+    - 159558.SZ
+    - 588170.SH
+    - 588890.SH
+  layer2_communication_cpo:
+    description: 通信 / CPO / 光模块
+    report_group: 通信 / CPO / 光模块
+    symbols:
+    - 515880.SH
+    - 515050.SH
+    - 159994.SZ
+    - 300308.SZ
+    - 300502.SZ
+  layer3_ai_computing_cloud:
+    description: AI / 算力 / 科创AI / 云计算
+    report_group: AI / 算力 / 科创AI / 云计算
+    symbols:
+    - 159819.SZ
+    - 159363.SZ
+    - 588760.SH
+    - 588930.SH
+    - 515980.SH
+    - 516510.SH
+    - 688256.SH
+  layer4_hk_tech_cross_border:
+    description: 港股科技 / 中韩半导体 / 港股互联网
+    report_group: 港股科技 / 中韩半导体 / 港股互联网
+    symbols:
+    - 513180.SH
+    - 513130.SH
+    - 513310.SH
+    - 513150.SH
+    - 513020.SH
+    - 159792.SZ
+    - 513320.SH

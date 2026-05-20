@@ -2461,7 +2461,7 @@ def _minute_bars_summary_table(records: list[PriceRecord]) -> list[str]:
 
 def _minute_bars_probe_note_lines() -> list[str]:
     return [
-        "- Minute bars are diagnostic in v0.7.2a.",
+        "- Minute bars are diagnostic in v0.7.2a.1.",
         "- Minute bars do not change strict or operation readiness in this version.",
         "- VWAP and intraday derived fields are not calculated in v0.7.2a.",
         "- Operation decisions still depend on quote_trust_tier / usable_for_operation / strict / freshness.",
@@ -2471,14 +2471,16 @@ def _minute_bars_probe_note_lines() -> list[str]:
 
 def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
     lines = [
-        "| symbol | provider_attempted | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | notes |",
-        "|---|---|---|---|---:|---|---|---|---|---|",
+        "| symbol | provider_attempted | provider_success | normalized_symbol | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | notes |",
+        "|---|---|---|---|---|---|---:|---|---|---|---|---|",
     ]
     for record in records:
         lines.append(
-            "| {symbol} | {provider} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {notes} |".format(
+            "| {symbol} | {provider} | {success} | {normalized} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {notes} |".format(
                 symbol=record.symbol,
                 provider=_fmt(record.minute_bar_provider),
+                success=record.minute_bars_available,
+                normalized=_fmt(_minute_bar_normalized_symbol(record)),
                 status=_fmt(record.minute_bar_status),
                 interval=_fmt(record.minute_bar_interval),
                 count=record.minute_bar_count,
@@ -2490,7 +2492,7 @@ def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
             )
         )
     if not records:
-        lines.append("| none | missing | missing | not_available | 0 | - | - | missing | no_records | no records |")
+        lines.append("| none | missing | false | - | missing | not_available | 0 | - | - | missing | no_records | no records |")
     return lines
 
 
@@ -2505,6 +2507,12 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
         f"- provider_error count: {statuses.get('provider_error', 0)}",
         f"- symbol_not_found count: {statuses.get('symbol_not_found', 0)}",
         f"- stale count: {statuses.get('stale', 0)}",
+        f"- akshare_attempted_count: {sum(1 for record in records if record.minute_bar_provider == 'akshare')}",
+        f"- akshare_success_count: {sum(1 for record in records if record.minute_bar_provider == 'akshare' and record.minute_bars_available)}",
+        f"- akshare_error_count: {sum(1 for record in records if record.minute_bar_provider == 'akshare' and record.minute_bar_status == 'provider_error')}",
+        f"- yfinance_attempted_count: {sum(1 for record in records if record.minute_bar_provider == 'yfinance')}",
+        f"- yfinance_success_count: {sum(1 for record in records if record.minute_bar_provider == 'yfinance' and record.minute_bars_available)}",
+        f"- empty_response count: {sum(1 for record in records if record.minute_bar_missing_reason == 'empty_response')}",
         "- status counts:",
     ]
     lines.extend([f"  - {status}: {count}" for status, count in sorted(statuses.items())] or ["  - none: 0"])
@@ -2512,7 +2520,7 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
     lines.extend([f"  - {provider}: {count}" for provider, count in sorted(providers.items())] or ["  - none: 0"])
     lines.extend(
         [
-            "- minute bars missing does not change existing strict in v0.7.2a.",
+            "- minute bars missing does not change existing strict in v0.7.2a.1.",
             "- VWAP / intraday position fields are not implemented.",
             "- minute bars are diagnostic only.",
         ]
@@ -2523,7 +2531,7 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
 def _minute_bars_capability_lines(records: list[PriceRecord], runtime: dict[str, Any]) -> list[str]:
     lines = [
         f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
-        "- akshare: not_implemented in guard minute probe path.",
+        "- akshare: ETF minute bars attempted through fund_etf_hist_min_em when --include-minute-bars is enabled.",
         "- eastmoney_direct: not_validated / not_implemented; endpoint stability is unchanged.",
         "- yfinance: not_implemented_in_guard for minute probe in this version; reference-only if added later.",
         "- manual: not_supported.",
@@ -2539,6 +2547,12 @@ def _minute_bar_status_counts(records: list[PriceRecord]) -> dict[str, int]:
         status = record.minute_bar_status or "missing"
         counts[status] = counts.get(status, 0) + 1
     return counts
+
+
+def _minute_bar_normalized_symbol(record: PriceRecord) -> str:
+    if record.symbol.endswith((".SH", ".SZ", ".HK")):
+        return record.symbol.split(".")[0]
+    return record.symbol
 
 
 def _minute_bar_provider_counts(records: list[PriceRecord]) -> dict[str, int]:

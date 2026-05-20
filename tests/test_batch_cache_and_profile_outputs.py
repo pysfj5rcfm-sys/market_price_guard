@@ -38,6 +38,37 @@ def test_akshare_etf_full_interface_called_once_for_multiple_etfs(ak_factory, sa
     }
 
 
+def test_scan_etf_and_stock_symbols_use_akshare_helpers(ak_factory):
+    calls = {"fund_etf_spot_em": 0, "stock_zh_a_spot_em": 0}
+
+    def etf():
+        calls["fund_etf_spot_em"] += 1
+        return pd.DataFrame(
+            [
+                {"code": "588200", "name": "Chip ETF", "price": 1.23, "update_time": "2026-05-18 14:55:00+08:00"},
+                {"code": "512480", "name": "Semi ETF", "price": 0.98, "update_time": "2026-05-18 14:55:00+08:00"},
+            ]
+        )
+
+    def stock():
+        calls["stock_zh_a_spot_em"] += 1
+        return pd.DataFrame(
+            [
+                {"code": "300308", "name": "CPO A", "price": 112.3, "update_time": "2026-05-18 14:56:00+08:00"},
+                {"code": "688256", "name": "AI A", "price": 83.4, "update_time": "2026-05-18 14:56:00+08:00"},
+            ]
+        )
+
+    provider = AkshareProvider(ak_factory(fund_etf_spot_em=etf, stock_zh_a_spot_em=stock))
+    prices = provider.fetch(["588200.SH", "512480.SH", "300308.SZ", "688256.SH"])
+
+    assert calls == {"fund_etf_spot_em": 1, "stock_zh_a_spot_em": 1}
+    assert prices["588200.SH"].price == 1.23
+    assert prices["512480.SH"].source == "akshare"
+    assert prices["300308.SZ"].price == 112.3
+    assert prices["688256.SH"].provider_diagnostics["function_name"] == "stock_zh_a_spot_em"
+
+
 def test_cached_etf_dataframe_is_rematched_for_each_symbol_through_router(ak_factory, sample_etf_df, failing_provider):
     calls = {"fund_etf_spot_em": 0}
 

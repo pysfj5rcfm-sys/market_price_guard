@@ -98,3 +98,9 @@ v0.7.2a adds `--include-minute-bars` and `scripts/run_tech_minute_probe.ps1`.
 The minute-bars probe is optional. It does not alter the default fast strict provider chain, does not upgrade reference providers, and does not change strict, freshness, quote trust tier, or usable_for_operation.
 
 When the probe is enabled, reports show minute-bar availability, interval, count, latest time, provider, status, validation status, and missing reason. VWAP and intraday derived fields are not calculated in v0.7.2a.
+
+## v0.7.2a.1 Scan And Minute Probe Coverage
+
+`tech_scan_ai` reference/scan runs may attempt AKShare spot quotes for ETF / QDII ETF scan candidates and A-share stock scan candidates. These records remain scan/reference records and do not become operation holdings.
+
+The optional minute probe may call AKShare `fund_etf_hist_min_em` for ETF / QDII ETF symbols. This does not alter `run_tech_fast_strict.ps1`, default provider chains, strict, or operation readiness.

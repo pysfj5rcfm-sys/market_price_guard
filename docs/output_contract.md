@@ -583,3 +583,38 @@ v0.7.2a adds an optional Minute Bars Ingestion Probe. The probe is diagnostic on
 Optional `minute_bars_snapshot.csv` may be generated when actual bars are available. It is a debug/probe artifact, not the daily minimal upload file.
 
 v0.7.2a does not compute VWAP, day position, chase risk, buy zones, QDII premium, action hints, preferred actions, or allowed advice levels.
+
+### 13.18 AKShare Scan Quote And Minute Probe Coverage
+
+v0.7.2a.1 expands AKShare real-data coverage for reference/diagnostic scan paths without changing operation semantics.
+
+`tech_scan_ai` scan records may attempt:
+
+- ETF / QDII ETF spot quote through AKShare `fund_etf_spot_em`.
+- A-share stock spot quote through AKShare stock spot helpers.
+
+Scan records must remain:
+
+- `required_for_operation=false`
+- `usable_for_operation=false`
+- reference / scan inputs, not operation holdings
+
+`minute_bars_snapshot.csv`, when generated, contains:
+
+- `symbol`
+- `name`
+- `provider`
+- `interval`
+- `timestamp`
+- `open`
+- `high`
+- `low`
+- `close`
+- `volume`
+- `amount`
+- `validation_status`
+- `notes`
+
+`debug_bundle.md` Minute Bars Probe Detail should include provider attempted, provider success, normalized symbol, status, interval, count, latest time, fetch time, validation status, missing reason, and notes.
+
+AKShare ETF minute bars use `fund_etf_hist_min_em` in the optional minute probe path only. Minute-bar availability must not upgrade trust tier, change strict, or change operation readiness.

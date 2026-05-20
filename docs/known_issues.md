@@ -54,3 +54,11 @@ Minute bars probe introduced in v0.7.2a. It records minute-bar availability and 
 Minute bars availability may vary by provider and symbol. Missing minute bars do not affect operation-grade status, strict, freshness, quote trust tier, or usable_for_operation in v0.7.2a.
 
 The probe does not fix Eastmoney Direct stability, does not add QDII premium, and does not add any advice layer.
+
+## v0.7.2a.1 AKShare Coverage Caveats
+
+AKShare `fund_etf_hist_min_em` may be slow, environment-dependent, or limited to recent ETF minute data. The probe first attempts short interval data and may fall back to a coarser interval when the first response is empty.
+
+YFinance A-share ETF minute bars remain not implemented in guard in this version. Eastmoney Direct minute bars remain not validated.
+
+Some scan symbols may still fail provider coverage and remain not rankable. Such failures should be reported as provider error, symbol not found, empty response, or unsupported coverage rather than treated as a system failure.

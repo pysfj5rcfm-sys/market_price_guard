@@ -243,3 +243,13 @@ Check:
 - `data_completeness_report.md` contains `Minute Bars Completeness`.
 - Minute bars are diagnostic only and do not change strict or operation readiness.
 - VWAP and intraday derived fields are not calculated in v0.7.2a.
+
+Additional v0.7.2a.1 checks:
+
+- `run_tech_scan_ai.ps1` keeps 26 scan symbols in `prices_snapshot.csv`.
+- ETF / QDII ETF scan candidates attempt AKShare `fund_etf_spot_em`.
+- A-share stock scan candidates attempt AKShare stock spot helpers.
+- Scan records remain `required_for_operation=false` and `usable_for_operation=false`.
+- `run_tech_minute_probe.ps1` attempts AKShare ETF minute bars through `fund_etf_hist_min_em`.
+- If minute bars are available, `minute_bars_snapshot.csv` is generated and listed in `index.md`.
+- Minute-bar availability does not change strict or operation readiness.

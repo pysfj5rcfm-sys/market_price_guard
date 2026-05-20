@@ -5,13 +5,27 @@
   asset_type: ETF
   project_scope: tech
   role: nasdaq_or_overseas_tech_etf
-  universe_tags: [tech, nasdaq, overseas, etf, core]
+  universe_tags:
+  - tech
+  - nasdaq
+  - overseas
+  - etf
+  - core
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 纳指 / 海外科技ETF
   enabled: true
   notes: 科技账户核心纳指相关 ETF
@@ -22,13 +36,27 @@
   asset_type: ETF
   project_scope: tech
   role: nasdaq_or_overseas_tech_etf
-  universe_tags: [tech, nasdaq, overseas, etf, core]
+  universe_tags:
+  - tech
+  - nasdaq
+  - overseas
+  - etf
+  - core
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 纳指 / 海外科技ETF
   enabled: true
 159819.SZ:
@@ -38,15 +66,32 @@
   asset_type: ETF
   project_scope: tech
   role: ai_tech_equity
-  universe_tags: [tech, ai, etf, core]
+  universe_tags:
+  - tech
+  - ai
+  - etf
+  - core
+  - artificial_intelligence
+  - computing_power
+  - layer3
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: AI / 人工智能ETF
   enabled: true
+  notes: already in tech core; included in scan universe for comparison only
 515880.SH:
   symbol: 515880.SH
   name: 通信ETF
@@ -54,15 +99,32 @@
   asset_type: ETF
   project_scope: tech
   role: communication_tech_equity
-  universe_tags: [tech, communication, etf, core]
+  universe_tags:
+  - tech
+  - communication
+  - etf
+  - core
+  - cpo
+  - optical_module
+  - layer2
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 通信 / 科技ETF
   enabled: true
+  notes: already in tech core; included in scan universe for comparison only
 510300.SH:
   symbol: 510300.SH
   name: 沪深300ETF
@@ -70,13 +132,25 @@
   asset_type: ETF
   project_scope: tech
   role: non_tech_broad_base_etf
-  universe_tags: [broad_base, hs300, non_tech]
+  universe_tags:
+  - broad_base
+  - hs300
+  - non_tech
   required_for_operation: false
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 非科技宽基单独列示
   enabled: true
 GOLD_CNY:
@@ -86,13 +160,20 @@ GOLD_CNY:
   asset_type: manual_price
   project_scope: tech
   role: defense_or_potential_tech_funding
-  universe_tags: [tech, gold, defense, core]
+  universe_tags:
+  - tech
+  - gold
+  - defense
+  - core
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [manual]
-    reference: [manual]
-    reconcile: [manual]
+    operation:
+    - manual
+    reference:
+    - manual
+    reconcile:
+    - manual
   report_group: 黄金防守仓 / 潜在转科技资金
   enabled: true
 00883.HK:
@@ -102,13 +183,24 @@ GOLD_CNY:
   asset_type: stock
   project_scope: energy
   role: energy_core_equity
-  universe_tags: [energy, hk, core]
+  universe_tags:
+  - energy
+  - hk
+  - core
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, yfinance, mock]
-    reference: [yfinance, akshare, mock]
-    reconcile: [yfinance, akshare]
+    operation:
+    - akshare
+    - yfinance
+    - mock
+    reference:
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - yfinance
+    - akshare
   report_group: 能源账户核心价格
   enabled: true
 601899.SH:
@@ -118,13 +210,26 @@ GOLD_CNY:
   asset_type: stock
   project_scope: energy
   role: energy_core_equity
-  universe_tags: [energy, a_share, core]
+  universe_tags:
+  - energy
+  - a_share
+  - core
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, yfinance, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - yfinance
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 能源账户核心价格
   enabled: true
 601985.SH:
@@ -134,13 +239,27 @@ GOLD_CNY:
   asset_type: stock
   project_scope: energy
   role: energy_core_equity
-  universe_tags: [energy, nuclear, a_share, core]
+  universe_tags:
+  - energy
+  - nuclear
+  - a_share
+  - core
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, yfinance, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - yfinance
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 能源账户核心价格
   enabled: true
 003816.SZ:
@@ -150,13 +269,27 @@ GOLD_CNY:
   asset_type: stock
   project_scope: energy
   role: energy_core_equity
-  universe_tags: [energy, nuclear, a_share, core]
+  universe_tags:
+  - energy
+  - nuclear
+  - a_share
+  - core
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
-    operation: [akshare, yfinance, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
+    operation:
+    - akshare
+    - yfinance
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 能源账户核心价格
   enabled: true
 USD_CNY:
@@ -166,13 +299,18 @@ USD_CNY:
   asset_type: fx
   project_scope: controller
   role: controller_reference
-  universe_tags: [controller, fx]
+  universe_tags:
+  - controller
+  - fx
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
-    operation: [mock]
-    reference: [mock]
-    reconcile: [mock]
+    operation:
+    - mock
+    reference:
+    - mock
+    reconcile:
+    - mock
   report_group: 总控辅助
   enabled: true
 HKD_CNY:
@@ -182,13 +320,18 @@ HKD_CNY:
   asset_type: fx
   project_scope: controller
   role: controller_reference
-  universe_tags: [controller, fx]
+  universe_tags:
+  - controller
+  - fx
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
-    operation: [mock]
-    reference: [mock]
-    reconcile: [mock]
+    operation:
+    - mock
+    reference:
+    - mock
+    reconcile:
+    - mock
   report_group: 总控辅助
   enabled: true
 IXIC:
@@ -198,13 +341,18 @@ IXIC:
   asset_type: index
   project_scope: controller
   role: controller_reference
-  universe_tags: [controller, us_index]
+  universe_tags:
+  - controller
+  - us_index
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
-    operation: [mock]
-    reference: [mock]
-    reconcile: [mock]
+    operation:
+    - mock
+    reference:
+    - mock
+    reconcile:
+    - mock
   report_group: 总控辅助
   enabled: true
 512480.SH:
@@ -214,16 +362,31 @@ IXIC:
   asset_type: ETF
   project_scope: tech
   role: candidate_tech_etf
-  universe_tags: [tech, semiconductor, candidate, etf]
+  universe_tags:
+  - tech
+  - semiconductor
+  - chip
+  - candidate
+  - etf
+  - layer1
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
-  report_group: 候选关注池
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
-  notes: 示例候选，不影响核心 strict
+  notes: scan candidate; existing candidate expanded into layer1
 159995.SZ:
   symbol: 159995.SZ
   name: 芯片ETF
@@ -231,16 +394,31 @@ IXIC:
   asset_type: ETF
   project_scope: tech
   role: candidate_tech_etf
-  universe_tags: [tech, chip, candidate, etf]
+  universe_tags:
+  - tech
+  - semiconductor
+  - chip
+  - candidate
+  - etf
+  - layer1
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
-  report_group: 候选关注池
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
-  notes: example_candidate_requires_validation
+  notes: scan candidate; existing candidate expanded into layer1
 588200.SH:
   symbol: 588200.SH
   name: 科创芯片ETF
@@ -248,13 +426,744 @@ IXIC:
   asset_type: ETF
   project_scope: tech
   role: candidate_tech_etf
-  universe_tags: [tech, chip, star_market, candidate, etf]
+  universe_tags:
+  - tech
+  - semiconductor
+  - chip
+  - sci_tech_chip
+  - candidate
+  - etf
+  - layer1
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
-    operation: [akshare, mock]
-    reference: [eastmoney_direct, yfinance, akshare, mock]
-    reconcile: [eastmoney_direct, yfinance, akshare]
-  report_group: 候选关注池
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
-  notes: example_candidate_requires_validation
+  notes: scan candidate; existing candidate expanded into layer1
+159516.SZ:
+  symbol: 159516.SZ
+  name: 半导体设备ETF
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - semiconductor
+  - semiconductor_equipment
+  - equipment
+  - candidate
+  - etf
+  - layer1
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 科创芯片 / 半导体设备
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+159558.SZ:
+  symbol: 159558.SZ
+  name: 半导体设备ETF
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - semiconductor
+  - semiconductor_equipment
+  - equipment
+  - candidate
+  - etf
+  - layer1
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 科创芯片 / 半导体设备
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+588170.SH:
+  symbol: 588170.SH
+  name: 科创半导体ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - semiconductor
+  - sci_tech_semiconductor
+  - candidate
+  - etf
+  - layer1
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 科创芯片 / 半导体设备
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+588890.SH:
+  symbol: 588890.SH
+  name: 科创芯片相关ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - semiconductor
+  - sci_tech_chip
+  - candidate
+  - etf
+  - layer1
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 科创芯片 / 半导体设备
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+515050.SH:
+  symbol: 515050.SH
+  name: 5G通信相关ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - communication
+  - 5g
+  - cpo
+  - optical_module
+  - candidate
+  - etf
+  - layer2
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 通信 / CPO / 光模块
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+159994.SZ:
+  symbol: 159994.SZ
+  name: 通信ETF
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - communication
+  - cpo
+  - optical_module
+  - candidate
+  - etf
+  - layer2
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 通信 / CPO / 光模块
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+300308.SZ:
+  symbol: 300308.SZ
+  name: 中际旭创
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: scan_candidate_stock
+  universe_tags:
+  - tech
+  - communication
+  - cpo
+  - optical_module
+  - ai_infrastructure
+  - candidate
+  - stock
+  - layer2
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 通信 / CPO / 光模块
+  enabled: true
+  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
+    with ETFs
+300502.SZ:
+  symbol: 300502.SZ
+  name: 新易盛
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: scan_candidate_stock
+  universe_tags:
+  - tech
+  - communication
+  - cpo
+  - optical_module
+  - ai_infrastructure
+  - candidate
+  - stock
+  - layer2
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 通信 / CPO / 光模块
+  enabled: true
+  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
+    with ETFs
+159363.SZ:
+  symbol: 159363.SZ
+  name: 科创人工智能相关ETF
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - ai
+  - artificial_intelligence
+  - sci_tech_ai
+  - computing_power
+  - candidate
+  - etf
+  - layer3
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI / 算力 / 科创AI / 云计算
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+588760.SH:
+  symbol: 588760.SH
+  name: 科创人工智能ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - ai
+  - artificial_intelligence
+  - sci_tech_ai
+  - candidate
+  - etf
+  - layer3
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI / 算力 / 科创AI / 云计算
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+588930.SH:
+  symbol: 588930.SH
+  name: 科创AI相关ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - ai
+  - artificial_intelligence
+  - sci_tech_ai
+  - candidate
+  - etf
+  - layer3
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI / 算力 / 科创AI / 云计算
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+515980.SH:
+  symbol: 515980.SH
+  name: 人工智能相关ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - ai
+  - artificial_intelligence
+  - computing_power
+  - candidate
+  - etf
+  - layer3
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI / 算力 / 科创AI / 云计算
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+516510.SH:
+  symbol: 516510.SH
+  name: 云计算ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - tech
+  - cloud
+  - cloud_computing
+  - ai_infrastructure
+  - computing_power
+  - candidate
+  - etf
+  - layer3
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI / 算力 / 科创AI / 云计算
+  enabled: true
+  notes: scan candidate; fund name should be validated by provider
+688256.SH:
+  symbol: 688256.SH
+  name: 寒武纪
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: scan_candidate_stock
+  universe_tags:
+  - tech
+  - ai
+  - ai_chip
+  - semiconductor
+  - computing_power
+  - candidate
+  - stock
+  - layer3
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI / 算力 / 科创AI / 云计算
+  enabled: true
+  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
+    with ETFs
+513180.SH:
+  symbol: 513180.SH
+  name: 恒生科技指数ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: scan_candidate_qdii_etf
+  universe_tags:
+  - tech
+  - hk_tech
+  - hang_seng_tech
+  - qdii
+  - cross_border
+  - candidate
+  - etf
+  - layer4
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 港股科技 / 中韩半导体 / 港股互联网
+  enabled: true
+  notes: cross-border/HK tech scan candidate; premium module not yet available
+513130.SH:
+  symbol: 513130.SH
+  name: 恒生科技相关ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: scan_candidate_qdii_etf
+  universe_tags:
+  - tech
+  - hk_tech
+  - hang_seng_tech
+  - qdii
+  - cross_border
+  - candidate
+  - etf
+  - layer4
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 港股科技 / 中韩半导体 / 港股互联网
+  enabled: true
+  notes: cross-border/HK tech scan candidate; fund name should be validated by provider
+513310.SH:
+  symbol: 513310.SH
+  name: 中韩半导体ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: scan_candidate_qdii_etf
+  universe_tags:
+  - tech
+  - semiconductor
+  - korea_semiconductor
+  - qdii
+  - cross_border
+  - candidate
+  - etf
+  - layer4
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 港股科技 / 中韩半导体 / 港股互联网
+  enabled: true
+  notes: cross-border semiconductor ETF; premium/reference module not yet available
+513150.SH:
+  symbol: 513150.SH
+  name: 港股互联网ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: scan_candidate_qdii_etf
+  universe_tags:
+  - tech
+  - hk_internet
+  - hk_tech
+  - qdii
+  - cross_border
+  - candidate
+  - etf
+  - layer4
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 港股科技 / 中韩半导体 / 港股互联网
+  enabled: true
+  notes: cross-border/HK internet scan candidate; premium module not yet available
+513020.SH:
+  symbol: 513020.SH
+  name: 港股科技互联网相关ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: scan_candidate_qdii_etf
+  universe_tags:
+  - tech
+  - hk_tech
+  - hk_internet
+  - qdii
+  - cross_border
+  - candidate
+  - etf
+  - layer4
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 港股科技 / 中韩半导体 / 港股互联网
+  enabled: true
+  notes: cross-border/HK tech scan candidate; fund name should be validated by provider
+159792.SZ:
+  symbol: 159792.SZ
+  name: 港股通互联网相关ETF
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: scan_candidate_hk_etf
+  universe_tags:
+  - tech
+  - hk_internet
+  - hk_tech
+  - cross_border
+  - candidate
+  - etf
+  - layer4
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 港股科技 / 中韩半导体 / 港股互联网
+  enabled: true
+  notes: scan candidate; verify whether QDII or HK-stock-connect ETF
+513320.SH:
+  symbol: 513320.SH
+  name: 港股科技互联网相关ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: scan_candidate_qdii_etf
+  universe_tags:
+  - tech
+  - hk_tech
+  - hk_internet
+  - qdii
+  - cross_border
+  - candidate
+  - etf
+  - layer4
+  - name_needs_provider_validation
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 港股科技 / 中韩半导体 / 港股互联网
+  enabled: true
+  notes: cross-border/HK tech scan candidate; fund name should be validated by provider

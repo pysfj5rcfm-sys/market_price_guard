@@ -450,3 +450,14 @@ outputs_tech_minute_probe_latest
 The probe writes minute-bar availability fields into `prices_snapshot.csv` and adds Minute Bars Probe sections to `0_upload_bundle.md`, `debug_bundle.md`, `data_completeness_report.md`, and `provider_capability_report.md`. When mock mode is used, mock minute bars may be generated for tests only. Live providers that do not have a guarded minute-bars implementation are reported as `not_supported`, `not_validated`, or `not_implemented_for_provider`.
 
 v0.7.2a does not calculate VWAP, intraday position fields, QDII premium, action hints, preferred actions, or allowed advice levels. Future v0.7.2b may build VWAP and basic intraday derived fields on top of this probe.
+
+## AKShare Real Data Coverage for Scan + Minute Probe
+
+v0.7.2a.1 expands AKShare real-data coverage in two diagnostic/reference paths:
+
+- `run_tech_scan_ai.ps1` / `tech_scan_ai` now attempts AKShare spot quote coverage for scan ETF/QDII ETF candidates through `fund_etf_spot_em` and A-share scan stocks through stock spot helpers.
+- `run_tech_minute_probe.ps1` now attempts AKShare ETF minute bars through `fund_etf_hist_min_em` when `--include-minute-bars` is enabled.
+
+Scan records remain `required_for_operation=false` and `usable_for_operation=false`. Minute bars remain diagnostic and do not change strict, freshness, quote trust tier, operation readiness, or operation/reference semantics.
+
+YFinance minute fallback is not implemented in this version; it remains reference-only/not implemented in guard capability reporting. Eastmoney Direct minute bars remain not validated.

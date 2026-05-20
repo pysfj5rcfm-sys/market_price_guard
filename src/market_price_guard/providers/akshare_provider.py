@@ -11,9 +11,7 @@ from market_price_guard.models import RawPrice
 from market_price_guard.providers.base import PriceProvider
 
 
-A_STOCK_SYMBOLS = {"601899.SH", "601985.SH", "003816.SZ"}
 HK_STOCK_SYMBOLS = {"00883.HK"}
-ETF_SYMBOLS = {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}
 SHANGHAI_TZ = timezone(timedelta(hours=8))
 
 CODE_COLUMNS = [
@@ -89,12 +87,12 @@ class AkshareProvider(PriceProvider):
             }
 
         prices: dict[str, RawPrice] = {}
-        prices.update(self._fetch_a_shares(ak, [s for s in symbols if s in A_STOCK_SYMBOLS], fetch_time))
+        prices.update(self._fetch_a_shares(ak, [s for s in symbols if _is_a_share_stock_symbol(s)], fetch_time))
         prices.update(self._fetch_hk_shares(ak, [s for s in symbols if s in HK_STOCK_SYMBOLS], fetch_time))
         prices.update(
             self._fetch_single_interface(
                 ak=ak,
-                symbols=[s for s in symbols if s in ETF_SYMBOLS],
+                symbols=[s for s in symbols if _is_etf_symbol(s)],
                 currency="CNY",
                 fetch_time=fetch_time,
                 function_name="fund_etf_spot_em",
@@ -589,13 +587,27 @@ def _in_ranges(value: time, ranges: list[tuple[time, time]]) -> bool:
 
 
 def _category_for_symbol(symbol: str) -> str:
-    if symbol in A_STOCK_SYMBOLS:
+    if _is_a_share_stock_symbol(symbol):
         return "A_SHARE"
     if symbol in HK_STOCK_SYMBOLS:
         return "HK"
-    if symbol in ETF_SYMBOLS:
+    if _is_etf_symbol(symbol):
         return "ETF"
     return "UNKNOWN"
+
+
+def _is_a_share_stock_symbol(symbol: str) -> bool:
+    if not symbol.endswith((".SH", ".SZ")):
+        return False
+    code = symbol.split(".")[0]
+    return code.startswith(("000", "001", "002", "003", "300", "301", "600", "601", "603", "605", "688", "689"))
+
+
+def _is_etf_symbol(symbol: str) -> bool:
+    if not symbol.endswith((".SH", ".SZ")):
+        return False
+    code = symbol.split(".")[0]
+    return code.startswith(("15", "51", "52", "56", "58"))
 
 
 def _error_price(

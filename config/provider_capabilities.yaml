@@ -37,6 +37,16 @@ akshare:
       ask1_price: {status: not_validated, operation_fit: no, reference_fit: false}
       turnover_rate: {status: not_validated, operation_fit: no, reference_fit: false}
       minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}
+  fund_etf_hist_min_em:
+    provider: akshare
+    function_name: fund_etf_hist_min_em
+    asset_types: [ETF, QDII_ETF, A_SHARE_ETF]
+    operation_fit: diagnostic_only
+    notes: "ETF minute bars probe via AKShare; does not upgrade operation readiness."
+    fields:
+      minute_bars: {status: supported_if_endpoint_succeeds, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: diagnostic_only, reference_fit: true}
+      minute_bar_interval: {status: supported_if_endpoint_succeeds, unit: not_applicable, operation_fit: diagnostic_only, reference_fit: true}
+      intraday_vwap: {status: not_implemented, operation_fit: no, reference_fit: false}
 eastmoney_direct:
   stock_get:
     provider: eastmoney_direct
