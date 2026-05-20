@@ -188,6 +188,27 @@ Tech Reference UAT：
 
 # Tech Reconcile UAT (v0.7.1.1)
 
+# Symbol Registry / Universe UAT (v0.7.1.2)
+
+Run:
+```powershell
+.\scripts\run_tech_watchlist.ps1
+.\scripts\run_tech_scan_ai.ps1
+```
+
+Check:
+- `outputs_tech_watchlist_latest/0_upload_bundle.md` exists.
+- `outputs_tech_watchlist_latest/candidate_watchlist_report.md` exists.
+- `outputs_tech_scan_ai_latest/0_upload_bundle.md` exists.
+- `outputs_tech_scan_ai_latest/scan_universe_report.md` exists.
+- Watchlist and scan scripts do not use `--strict`.
+- Candidate and scan symbols remain `required_for_operation=false`.
+- Candidate and scan provider errors do not block core operation strict.
+- Unknown symbols appear in `unsupported_symbols_report.md` with `suggested_fix`.
+- Reports state that scan/watchlist output is not for concrete operation recommendations.
+
+# Tech Reconcile UAT (v0.7.1.1)
+
 运行：
 
 ```powershell

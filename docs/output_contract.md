@@ -410,6 +410,30 @@ Eastmoney Direct 使用东方财富公开网页行情接口路径，不是官方
 
 多源一致性检查只用于数据质量诊断，不自动构成交易建议，不自动提升 reference-grade 到 operation-grade。即使 `operation_candidate_agreed=true`，operation strict 仍以原有 strict / freshness / quote_trust_tier / usable_for_operation 规则为准。
 
+### 13.11 Symbol Registry And Universe Contract
+
+`config/symbol_registry.yaml` is the canonical metadata registry for symbols. `config/universes/*.yaml` selects the current run scope.
+
+Required universe fields:
+- `name`
+- `profile`
+- `universe_type`
+- `quote_purpose`
+- `symbols`
+
+Supported `universe_type` values:
+- `core_holdings`: may affect operation strict when a symbol is `required_for_operation=true`
+- `candidate_watchlist`: defaults to `required_for_operation=false`
+- `scan_universe`: reference scan pool, never operation strict blocking
+- `controller_summary`: summary-only controller scope
+
+Additional output contracts:
+- `unsupported_symbols_report.md`: unregistered or invalid symbols, suggested fixes, never strict-blocking
+- `candidate_watchlist_report.md`: candidate price facts and reference usability
+- `scan_universe_report.md`: scan price facts and data status
+
+When the registry layer is active, `0_upload_bundle.md` and `debug_bundle.md` must include `universe_name`, `universe_type`, and unsupported symbol counts.
+
 ### 13.10 Tech Reconcile Output
 
 `outputs_tech_reconcile_latest/` 是 v0.7.1.1 新增的科技多源对账目录：

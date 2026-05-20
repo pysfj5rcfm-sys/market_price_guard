@@ -71,3 +71,13 @@ Output: `outputs_diagnostic/`
 Daily upload starts with `0_upload_bundle.md`.
 
 Add `debug_bundle.md` only when the upload bundle shows strict blocking, provider errors, stale prices, quote_time issues, major reconciliation differences, runtime budget issues, or other contradictions.
+
+## Universe Layer
+
+`config/symbol_registry.yaml` supplies symbol metadata. `config/universes/*.yaml` selects the current run universe.
+
+- `core_holdings`: may contain `required_for_operation=true` records and may affect strict.
+- `candidate_watchlist`: reference/conditional candidates; does not affect core strict.
+- `scan_universe`: reference scan pool; does not affect core strict.
+
+Provider chains can vary by `quote_purpose` and universe metadata, but candidate and scan records remain non-strict until promoted to `core_holdings`.

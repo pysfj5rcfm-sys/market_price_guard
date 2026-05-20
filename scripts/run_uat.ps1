@@ -25,6 +25,20 @@ $Items = @(
         PriceBlock = 'tech_price_block.md'
     },
     @{
+        Name = 'tech_watchlist'
+        Script = 'run_tech_watchlist.ps1'
+        OutputDir = 'outputs_tech_watchlist_latest'
+        PriceBlock = 'candidate_watchlist_report.md'
+        UniverseType = 'candidate_watchlist'
+    },
+    @{
+        Name = 'tech_scan_ai'
+        Script = 'run_tech_scan_ai.ps1'
+        OutputDir = 'outputs_tech_scan_ai_latest'
+        PriceBlock = 'scan_universe_report.md'
+        UniverseType = 'scan_universe'
+    },
+    @{
         Name = 'energy_fast_strict'
         Script = 'run_energy_fast_strict.ps1'
         OutputDir = 'outputs_energy_latest'
@@ -103,11 +117,22 @@ foreach ($Item in $Items) {
         }
     }
     $IndexPath = Join-Path $OutputPath 'index.md'
+    $UploadBundlePath = Join-Path $OutputPath '0_upload_bundle.md'
+    $DebugBundlePath = Join-Path $OutputPath 'debug_bundle.md'
+    $ScriptContent = Get-Content $ScriptPath -Raw -Encoding UTF8
     $QuotePurpose = ''
+    $UniverseType = ''
+    $UnsupportedCount = 0
     if (Test-Path $IndexPath) {
         $IndexContent = Get-Content $IndexPath -Raw -Encoding UTF8
         if ($IndexContent -match 'quote_purpose:\s*([A-Za-z_]+)') {
             $QuotePurpose = $Matches[1]
+        }
+        if ($IndexContent -match 'universe_type:\s*([A-Za-z_]+)') {
+            $UniverseType = $Matches[1]
+        }
+        if ($IndexContent -match 'unsupported_count:\s*(\d+)') {
+            $UnsupportedCount = [int]$Matches[1]
         }
     }
 
@@ -118,6 +143,53 @@ foreach ($Item in $Items) {
     if (($ExitCode -ne 0 -and $ExitCode -ne 2) -or $MissingFiles.Count -gt 0 -or $AdviceHits.Count -gt 0) {
         $Status = 'failed'
         $AnyFailed = $true
+    }
+    if ($Item.Name -in @('tech_watchlist', 'tech_scan_ai')) {
+        $Status = 'passed'
+        $WatchlistScanFailed = $false
+        $Notes = @()
+        if ($ExitCode -ne 0) {
+            $WatchlistScanFailed = $true
+            $Notes += 'exit_code_not_zero'
+        }
+        if (-not (Test-Path $OutputPath)) {
+            $WatchlistScanFailed = $true
+            $Notes += 'output_dir_missing'
+        }
+        if (-not (Test-Path $UploadBundlePath)) {
+            $WatchlistScanFailed = $true
+            $Notes += '0_upload_bundle_missing'
+        }
+        if (-not (Test-Path $DebugBundlePath)) {
+            $WatchlistScanFailed = $true
+            $Notes += 'debug_bundle_missing'
+        }
+        if ($ScriptContent -match '--strict') {
+            $WatchlistScanFailed = $true
+            $Notes += 'script_must_not_use_strict'
+        }
+        if ($UniverseType -ne $Item.UniverseType) {
+            $WatchlistScanFailed = $true
+            $Notes += ('unexpected_universe_type:' + $UniverseType)
+        }
+        if ($UnsupportedCount -gt 0 -and -not (Test-Path (Join-Path $OutputPath 'unsupported_symbols_report.md'))) {
+            $WatchlistScanFailed = $true
+            $Notes += 'unsupported_symbols_report_missing'
+        }
+        if (Test-Path $UploadBundlePath) {
+            $UploadContent = Get-Content $UploadBundlePath -Raw -Encoding UTF8
+            if (($UploadContent -notmatch '不可用于具体操作建议') -and ($UploadContent -notmatch 'not usable for concrete operation recommendations')) {
+                $WatchlistScanFailed = $true
+                $Notes += 'missing_non_operation_notice'
+            }
+        }
+        if ($WatchlistScanFailed) {
+            $Status = 'failed'
+            $AnyFailed = $true
+        } else {
+            $MissingFiles = @()
+            $AdviceHits = @()
+        }
     }
 
     $Results += [PSCustomObject]@{
@@ -133,6 +205,9 @@ foreach ($Item in $Items) {
         HealthExists = Test-Path (Join-Path $OutputPath 'provider_health_report.md')
         RuntimeExists = Test-Path (Join-Path $OutputPath 'runtime_diagnostics.md')
         ReconciliationExists = Test-Path (Join-Path $OutputPath 'price_reconciliation_report.md')
+        UnsupportedSymbolsExists = Test-Path (Join-Path $OutputPath 'unsupported_symbols_report.md')
+        UnsupportedCount = $UnsupportedCount
+        UniverseType = $UniverseType
         PriceBlockExists = Test-Path (Join-Path $OutputPath $Item.PriceBlock)
         QuotePurpose = $QuotePurpose
         MissingFiles = $MissingFiles
@@ -144,6 +219,7 @@ Pop-Location
 $Passed = ($Results | Where-Object { $_.Status -eq 'passed' }).Count
 $StrictBlocked = ($Results | Where-Object { $_.Status -eq 'strict_blocked_but_reported' }).Count
 $Failed = ($Results | Where-Object { $_.Status -eq 'failed' }).Count
+$AnyFailed = $Failed -gt 0
 
 $Lines = @()
 $Lines += '# market_price_guard UAT Summary'
@@ -169,11 +245,17 @@ foreach ($Result in $Results) {
     $Lines += ('- 0_upload_bundle.md exists: ' + $Result.UploadBundleExists)
     $Lines += ('- debug_bundle.md exists: ' + $Result.DebugBundleExists)
     $Lines += ('- quote_purpose: ' + $Result.QuotePurpose)
+    $Lines += ('- universe_type: ' + $Result.UniverseType)
+    $Lines += ('- unsupported_count: ' + $Result.UnsupportedCount)
     $Lines += ('- data_completeness_report.md exists: ' + $Result.CompletenessExists)
     $Lines += ('- provider_health_report.md exists: ' + $Result.HealthExists)
     $Lines += ('- runtime_diagnostics.md exists: ' + $Result.RuntimeExists)
     $Lines += ('- price_reconciliation_report.md exists: ' + $Result.ReconciliationExists)
+    $Lines += ('- unsupported_symbols_report.md exists: ' + $Result.UnsupportedSymbolsExists)
     $Lines += ('- price_block exists: ' + $Result.PriceBlockExists)
+    if ($Result.Name -in @('tech_watchlist', 'tech_scan_ai')) {
+        $Lines += '- strict_pollution_isolation: candidate/scan universes are non-strict reference outputs.'
+    }
     if ($Result.MissingFiles.Count -gt 0) {
         $Lines += ('- missing_files: ' + ($Result.MissingFiles -join ', '))
     } else {

@@ -16,12 +16,15 @@ from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
 from .providers.yfinance_provider import YFinanceProvider
 from .report import CompletenessSummary, build_completeness_summary, format_blocking_record, write_outputs
+from .symbol_registry import build_watchlist_from_registry, merge_watchlist_with_registry
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = PROJECT_ROOT / "config"
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 MANUAL_PRICES_PATH = CONFIG_DIR / "manual_prices.yaml"
+SYMBOL_REGISTRY_PATH = CONFIG_DIR / "symbol_registry.yaml"
+UNIVERSES_DIR = CONFIG_DIR / "universes"
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -49,6 +52,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--provider-policy", choices=["fast", "conservative", "diagnostic"], default="fast")
     parser.add_argument("--quote-purpose", choices=["operation", "reference"], default="operation")
     parser.add_argument("--reconcile-mode", choices=["default", "full"], default="default")
+    parser.add_argument("--universe")
+    parser.add_argument("--symbols")
+    parser.add_argument("--symbol-file", type=Path)
+    parser.add_argument("--include-watchlist", action="store_true")
+    parser.add_argument("--include-candidates", action="store_true")
+    parser.add_argument(
+        "--universe-type",
+        choices=["core_holdings", "candidate_watchlist", "scan_universe", "controller_summary"],
+    )
     parser.add_argument("--profile", choices=["all", "energy", "tech", "controller"], default="all")
     parser.add_argument("--timeout-seconds", type=float, default=8.0)
     parser.add_argument("--max-run-seconds", type=float, default=30.0)
@@ -67,8 +79,30 @@ def collect_prices(
     provider_policy: str = "fast",
     quote_purpose: str = "operation",
     reconcile_mode: str = "default",
+    universe: str | None = None,
+    symbols: str | None = None,
+    symbol_file: Path | None = None,
+    include_watchlist: bool = False,
+    include_candidates: bool = False,
+    universe_type: str | None = None,
 ) -> dict:
-    watchlist = _filter_watchlist(load_watchlist(watchlist_path), profile)
+    registry_enabled = bool(universe or symbols or symbol_file or include_watchlist or include_candidates or universe_type)
+    universe_metadata: dict = {}
+    if registry_enabled:
+        watchlist, universe_metadata = build_watchlist_from_registry(
+            registry_path=SYMBOL_REGISTRY_PATH,
+            universes_dir=UNIVERSES_DIR,
+            profile=profile,
+            quote_purpose=quote_purpose,
+            universe=universe,
+            symbols=symbols,
+            symbol_file=symbol_file,
+            include_watchlist=include_watchlist,
+            include_candidates=include_candidates,
+            universe_type=universe_type,
+        )
+    else:
+        watchlist = merge_watchlist_with_registry(_filter_watchlist(load_watchlist(watchlist_path), profile), SYMBOL_REGISTRY_PATH)
     providers = {
         "mock": MockProvider(mock_prices_path),
         "manual": ManualProvider(manual_prices_path),
@@ -87,7 +121,7 @@ def collect_prices(
             reconcile_mode=reconcile_mode,
         ),
     )
-    return {"watchlist": watchlist, "prices": prices}
+    return {"watchlist": watchlist, "prices": prices, "universe_metadata": universe_metadata}
 
 
 def run_pipeline(
@@ -103,6 +137,12 @@ def run_pipeline(
     provider_policy: str = "fast",
     quote_purpose: str = "operation",
     reconcile_mode: str = "default",
+    universe: str | None = None,
+    symbols: str | None = None,
+    symbol_file: Path | None = None,
+    include_watchlist: bool = False,
+    include_candidates: bool = False,
+    universe_type: str | None = None,
     max_run_seconds: float = 30.0,
     max_data_lag_seconds: float = 300.0,
 ) -> PipelineResult:
@@ -118,6 +158,12 @@ def run_pipeline(
         provider_policy,
         quote_purpose,
         reconcile_mode,
+        universe,
+        symbols,
+        symbol_file,
+        include_watchlist,
+        include_candidates,
+        universe_type,
     )
     rules = load_yaml(stale_rules_path)
     records = apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules))
@@ -138,6 +184,7 @@ def run_pipeline(
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
     runtime["exit_code"] = exit_code
+    runtime.update(collected.get("universe_metadata", {}))
     write_outputs(records, output_dir, provider_mode=provider_mode, runtime=runtime)
     return PipelineResult(
         records_count=len(records),
@@ -162,6 +209,12 @@ def main(argv: list[str] | None = None) -> int:
             provider_policy=args.provider_policy,
             quote_purpose=args.quote_purpose,
             reconcile_mode=args.reconcile_mode,
+            universe=args.universe,
+            symbols=args.symbols,
+            symbol_file=args.symbol_file,
+            include_watchlist=args.include_watchlist,
+            include_candidates=args.include_candidates,
+            universe_type=args.universe_type,
             strict=args.strict,
             profile=args.profile,
             timeout_seconds=args.timeout_seconds,

@@ -1,0 +1,11 @@
+name: tech_core
+profile: tech
+universe_type: core_holdings
+quote_purpose: operation
+symbols:
+  - 159632.SZ
+  - 513300.SH
+  - 159819.SZ
+  - 515880.SH
+  - 510300.SH
+  - GOLD_CNY

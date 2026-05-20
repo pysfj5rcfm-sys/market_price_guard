@@ -1,0 +1,18 @@
+name: controller_core
+profile: all
+universe_type: controller_summary
+quote_purpose: operation
+symbols:
+  - 00883.HK
+  - 601899.SH
+  - 601985.SH
+  - 003816.SZ
+  - 159632.SZ
+  - 513300.SH
+  - 159819.SZ
+  - 515880.SH
+  - 510300.SH
+  - GOLD_CNY
+  - USD_CNY
+  - HKD_CNY
+  - IXIC

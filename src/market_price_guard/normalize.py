@@ -95,6 +95,16 @@ def normalize_records(
                     confirmation_required=bool(trust["confirmation_required"]),
                     operation_blocking_reason=str(trust["operation_blocking_reason"]),
                     reference_note=str(trust["reference_note"]),
+                    asset_type=instrument.asset_type or "",
+                    project_scope=instrument.project_scope or project_key,
+                    role=instrument.role or instrument.asset_role or "",
+                    universe_tags=instrument.universe_tags,
+                    universe_type=instrument.universe_type,
+                    default_quote_purpose=instrument.default_quote_purpose or "",
+                    report_group=instrument.report_group or "",
+                    notes=instrument.notes or "",
+                    registry_found=instrument.registry_found,
+                    unsupported_reason=instrument.unsupported_reason,
                 )
             )
     return records

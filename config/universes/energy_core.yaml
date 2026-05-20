@@ -1,0 +1,9 @@
+name: energy_core
+profile: energy
+universe_type: core_holdings
+quote_purpose: operation
+symbols:
+  - 00883.HK
+  - 601899.SH
+  - 601985.SH
+  - 003816.SZ

@@ -301,6 +301,24 @@ v0.6.3 只追加价格用途分层诊断字段，不改变现有一键脚本、p
 
 Codex smoke test passed.
 
+## Symbol Registry + Universe Layer
+
+v0.7.1.2 adds `config/symbol_registry.yaml` and `config/universes/` so new watchlist or scan symbols can be added by configuration.
+
+- `core_holdings`: core execution symbols; may affect operation strict when `required_for_operation=true`.
+- `candidate_watchlist`: candidate symbols; default `required_for_operation=false`; does not pollute core strict.
+- `scan_universe`: reference scan pools; never blocks core operation strict.
+
+Example commands:
+
+```powershell
+.\scripts\run_tech_watchlist.ps1
+.\scripts\run_tech_scan_ai.ps1
+python -m market_price_guard.main --profile tech --symbols 512480.SH,159995.SZ --quote-purpose reference --output-dir outputs_temp_scan
+```
+
+Unknown symbols go to `unsupported_symbols_report.md` and remain non-strict reference records. See `docs/symbol_registry.md` for the registry fields and universe workflow.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。

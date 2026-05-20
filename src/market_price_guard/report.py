@@ -42,6 +42,16 @@ OUTPUT_COLUMNS = [
     "quote_time_gap_seconds",
     "reconciliation_note",
     "operation_candidate_agreed",
+    "asset_type",
+    "project_scope",
+    "role",
+    "universe_tags",
+    "universe_type",
+    "default_quote_purpose",
+    "report_group",
+    "notes",
+    "registry_found",
+    "unsupported_reason",
 ]
 
 GOLD_NOTE = (
@@ -167,6 +177,12 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
         (output_dir / "tech_price_block.md").write_text(build_tech_block(records), encoding="utf-8")
     if "controller_price_summary.md" in emit_files:
         (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
+    if "candidate_watchlist_report.md" in emit_files:
+        (output_dir / "candidate_watchlist_report.md").write_text(build_candidate_watchlist_report(records, runtime), encoding="utf-8")
+    if "scan_universe_report.md" in emit_files:
+        (output_dir / "scan_universe_report.md").write_text(build_scan_universe_report(records, runtime), encoding="utf-8")
+    if runtime.get("unsupported_count"):
+        (output_dir / "unsupported_symbols_report.md").write_text(build_unsupported_symbols_report(runtime), encoding="utf-8")
     (output_dir / "index.md").write_text(
         build_index_report(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime),
         encoding="utf-8",
@@ -211,6 +227,8 @@ def build_index_report(
         f"- output_dir: {output_dir}",
         f"- quote_purpose: {quote_purpose}",
         f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', '')}",
         "",
         "## 本轮结论",
         f"- 可用于具体操作建议：{usable_text}",
@@ -317,6 +335,12 @@ def build_upload_bundle(
         f"- strict: {str(runtime.get('strict', False)).lower()}",
         f"- exit_code: {runtime.get('exit_code', '')}",
         f"- output_dir: {output_dir}",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', '')}",
+        f"- core_count: {runtime.get('core_count', '')}",
+        f"- watchlist_count: {runtime.get('watchlist_count', '')}",
+        f"- scan_count: {runtime.get('scan_count', '')}",
+        f"- unsupported_count: {runtime.get('unsupported_count', '')}",
         "",
         "## 本轮结论",
         f"- 可用于快速参考：{usable_for_reference}",
@@ -342,7 +366,9 @@ def build_upload_bundle(
     lines.extend(["", "## Reconciliation Summary"])
     lines.extend(_reconciliation_summary_lines(records))
     lines.extend(["", "## 项目核心内容"])
-    lines.extend(_bundle_project_lines(records, profile, provider_policy))
+    lines.extend(_bundle_project_lines(records, profile, provider_policy, str(runtime.get("universe_type", ""))))
+    lines.extend(["", "## Universe isolation"])
+    lines.extend(_universe_isolation_lines(runtime))
     lines.extend(["", "## Reference / Operation 使用提示"])
     lines.extend(_bundle_usage_note_lines(quote_purpose, usage_level))
     lines.extend(["", "## Debug 提示"])
@@ -376,11 +402,18 @@ def build_debug_bundle(
         f"- strict: {str(runtime.get('strict', False)).lower()}",
         f"- exit_code: {runtime.get('exit_code', '')}",
         f"- output_dir: {output_dir}",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', '')}",
+        "",
+        "## Symbol Registry Resolution 摘要",
+    ]
+    lines.extend(_registry_resolution_lines(runtime))
+    lines.extend([
         "",
         "## Provider Health 摘要",
         f"- provider_policy: {_provider_policy_from_records(records)}",
         f"- provider_mode: {provider_mode}",
-    ]
+    ])
     lines.extend(_provider_call_summary_lines(records))
     lines.extend(["", "### Provider attempts"])
     lines.extend(_provider_attempts_by_symbol(records))
@@ -555,6 +588,8 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- strict: {runtime.get('strict', '')}",
         f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
         f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', '')}",
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
         f"- max_run_seconds: {runtime.get('max_run_seconds', '')}",
         f"- max_data_lag_seconds: {runtime.get('max_data_lag_seconds', '')}",
@@ -612,6 +647,68 @@ def build_tech_block(records: list[PriceRecord]) -> str:
         if asset_role == "defense_or_potential_tech_funding":
             lines.append(GOLD_NOTE)
         lines.extend(_price_table(grouped))
+    return "\n".join(lines) + "\n"
+
+
+def build_candidate_watchlist_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
+    candidates = [record for record in records if record.universe_type == "candidate_watchlist"]
+    lines = [
+        "# Candidate Watchlist Report",
+        "",
+        "Candidate watchlist records are reference/conditional observations. They do not affect core operation strict.",
+        "",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', 'candidate_watchlist')}",
+        "",
+    ]
+    lines.extend(_watchlist_table(candidates or records))
+    return "\n".join(lines) + "\n"
+
+
+def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
+    scan_records = [record for record in records if record.universe_type == "scan_universe"]
+    lines = [
+        "# Scan Universe Report",
+        "",
+        "Scan universe records are for opportunity observation and data completeness checks only. They do not affect core operation strict.",
+        "",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', 'scan_universe')}",
+        "- data_status: price_change_pct/amount/volume may be missing in this version.",
+        "",
+    ]
+    lines.extend(_watchlist_table(scan_records or records))
+    return "\n".join(lines) + "\n"
+
+
+def build_unsupported_symbols_report(runtime: dict[str, Any]) -> str:
+    unsupported = runtime.get("unsupported_symbols", []) or []
+    lines = [
+        "# Unsupported Symbols Report",
+        "",
+        "Unsupported or unregistered symbols are not operation-grade and do not affect core operation strict.",
+        "",
+        "| symbol | inferred_market | registry_found | asset_type | universe_type | reason | provider_attempted | provider_status | suggested_fix |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    for item in unsupported:
+        if not isinstance(item, dict):
+            continue
+        lines.append(
+            "| {symbol} | {market} | {found} | {asset_type} | {universe_type} | {reason} | {provider} | {status} | {fix} |".format(
+                symbol=item.get("symbol", ""),
+                market=item.get("inferred_market", ""),
+                found=item.get("registry_found", ""),
+                asset_type=item.get("asset_type", ""),
+                universe_type=item.get("universe_type", ""),
+                reason=item.get("reason", ""),
+                provider=item.get("provider_attempted", ""),
+                status=item.get("provider_status", ""),
+                fix=item.get("suggested_fix", ""),
+            )
+        )
+    if not unsupported:
+        lines.append("|  |  |  |  |  | none |  |  |  |")
     return "\n".join(lines) + "\n"
 
 
@@ -969,6 +1066,11 @@ def _files_for_profile(runtime: dict[str, Any]) -> set[str]:
         "runtime_diagnostics.md",
         "price_reconciliation_report.md",
     }
+    universe_type = str(runtime.get("universe_type", ""))
+    if universe_type == "candidate_watchlist":
+        return {*common, "candidate_watchlist_report.md"}
+    if universe_type == "scan_universe":
+        return {*common, "scan_universe_report.md"}
     if runtime.get("provider_policy") == "diagnostic":
         return common
     profile = str(runtime.get("profile", "all"))
@@ -986,6 +1088,9 @@ def _remove_unscoped_outputs(output_dir: Path, emit_files: set[str]) -> None:
         "energy_price_block.md",
         "tech_price_block.md",
         "controller_price_summary.md",
+        "candidate_watchlist_report.md",
+        "scan_universe_report.md",
+        "unsupported_symbols_report.md",
     }
     for filename in managed - emit_files:
         path = output_dir / filename
@@ -1210,7 +1315,11 @@ def _reconciliation_detail_lines(records: list[PriceRecord]) -> list[str]:
     return lines
 
 
-def _bundle_project_lines(records: list[PriceRecord], profile: str, provider_policy: str) -> list[str]:
+def _bundle_project_lines(records: list[PriceRecord], profile: str, provider_policy: str, universe_type: str = "") -> list[str]:
+    if universe_type == "candidate_watchlist":
+        return ["### Candidate watchlist", "", *build_candidate_watchlist_report(records, {}).splitlines()[2:]]
+    if universe_type == "scan_universe":
+        return ["### Scan universe", "", *build_scan_universe_report(records, {}).splitlines()[2:]]
     if provider_policy == "diagnostic":
         return [
             "- 当前用途级别：diagnostic-only",
@@ -1595,6 +1704,77 @@ def _price_table(records: list[PriceRecord]) -> list[str]:
         )
     if not records:
         lines.append("|  |  |  |  |  |  |  |  |  |  | 无 |  |  |  |  |")
+    return lines
+
+
+def _watchlist_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | name | role | report_group | price | source | quote_time | quote_trust_tier | usable_for_reference | usable_for_operation | confirmation_required | source_agreement_status | data_status | note |",
+        "|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|",
+    ]
+    for record in records:
+        data_status = "ok" if _record_ok(record) or record.usable_for_reference else "check_required"
+        lines.append(
+            "| {symbol} | {name} | {role} | {group} | {price} | {source} | {quote_time} | {tier} | {reference} | {operation} | {confirmation} | {agreement} | {status} | {note} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                role=record.role or record.asset_role or "",
+                group=record.report_group,
+                price="" if record.price is None else record.price,
+                source=record.selected_provider or record.source,
+                quote_time=record.quote_time.isoformat() if record.quote_time else "",
+                tier=record.quote_trust_tier,
+                reference=record.usable_for_reference,
+                operation=record.usable_for_operation,
+                confirmation=record.confirmation_required,
+                agreement=record.source_agreement_status,
+                status=data_status,
+                note=record.notes or record.reference_note or record.unsupported_reason,
+            )
+        )
+    if not records:
+        lines.append("|  |  |  |  |  |  |  |  |  |  |  |  | none |  |")
+    return lines
+
+
+def _universe_isolation_lines(runtime: dict[str, Any]) -> list[str]:
+    universe_type = str(runtime.get("universe_type", ""))
+    if universe_type in {"candidate_watchlist", "scan_universe"}:
+        return [
+            f"- universe_name: {runtime.get('universe_name', '')}",
+            f"- universe_type: {universe_type}",
+            "- core strict pollution isolation: enabled",
+            "- this universe is not used for core operation strict blocking.",
+            "- not usable for concrete operation recommendations.",
+        ]
+    if universe_type:
+        return [
+            f"- universe_name: {runtime.get('universe_name', '')}",
+            f"- universe_type: {universe_type}",
+            "- candidate/watchlist/scan symbols keep required_for_operation=false unless promoted to core_holdings.",
+        ]
+    return ["- legacy profile mode; no explicit universe selected."]
+
+
+def _registry_resolution_lines(runtime: dict[str, Any]) -> list[str]:
+    if not runtime.get("registry_enabled"):
+        return ["- registry_enabled: false"]
+    lines = [
+        "- registry_enabled: true",
+        f"- registry_path: {runtime.get('registry_path', '')}",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', '')}",
+        f"- core_count: {runtime.get('core_count', '')}",
+        f"- watchlist_count: {runtime.get('watchlist_count', '')}",
+        f"- scan_count: {runtime.get('scan_count', '')}",
+        f"- unsupported_count: {runtime.get('unsupported_count', '')}",
+    ]
+    unsupported = runtime.get("unsupported_symbols", []) or []
+    if unsupported:
+        lines.append("- unsupported symbols:")
+        for item in unsupported:
+            if isinstance(item, dict):
+                lines.append(f"  - {item.get('symbol', '')}: {item.get('reason', '')}; suggested_fix={item.get('suggested_fix', '')}")
     return lines
 
 

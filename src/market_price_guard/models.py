@@ -22,6 +22,16 @@ class Instrument(BaseModel):
     allow_manual_fallback_for_operation: bool = False
     required_for_operation: bool = False
     asset_role: str | None = None
+    asset_type: str | None = None
+    project_scope: str | None = None
+    role: str | None = None
+    universe_tags: list[str] = Field(default_factory=list)
+    universe_type: str = "core_holdings"
+    default_quote_purpose: str | None = None
+    report_group: str | None = None
+    notes: str | None = None
+    registry_found: bool = True
+    unsupported_reason: str = ""
 
 
 class WatchProject(BaseModel):
@@ -113,6 +123,16 @@ class PriceRecord(BaseModel):
     quote_time_gap_seconds: float | None = None
     reconciliation_note: str = ""
     operation_candidate_agreed: bool = False
+    asset_type: str = ""
+    project_scope: str = ""
+    role: str = ""
+    universe_tags: list[str] = Field(default_factory=list)
+    universe_type: str = "core_holdings"
+    default_quote_purpose: str = ""
+    report_group: str = ""
+    notes: str = ""
+    registry_found: bool = True
+    unsupported_reason: str = ""
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()
