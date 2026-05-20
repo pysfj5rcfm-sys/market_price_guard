@@ -356,6 +356,14 @@ These fields support future scan ranking, day-position diagnostics, liquidity ch
 
 Use `prices_snapshot.csv` for the full normalized fields. `0_upload_bundle.md` includes a compact base quote summary, while `debug_bundle.md` includes field sources and missing-field diagnostics.
 
+## Compact Base Quote Tables
+
+v0.7.1.5 makes `0_upload_bundle.md` easier to use as the daily minimal upload file. Tech, energy, reference, watchlist, and scan bundles now include compact base quote tables with `last`, `open`, `high`, `low`, `prev`, `chg%`, `volume`, `amount`, and `base_quote_completeness` where available.
+
+Use `debug_bundle.md` when you need field sources, missing fields, or provider capability notes. These notes are lightweight diagnostics, not a formal provider capability system. Field completeness does not mean operation-grade: operation use still depends on `quote_trust_tier`, `usable_for_operation`, strict, and freshness.
+
+`volume` and `amount` remain provider raw units unless explicitly normalized. Do not use cross-provider volume/amount ranking until provider field validation is completed in a future version.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。

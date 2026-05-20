@@ -239,3 +239,9 @@ v0.7.1.4 standardized base quote fields in the data model, CSV, bundles, and deb
 Current support status for these base quote fields is now `supported` when a selected provider supplies the raw field, and `missing` when that provider does not. `price_change`, `price_change_pct`, and `amplitude_pct` are `calculable` when the required base fields exist. This update does not make any provider operation-grade by itself and does not change strict, freshness, or quote trust tier rules.
 
 `minute_bars / VWAP are not developed`, `QDII premium is not developed`, and `action_hint / preferred_action` remain future strategy or advice-layer fields, not API-native fields.
+
+## v0.7.1.5 Compact Presentation Update
+
+v0.7.1.5 improves presentation and GPT consumption of base quote fields. `0_upload_bundle.md`, project price blocks, candidate watchlist reports, scan reports, and debug bundles now include compact base quote tables or field-source notes.
+
+Provider Capability Notes in v0.7.1.5 are lightweight diagnostic notes only. Formal Provider Capability Expansion / Field Validation is planned for v0.7.1.6. This update does not change provider behavior, provider trust tier, strict, freshness, `minute_bars`, VWAP, or QDII premium status.

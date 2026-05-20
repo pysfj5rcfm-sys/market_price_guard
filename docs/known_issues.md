@@ -29,3 +29,7 @@ The QDII premium module is not developed. `159632.SZ` and `513300.SH` still lack
 ## Scan Universe Base Fields
 
 Scan Universe is currently a basic registry/universe framework. v0.7.1.4 standardizes base quote fields when providers supply them, but candidate quote coverage still depends on existing provider support. Ranking and opportunity scoring remain future work.
+
+## Volume And Amount Units
+
+`volume` and `amount` remain provider raw units unless a provider-specific unit has been explicitly validated. Cross-provider volume/amount comparison remains unsafe until Provider Capability Expansion / Field Validation is completed in a future version such as v0.7.1.6.

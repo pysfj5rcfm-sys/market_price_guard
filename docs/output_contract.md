@@ -468,6 +468,18 @@ These fields are auxiliary quote diagnostics. Field completeness does not equal 
 
 Missing base quote fields must not automatically change strict exit code in v0.7.1.4. If future versions make any base quote field operation-blocking, this contract and UAT must be updated first.
 
+### 13.14 Compact Base Quote Table Contract
+
+v0.7.1.5 adds compact base quote tables to upload bundles and project price blocks. This is a presentation enhancement only:
+
+- `0_upload_bundle.md` shows a compact base quote snapshot for tech, energy, reference, watchlist, and scan outputs.
+- `outputs_all_latest/0_upload_bundle.md` keeps controller output summarized and must not include full tech/energy execution tables.
+- `tech_price_block.md` and `energy_price_block.md` append a `Base Quote Fields` section without removing existing price guard fields.
+- `candidate_watchlist_report.md` and `scan_universe_report.md` show compact candidate/scan base quote tables.
+- `debug_bundle.md` includes `Base Quote Field Sources` and lightweight `Provider Capability Notes`.
+
+The compact tables do not change CSV schema, strict logic, freshness, provider trust tier, or operation/reference semantics. `volume` and `amount` remain provider raw units unless explicit unit normalization is available. The tables must not output trading advice.
+
 ### 13.10 Tech Reconcile Output
 
 `outputs_tech_reconcile_latest/` 是 v0.7.1.1 新增的科技多源对账目录：

@@ -391,8 +391,9 @@ def build_upload_bundle(
     lines.extend(_blocking_record_lines(summary.strict_blockers))
     lines.extend(["", "## Quote Trust Tier 摘要"])
     lines.extend(_quote_trust_bundle_lines(records))
-    lines.extend(["", "## Base Quote Summary"])
-    lines.extend(_base_quote_summary_lines(records))
+    base_quote_heading = "## 基础行情摘要 / Base Quote Summary" if profile in {"all", "controller"} else "## 基础行情快照 / Base Quote Snapshot"
+    lines.extend(["", base_quote_heading])
+    lines.extend(_base_quote_snapshot_lines(records, profile, str(runtime.get("universe_type", ""))))
     lines.extend(["", "## Reconciliation Summary"])
     lines.extend(_reconciliation_summary_lines(records))
     lines.extend(["", "## 项目核心内容"])
@@ -453,6 +454,10 @@ def build_debug_bundle(
     lines.extend(_reconciliation_detail_lines(records))
     lines.extend(["", "## Base Quote Fields Summary"])
     lines.extend(_base_quote_detail_table(records))
+    lines.extend(["", "## Base Quote Field Sources"])
+    lines.extend(_base_quote_field_sources_table(records))
+    lines.extend(["", "## Provider Capability Notes"])
+    lines.extend(_provider_capability_note_lines())
     lines.extend(["", "## prices_snapshot 关键明细摘要"])
     lines.extend(_debug_snapshot_table(records))
     lines.extend(["", "## Blocking / Error 摘要"])
@@ -517,6 +522,7 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(_reconciliation_detail_lines(records))
     lines.extend(["", "## Base quote completeness summary"])
     lines.extend(_base_quote_completeness_lines(records))
+    lines.extend(_base_quote_caveat_lines())
     lines.append("- See price_reconciliation_report.md for full multi-source comparison details.")
     lines.extend(["", "## Runtime freshness diagnostics"])
     lines.extend(_runtime_freshness_lines(runtime))
@@ -669,6 +675,9 @@ def build_project_block(records: list[PriceRecord], project: str, title: str) ->
     project_records = [record for record in records if record.project == project]
     lines = [f"# {title}", "", "仅为价格事实和新鲜度记录，不包含买卖建议。", ""]
     lines.extend(_price_table(project_records))
+    lines.extend(["", "## 基础行情字段 / Base Quote Fields"])
+    lines.extend(_base_quote_fields_table(project_records))
+    lines.extend(_base_quote_unit_note_lines())
     return "\n".join(lines) + "\n"
 
 
@@ -681,6 +690,9 @@ def build_tech_block(records: list[PriceRecord]) -> str:
         if asset_role == "defense_or_potential_tech_funding":
             lines.append(GOLD_NOTE)
         lines.extend(_price_table(grouped))
+    lines.extend(["", "## 基础行情字段 / Base Quote Fields"])
+    lines.extend(_base_quote_fields_table(project_records))
+    lines.extend(_base_quote_unit_note_lines())
     return "\n".join(lines) + "\n"
 
 
@@ -696,6 +708,8 @@ def build_candidate_watchlist_report(records: list[PriceRecord], runtime: dict[s
         "",
     ]
     lines.extend(_watchlist_table(candidates or records))
+    lines.extend(["", "## Compact Base Quote Table"])
+    lines.extend(_watchlist_base_quote_table(candidates or records, scan=False))
     lines.extend(["", "## Base Quote Summary"])
     lines.extend(_base_quote_completeness_lines(candidates or records))
     return "\n".join(lines) + "\n"
@@ -714,6 +728,8 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
         "",
     ]
     lines.extend(_watchlist_table(scan_records or records))
+    lines.extend(["", "## Compact Base Quote Table"])
+    lines.extend(_watchlist_base_quote_table(scan_records or records, scan=True))
     lines.extend(["", "## Base Quote Summary"])
     lines.extend(_base_quote_completeness_lines(scan_records or records))
     return "\n".join(lines) + "\n"
@@ -1787,6 +1803,279 @@ def _base_quote_summary_lines(records: list[PriceRecord]) -> list[str]:
     lines.append(f"- missing fields top: {_base_quote_missing_top(records)}")
     lines.append("- base quote fields are auxiliary diagnostics; missing fields do not change existing strict in this version.")
     return lines
+
+
+def _base_quote_snapshot_lines(records: list[PriceRecord], profile: str, universe_type: str) -> list[str]:
+    if profile in {"all", "controller"}:
+        return _base_quote_controller_summary_lines(records)
+    if universe_type == "candidate_watchlist":
+        lines = _watchlist_base_quote_table(records, scan=False)
+        lines.extend(_watchlist_scan_note_lines())
+        return lines
+    if universe_type == "scan_universe":
+        lines = _watchlist_base_quote_table(records, scan=True)
+        lines.extend(_watchlist_scan_note_lines())
+        return lines
+    include_stale = profile == "energy"
+    lines = _compact_base_quote_table(records, include_stale=include_stale)
+    lines.append("- base_quote_completeness is shown in the compact `base` column.")
+    lines.extend(_base_quote_unit_note_lines())
+    return lines
+
+
+def _compact_base_quote_table(records: list[PriceRecord], include_stale: bool = False) -> list[str]:
+    stale_header = " | stale?" if include_stale else ""
+    stale_sep = "|---" if include_stale else ""
+    lines = [
+        f"| symbol | name | last | chg% | open | high | low | prev | volume | amount | base | provider | tier | op?{stale_header} |",
+        f"|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|---{stale_sep}|",
+    ]
+    for record in records:
+        stale_value = f" | {_fmt(record.is_stale)}" if include_stale else ""
+        lines.append(
+            "| {symbol} | {name} | {last} | {chg} | {open} | {high} | {low} | {prev} | {volume} | {amount} | {base} | {provider} | {tier} | {op}{stale} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                last=_fmt(record.last_price if record.last_price is not None else record.price),
+                chg=_fmt(record.price_change_pct),
+                open=_fmt(record.open_price),
+                high=_fmt(record.high_price),
+                low=_fmt(record.low_price),
+                prev=_fmt(record.prev_close),
+                volume=_fmt(record.volume),
+                amount=_fmt(record.amount),
+                base=record.base_quote_completeness or "missing",
+                provider=record.selected_provider or record.source,
+                tier=record.quote_trust_tier,
+                op=record.usable_for_operation,
+                stale=stale_value,
+            )
+        )
+    if not records:
+        lines.append(f"| — | — | — | — | — | — | — | — | — | — | missing | — | — | —{' | —' if include_stale else ''} |")
+    return lines
+
+
+def _watchlist_base_quote_table(records: list[PriceRecord], scan: bool) -> list[str]:
+    if scan:
+        lines = [
+            "| symbol | name | tags | last | chg% | amount | base | data_status | provider | note |",
+            "|---|---|---|---:|---:|---:|---|---|---|---|",
+        ]
+        for record in records:
+            lines.append(
+                "| {symbol} | {name} | {tags} | {last} | {chg} | {amount} | {base} | {status} | {provider} | {note} |".format(
+                    symbol=record.symbol,
+                    name=record.name,
+                    tags=", ".join(record.universe_tags),
+                    last=_fmt(record.last_price if record.last_price is not None else record.price),
+                    chg=_fmt(record.price_change_pct),
+                    amount=_fmt(record.amount),
+                    base=record.base_quote_completeness or "missing",
+                    status=_base_quote_data_status(record),
+                    provider=record.selected_provider or record.source,
+                    note=_base_quote_note(record, scan=True),
+                )
+            )
+        if not records:
+            lines.append("| — | — | — | — | — | — | missing | missing | — | scan_only |")
+        return lines
+    lines = [
+        "| symbol | name | last | chg% | high | low | amount | base | data_status | provider | required_for_operation |",
+        "|---|---|---:|---:|---:|---:|---:|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {name} | {last} | {chg} | {high} | {low} | {amount} | {base} | {status} | {provider} | {required} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                last=_fmt(record.last_price if record.last_price is not None else record.price),
+                chg=_fmt(record.price_change_pct),
+                high=_fmt(record.high_price),
+                low=_fmt(record.low_price),
+                amount=_fmt(record.amount),
+                base=record.base_quote_completeness or "missing",
+                status=_base_quote_data_status(record),
+                provider=record.selected_provider or record.source,
+                required=record.required_for_operation,
+            )
+        )
+    if not records:
+        lines.append("| — | — | — | — | — | — | — | missing | missing | — | false |")
+    return lines
+
+
+def _base_quote_fields_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | name | last | chg% | open | high | low | prev | volume | amount | base | missing_fields |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {name} | {last} | {chg} | {open} | {high} | {low} | {prev} | {volume} | {amount} | {base} | {missing} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                last=_fmt(record.last_price if record.last_price is not None else record.price),
+                chg=_fmt(record.price_change_pct),
+                open=_fmt(record.open_price),
+                high=_fmt(record.high_price),
+                low=_fmt(record.low_price),
+                prev=_fmt(record.prev_close),
+                volume=_fmt(record.volume),
+                amount=_fmt(record.amount),
+                base=record.base_quote_completeness or "missing",
+                missing=record.base_quote_missing_fields or "—",
+            )
+        )
+    if not records:
+        lines.append("| — | — | — | — | — | — | — | — | — | — | missing | — |")
+    return lines
+
+
+def _base_quote_controller_summary_lines(records: list[PriceRecord]) -> list[str]:
+    scopes = {
+        "tech_core": [record for record in records if record.project == "tech"],
+        "energy_core": [record for record in records if record.project == "energy"],
+        "gold": [record for record in records if record.symbol == "GOLD_CNY"],
+        "fx_index": [record for record in records if record.symbol in {"USD_CNY", "HKD_CNY", "IXIC"}],
+        "scan/watchlist": [record for record in records if record.universe_type in {"candidate_watchlist", "scan_universe"}],
+    }
+    lines = ["| scope | complete | partial | price_only | missing | note |", "|---|---:|---:|---:|---:|---|"]
+    for scope, scoped in scopes.items():
+        counts = _base_quote_counts(scoped)
+        note = "not refreshed" if not scoped else "summary only"
+        lines.append(
+            f"| {scope} | {counts.get('complete', 0)} | {counts.get('partial', 0)} | {counts.get('price_only', 0)} | {counts.get('missing', 0)} | {note} |"
+        )
+    issue_records = [record for record in records if record.base_quote_completeness in {"missing", "price_only"} or record.quality_issues]
+    if issue_records:
+        lines.extend(["", "| symbol | name | issue | base | provider | note |", "|---|---|---|---|---|---|"])
+        for record in issue_records[:12]:
+            issue = ",".join(record.quality_issues) or record.base_quote_missing_fields or "base_quote_incomplete"
+            lines.append(f"| {record.symbol} | {record.name} | {issue} | {record.base_quote_completeness} | {record.selected_provider or record.source} | summary_only |")
+    lines.append("- controller bundle keeps base quote output summarized; project-specific bundles keep detailed symbol tables.")
+    return lines
+
+
+def _base_quote_counts(records: list[PriceRecord]) -> dict[str, int]:
+    counts = {"complete": 0, "partial": 0, "price_only": 0, "missing": 0}
+    for record in records:
+        key = record.base_quote_completeness or "missing"
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _base_quote_data_status(record: PriceRecord) -> str:
+    issues = set(record.quality_issues)
+    if "provider_error" in issues:
+        return "provider_error"
+    if "symbol_not_found" in issues:
+        return "symbol_not_found"
+    if record.base_quote_completeness:
+        return record.base_quote_completeness
+    if record.usable_for_reference:
+        return "reference_only"
+    return "missing"
+
+
+def _base_quote_note(record: PriceRecord, scan: bool = False) -> str:
+    issues = set(record.quality_issues)
+    if "symbol_not_found" in issues:
+        return "symbol_not_found"
+    if "provider_error" in issues:
+        return "provider_error"
+    if record.amount_source.endswith("unknown") or record.volume_source.endswith("raw_unit"):
+        return "unit_unknown"
+    if scan:
+        return "scan_only"
+    if not record.required_for_operation:
+        return "required_for_operation=false"
+    if record.quote_trust_tier == "reference":
+        return "reference_only"
+    return "not_operation_input" if not record.usable_for_operation else "ok"
+
+
+def _watchlist_scan_note_lines() -> list[str]:
+    return [
+        "- candidate/watchlist/scan records do not affect core strict.",
+        "- symbol_not_found in candidate or scan output is a data coverage status, not a system failure.",
+        "- not usable for concrete operation recommendations.",
+    ]
+
+
+def _base_quote_unit_note_lines() -> list[str]:
+    return [
+        "",
+        "- volume/amount follow provider raw units unless unit normalization is explicitly available.",
+        "- 成交量/成交额暂按 provider 原始单位展示；未统一单位前不得直接跨 provider 排名。",
+    ]
+
+
+def _base_quote_caveat_lines() -> list[str]:
+    return [
+        "",
+        "### Base quote caveats",
+        "- volume/amount follow provider raw units unless unit normalization is explicitly available.",
+        "- cross-provider volume/amount comparison is not reliable until provider field validation is completed.",
+        "- base quote missing does not change existing strict in v0.7.1.5.",
+        "- operation still depends on quote_trust_tier / usable_for_operation / strict / freshness.",
+        "- field completeness is a diagnostic aid, not trading advice.",
+    ]
+
+
+def _base_quote_field_sources_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | last_source | prev_source | open_source | high_source | low_source | volume_source | amount_source | chg_source | completeness | missing_fields |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            f"| {record.symbol} | {_fmt(record.last_price_source)} | {_fmt(record.prev_close_source)} | {_fmt(record.open_price_source)} | {_fmt(record.high_price_source)} | {_fmt(record.low_price_source)} | {_fmt(record.volume_source)} | {_fmt(record.amount_source)} | {_fmt(record.price_change_pct_source)} | {_fmt(record.base_quote_completeness)} | {_fmt(record.base_quote_missing_fields)} |"
+        )
+    if not records:
+        lines.append("| — | — | — | — | — | — | — | — | — | missing | — |")
+    return lines
+
+
+def _provider_capability_note_lines() -> list[str]:
+    return [
+        "AKShare:",
+        "- base quote fields: supported/partially supported through current normalized fields where provider raw fields are available.",
+        "- volume: raw provider unit.",
+        "- amount: raw provider unit or unit_unknown.",
+        "- bid/ask: not validated.",
+        "- turnover_rate: not validated.",
+        "- minute_bars: not implemented in current guard.",
+        "",
+        "Eastmoney Direct:",
+        "- base quote fields: available only when endpoint succeeds.",
+        "- trust tier: reference / operation-candidate only.",
+        "- stability: unstable in current environment.",
+        "- bid/ask: not validated.",
+        "- minute_bars: not implemented.",
+        "",
+        "yfinance:",
+        "- base quote fields: reference-only for current ETF/watchlist usage.",
+        "- volume: raw provider unit.",
+        "- not operation-grade for A-share ETF operation path.",
+        "- timestamp/precision may differ from local exchange feeds.",
+        "",
+        "manual:",
+        "- GOLD_CNY price only.",
+        "- base_quote_completeness usually price_only.",
+        "",
+        "mock:",
+        "- development/testing only.",
+        "- not valid for real market decisions.",
+    ]
+
+
+def _fmt(value: object) -> str:
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value)
 
 
 def _base_quote_completeness_lines(records: list[PriceRecord]) -> list[str]:
