@@ -245,3 +245,17 @@ Current support status for these base quote fields is now `supported` when a sel
 v0.7.1.5 improves presentation and GPT consumption of base quote fields. `0_upload_bundle.md`, project price blocks, candidate watchlist reports, scan reports, and debug bundles now include compact base quote tables or field-source notes.
 
 Provider Capability Notes in v0.7.1.5 are lightweight diagnostic notes only. Formal Provider Capability Expansion / Field Validation is planned for v0.7.1.6. This update does not change provider behavior, provider trust tier, strict, freshness, `minute_bars`, VWAP, or QDII premium status.
+
+## v0.7.1.6 Provider Capability / Field Validation Update
+
+v0.7.1.6 formalizes the provider capability and field validation layer:
+
+- `config/provider_capabilities.yaml` records provider/function field support, units, unit confidence, comparability, `operation_fit`, and `reference_fit`.
+- `provider_capability_report.md` is generated for each output directory.
+- `prices_snapshot.csv` includes additive field quality columns for unit and comparability diagnostics.
+- `volume` and `amount` units are tracked, but they are not normalized unless a provider explicitly has high-confidence unit validation.
+- Cross-provider `volume` / `amount` comparison remains unsafe unless `*_comparable_across_providers=true`.
+- `bid1_price`, `ask1_price`, and `turnover_rate` remain `not_validated` / `missing` unless a future provider validation proves otherwise.
+- `minute_bars`, VWAP, IOPV, and QDII premium remain future modules.
+
+This update does not add providers, does not change provider chain, does not change strict, does not change freshness, and does not upgrade any reference-grade quote to operation-grade.

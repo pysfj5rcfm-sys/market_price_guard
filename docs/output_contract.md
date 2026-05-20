@@ -480,6 +480,44 @@ v0.7.1.5 adds compact base quote tables to upload bundles and project price bloc
 
 The compact tables do not change CSV schema, strict logic, freshness, provider trust tier, or operation/reference semantics. `volume` and `amount` remain provider raw units unless explicit unit normalization is available. The tables must not output trading advice.
 
+### 13.15 Provider Capability Report Contract
+
+v0.7.1.6 adds `provider_capability_report.md` to each output directory. The report is diagnostic only and must not change strict, provider chain, freshness, trust tier, or operation/reference semantics.
+
+Required sections:
+- `Runtime Context`
+- `Provider Capability Summary`
+- `Field Capability Matrix By Provider`
+- `Symbol Field Quality`
+- `Safe Usage Notes`
+
+Required concepts:
+- field status, such as `supported`, `provider_dependent`, `supported_raw_unit`, `unit_unknown`, `not_validated`, `missing`, and `not_implemented`
+- unit and unit confidence
+- `comparable_across_providers`
+- `operation_fit`
+- `reference_fit`
+
+`prices_snapshot.csv` may include the following additive diagnostic fields:
+- `field_quality_summary`
+- `field_validation_status`
+- `volume_unit`
+- `amount_unit`
+- `volume_unit_confidence`
+- `amount_unit_confidence`
+- `volume_comparable_across_providers`
+- `amount_comparable_across_providers`
+- `price_change_pct_comparable`
+- `base_quote_comparable_score`
+- `provider_capability_status`
+- `provider_capability_notes`
+
+`0_upload_bundle.md` should only include compact Field Quality Notes and reference `debug_bundle.md` / `provider_capability_report.md` for details.
+
+`debug_bundle.md` must include a Provider Capability Summary and current field-quality risks.
+
+Capability fields are not operation-grade permissions. Field completeness does not upgrade a quote from reference to operation. `volume` and `amount` must not be compared across providers until unit confidence and comparability are explicitly validated. `bid/ask`, `turnover_rate`, `minute_bars`, VWAP, and QDII premium remain not validated or not implemented in v0.7.1.6.
+
 ### 13.10 Tech Reconcile Output
 
 `outputs_tech_reconcile_latest/` 是 v0.7.1.1 新增的科技多源对账目录：

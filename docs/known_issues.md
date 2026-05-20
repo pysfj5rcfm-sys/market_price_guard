@@ -32,4 +32,14 @@ Scan Universe is currently a basic registry/universe framework. v0.7.1.4 standar
 
 ## Volume And Amount Units
 
-`volume` and `amount` remain provider raw units unless a provider-specific unit has been explicitly validated. Cross-provider volume/amount comparison remains unsafe until Provider Capability Expansion / Field Validation is completed in a future version such as v0.7.1.6.
+v0.7.1.6 adds `config/provider_capabilities.yaml`, `provider_capability_report.md`, and CSV field-quality columns to track `volume_unit`, `amount_unit`, unit confidence, and comparability flags.
+
+`volume` and `amount` are still not normalized unless a provider-specific unit has been explicitly validated. Cross-provider volume/amount comparison remains unsafe unless `volume_comparable_across_providers=true` or `amount_comparable_across_providers=true`.
+
+## Bid Ask And Turnover
+
+`bid1_price`, `ask1_price`, related bid/ask volume, and `turnover_rate` remain not validated or missing in v0.7.1.6. The capability layer records this status but does not implement new provider fields.
+
+## Provider Capability And Scan Ranking
+
+Provider Capability Expansion / Field Validation delivered the basic report/config layer in v0.7.1.6. Future scan ranking in v0.7.1.7 should use `field_validation_status`, unit confidence, and comparability flags before using any volume/amount or field-derived ranking input.

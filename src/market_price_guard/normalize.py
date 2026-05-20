@@ -64,6 +64,7 @@ def normalize_records(
                 }
             )
             base_quote = _base_quote_fields(raw, instrument.market)
+            field_quality = _field_quality_fields(raw, base_quote)
             provider_diagnostics.update(
                 {
                     "base_quote_completeness": base_quote["base_quote_completeness"],
@@ -73,6 +74,12 @@ def normalize_records(
                     "exchange": base_quote["exchange"],
                     "country_market": base_quote["country_market"],
                     "trading_calendar": base_quote["trading_calendar"],
+                    "field_validation_status": field_quality["field_validation_status"],
+                    "volume_unit": field_quality["volume_unit"],
+                    "amount_unit": field_quality["amount_unit"],
+                    "volume_comparable_across_providers": field_quality["volume_comparable_across_providers"],
+                    "amount_comparable_across_providers": field_quality["amount_comparable_across_providers"],
+                    "provider_capability_status": field_quality["provider_capability_status"],
                 }
             )
             records.append(
@@ -118,6 +125,7 @@ def normalize_records(
                     registry_found=instrument.registry_found,
                     unsupported_reason=instrument.unsupported_reason,
                     **base_quote,
+                    **field_quality,
                 )
             )
     return records
@@ -210,6 +218,95 @@ def _exchange_fields(symbol: str, market: str) -> dict[str, str]:
     if symbol == "IXIC" or market in {"US", "INDEX"}:
         return {"exchange": "US", "country_market": "US", "trading_calendar": "US"}
     return {"exchange": market or "UNKNOWN", "country_market": market or "UNKNOWN", "trading_calendar": market or "UNKNOWN"}
+
+
+def _field_quality_fields(raw: RawPrice, base_quote: dict[str, object]) -> dict[str, object]:
+    source = str(raw.provider_diagnostics.get("selected_provider") or raw.source or "")
+    issues = set(raw.quality_issues)
+    completeness = str(base_quote.get("base_quote_completeness") or "")
+    has_volume = raw.volume is not None
+    has_amount = raw.amount is not None
+
+    if source in {"mock", "mock_fallback"}:
+        validation_status = "development_only"
+    elif "provider_error" in issues:
+        validation_status = "provider_dependent"
+    elif "symbol_not_found" in issues or completeness == "missing":
+        validation_status = "missing"
+    elif source in {"akshare", "eastmoney_direct", "yfinance"}:
+        validation_status = "provider_raw"
+    elif source == "manual":
+        validation_status = "validated" if raw.price is not None else "missing"
+    else:
+        validation_status = "provider_dependent"
+
+    volume_unit = "not_applicable"
+    amount_unit = "not_applicable"
+    volume_confidence = "not_applicable"
+    amount_confidence = "not_applicable"
+    volume_comparable = False
+    amount_comparable = False
+    capability_status = "configured" if source in {"akshare", "eastmoney_direct", "yfinance", "manual", "mock", "mock_fallback"} else "unknown"
+
+    if source == "akshare":
+        volume_unit = "raw_provider_unit" if has_volume else "not_applicable"
+        amount_unit = "unit_unknown" if has_amount else "not_applicable"
+        volume_confidence = "low" if has_volume else "not_applicable"
+        amount_confidence = "unknown" if has_amount else "not_applicable"
+        notes = "akshare normalized base fields where raw columns exist; volume/amount are not cross-provider comparable"
+    elif source == "eastmoney_direct":
+        volume_unit = "raw_provider_unit" if has_volume else "not_applicable"
+        amount_unit = "raw_provider_unit" if has_amount else "not_applicable"
+        volume_confidence = "low" if has_volume else "not_applicable"
+        amount_confidence = "low" if has_amount else "not_applicable"
+        notes = "eastmoney_direct fields are reference-grade when endpoint succeeds; volume/amount remain raw units"
+    elif source == "yfinance":
+        volume_unit = "raw_provider_unit" if has_volume else "not_applicable"
+        amount_unit = "not_applicable"
+        volume_confidence = "low" if has_volume else "not_applicable"
+        amount_confidence = "not_applicable"
+        notes = "yfinance fields are reference-only in current A-share ETF/watchlist usage; amount is not standardized"
+    elif source == "manual":
+        notes = "manual price only; no exchange volume/amount fields"
+    elif source in {"mock", "mock_fallback"}:
+        volume_unit = "test_unit" if has_volume else "not_applicable"
+        amount_unit = "test_unit" if has_amount else "not_applicable"
+        volume_confidence = "not_applicable" if not has_volume else "low"
+        amount_confidence = "not_applicable" if not has_amount else "low"
+        notes = "mock data is development/testing only"
+    else:
+        notes = "provider capability not configured"
+
+    comparable_price_fields = [
+        base_quote.get("last_price"),
+        base_quote.get("prev_close"),
+        base_quote.get("open_price"),
+        base_quote.get("high_price"),
+        base_quote.get("low_price"),
+        base_quote.get("price_change_pct"),
+        base_quote.get("amplitude_pct"),
+    ]
+    comparable_available = sum(1 for value in comparable_price_fields if value is not None)
+    comparable_score = round(comparable_available / len(comparable_price_fields), 3)
+    price_change_pct_comparable = base_quote.get("price_change_pct") is not None
+    summary = (
+        f"{validation_status}; volume_unit={volume_unit}; amount_unit={amount_unit}; "
+        f"volume_comparable={str(volume_comparable).lower()}; amount_comparable={str(amount_comparable).lower()}"
+    )
+    return {
+        "field_quality_summary": summary,
+        "field_validation_status": validation_status,
+        "volume_unit": volume_unit,
+        "amount_unit": amount_unit,
+        "volume_unit_confidence": volume_confidence,
+        "amount_unit_confidence": amount_confidence,
+        "volume_comparable_across_providers": volume_comparable,
+        "amount_comparable_across_providers": amount_comparable,
+        "price_change_pct_comparable": bool(price_change_pct_comparable),
+        "base_quote_comparable_score": comparable_score,
+        "provider_capability_status": capability_status,
+        "provider_capability_notes": notes,
+    }
 
 
 def _quote_trust_fields(raw: RawPrice, is_stale: bool, required_for_operation: bool) -> dict[str, object]:

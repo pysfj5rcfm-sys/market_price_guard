@@ -364,6 +364,20 @@ Use `debug_bundle.md` when you need field sources, missing fields, or provider c
 
 `volume` and `amount` remain provider raw units unless explicitly normalized. Do not use cross-provider volume/amount ranking until provider field validation is completed in a future version.
 
+## Provider Capability / Field Validation
+
+v0.7.1.6 adds a diagnostic capability layer:
+
+- `config/provider_capabilities.yaml` records provider/function field support, units, operation/reference fit, and comparability flags.
+- Each output directory now includes `provider_capability_report.md`.
+- `prices_snapshot.csv` includes field quality, unit, and comparability columns such as `field_validation_status`, `volume_unit`, `amount_unit`, `volume_comparable_across_providers`, and `amount_comparable_across_providers`.
+- `0_upload_bundle.md` keeps this compact through Field Quality Notes.
+- `debug_bundle.md` links the full capability report and summarizes field-quality risks.
+
+This version does not add providers, does not repair Eastmoney Direct, and does not change strict, freshness, provider chain, or operation/reference semantics. `volume` and `amount` remain unsafe for cross-provider ranking unless the relevant comparable flag is true. `bid/ask`, `turnover_rate`, `minute_bars`, VWAP, and QDII premium remain not validated or not implemented.
+
+Watchlist and scan reports now distinguish candidate data coverage problems such as `provider_symbol_not_found` from system failure. These records remain `required_for_operation=false` and do not affect core strict.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。

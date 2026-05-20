@@ -1,5 +1,9 @@
 # market_price_guard Current Provider Chains
 
+Provider chain and field capability are separate layers. A provider can supply a valid price without validated bid/ask, turnover, minute bars, or QDII premium fields. A field being present also does not imply operation-grade permission; operation boundaries still use `quote_trust_tier`, `usable_for_operation`, strict, and freshness.
+
+v0.7.1.6 adds `config/provider_capabilities.yaml` and `provider_capability_report.md` for field support, unit confidence, and comparability diagnostics. This does not change any provider chain.
+
 ## Tech Operation Fast
 
 Script: `.\scripts\run_tech_fast_strict.ps1`

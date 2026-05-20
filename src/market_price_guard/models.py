@@ -181,6 +181,18 @@ class PriceRecord(BaseModel):
     exchange: str = ""
     country_market: str = ""
     trading_calendar: str = ""
+    field_quality_summary: str = ""
+    field_validation_status: str = ""
+    volume_unit: str = ""
+    amount_unit: str = ""
+    volume_unit_confidence: str = ""
+    amount_unit_confidence: str = ""
+    volume_comparable_across_providers: bool = False
+    amount_comparable_across_providers: bool = False
+    price_change_pct_comparable: bool = False
+    base_quote_comparable_score: float | None = None
+    provider_capability_status: str = ""
+    provider_capability_notes: str = ""
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

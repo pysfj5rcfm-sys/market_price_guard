@@ -1,0 +1,117 @@
+akshare:
+  fund_etf_spot_em:
+    provider: akshare
+    function_name: fund_etf_spot_em
+    asset_types: [ETF, QDII_ETF, A_SHARE_ETF]
+    operation_fit: conditional
+    notes: "Operation fit still depends on quote_trust_tier, strict, freshness, and provider health."
+    fields:
+      last_price: {status: supported, unit: price, unit_confidence: high, comparable_across_providers: true, operation_fit: conditional, reference_fit: true}
+      prev_close: {status: supported, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: conditional, reference_fit: true}
+      open_price: {status: supported, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: conditional, reference_fit: true}
+      high_price: {status: supported, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: conditional, reference_fit: true}
+      low_price: {status: supported, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: conditional, reference_fit: true}
+      volume: {status: supported_raw_unit, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: diagnostic_only, reference_fit: true}
+      amount: {status: supported_unit_unknown, unit: unit_unknown, unit_confidence: unknown, comparable_across_providers: false, operation_fit: diagnostic_only, reference_fit: true}
+      price_change: {status: supported_or_calculable, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: diagnostic_only, reference_fit: true}
+      price_change_pct: {status: supported_or_calculable, unit: percent_value, unit_confidence: medium, comparable_across_providers: true, operation_fit: diagnostic_only, reference_fit: true}
+      amplitude_pct: {status: calculable, unit: percent_value, unit_confidence: medium, comparable_across_providers: true, operation_fit: diagnostic_only, reference_fit: true}
+      bid1_price: {status: not_validated, unit: price, unit_confidence: unknown, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+      ask1_price: {status: not_validated, unit: price, unit_confidence: unknown, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+      turnover_rate: {status: not_validated, unit: percent_value, unit_confidence: unknown, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_implemented, unit: not_applicable, unit_confidence: not_applicable, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+      intraday_vwap: {status: not_implemented, unit: not_applicable, unit_confidence: not_applicable, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+      iopv: {status: missing, unit: price, unit_confidence: unknown, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+      premium_pct: {status: missing, unit: percent_value, unit_confidence: unknown, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+  stock_spot_em:
+    provider: akshare
+    function_name: stock_spot_em
+    asset_types: [A_SHARE, HK_STOCK]
+    operation_fit: conditional
+    notes: "A/H stock endpoint availability is environment-dependent."
+    fields:
+      last_price: {status: supported, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: conditional, reference_fit: true}
+      volume: {status: supported_raw_unit, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: diagnostic_only, reference_fit: true}
+      amount: {status: supported_unit_unknown, unit: unit_unknown, unit_confidence: unknown, comparable_across_providers: false, operation_fit: diagnostic_only, reference_fit: true}
+      bid1_price: {status: not_validated, operation_fit: no, reference_fit: false}
+      ask1_price: {status: not_validated, operation_fit: no, reference_fit: false}
+      turnover_rate: {status: not_validated, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}
+eastmoney_direct:
+  stock_get:
+    provider: eastmoney_direct
+    function_name: stock_get
+    asset_types: [ETF, A_SHARE_ETF, A_SHARE]
+    operation_fit: no
+    notes: "Reference / operation-candidate only; endpoint stability is not guaranteed."
+    fields:
+      last_price: {status: supported_when_endpoint_succeeds, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      prev_close: {status: supported_when_endpoint_succeeds, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      open_price: {status: supported_when_endpoint_succeeds, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      high_price: {status: supported_when_endpoint_succeeds, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      low_price: {status: supported_when_endpoint_succeeds, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      volume: {status: supported_raw_unit, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: no, reference_fit: true}
+      amount: {status: supported_raw_unit, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: no, reference_fit: true}
+      price_change: {status: supported_when_endpoint_succeeds, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      price_change_pct: {status: supported_when_endpoint_succeeds, unit: percent_value, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      amplitude_pct: {status: calculable, unit: percent_value, unit_confidence: medium, comparable_across_providers: true, operation_fit: no, reference_fit: true}
+      bid1_price: {status: not_validated, operation_fit: no, reference_fit: false}
+      ask1_price: {status: not_validated, operation_fit: no, reference_fit: false}
+      turnover_rate: {status: not_validated, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}
+      intraday_vwap: {status: not_implemented, operation_fit: no, reference_fit: false}
+      iopv: {status: missing, operation_fit: no, reference_fit: false}
+      premium_pct: {status: missing, operation_fit: no, reference_fit: false}
+yfinance:
+  ticker_quote:
+    provider: yfinance
+    function_name: ticker_quote
+    asset_types: [ETF, HK_STOCK, A_SHARE, A_SHARE_ETF, INDEX]
+    operation_fit: reference_only
+    notes: "Open-source Yahoo Finance wrapper; not an official exchange feed."
+    fields:
+      last_price: {status: supported, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: reference_only, reference_fit: true}
+      prev_close: {status: provider_dependent, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: reference_only, reference_fit: true}
+      open_price: {status: provider_dependent, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: reference_only, reference_fit: true}
+      high_price: {status: provider_dependent, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: reference_only, reference_fit: true}
+      low_price: {status: provider_dependent, unit: price, unit_confidence: medium, comparable_across_providers: true, operation_fit: reference_only, reference_fit: true}
+      volume: {status: supported_raw_unit, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: reference_only, reference_fit: true}
+      amount: {status: missing, unit: not_applicable, unit_confidence: not_applicable, comparable_across_providers: false, operation_fit: no, reference_fit: false}
+      bid1_price: {status: missing_or_not_validated, operation_fit: no, reference_fit: false}
+      ask1_price: {status: missing_or_not_validated, operation_fit: no, reference_fit: false}
+      turnover_rate: {status: missing, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_implemented_in_guard, operation_fit: no, reference_fit: false}
+      intraday_vwap: {status: not_implemented, operation_fit: no, reference_fit: false}
+      iopv: {status: missing, operation_fit: no, reference_fit: false}
+      premium_pct: {status: missing, operation_fit: no, reference_fit: false}
+manual:
+  manual_price:
+    provider: manual
+    function_name: manual_price
+    asset_types: [MANUAL, GOLD]
+    operation_fit: conditional
+    notes: "Manual reference price; no market depth fields."
+    fields:
+      last_price: {status: supported, unit: price, unit_confidence: high, comparable_across_providers: false, operation_fit: conditional, reference_fit: true}
+      prev_close: {status: missing, operation_fit: no, reference_fit: false}
+      open_price: {status: missing, operation_fit: no, reference_fit: false}
+      high_price: {status: missing, operation_fit: no, reference_fit: false}
+      low_price: {status: missing, operation_fit: no, reference_fit: false}
+      volume: {status: missing, operation_fit: no, reference_fit: false}
+      amount: {status: missing, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}
+mock:
+  mock_quote:
+    provider: mock
+    function_name: mock_quote
+    asset_types: [TEST]
+    operation_fit: no
+    notes: "Development/testing only."
+    fields:
+      last_price: {status: supported_for_tests, unit: price, unit_confidence: test_unit, comparable_across_providers: false, operation_fit: no, reference_fit: no}
+      volume: {status: supported_for_tests, unit: test_unit, unit_confidence: test_unit, comparable_across_providers: false, operation_fit: no, reference_fit: no}
+      amount: {status: supported_for_tests, unit: test_unit, unit_confidence: test_unit, comparable_across_providers: false, operation_fit: no, reference_fit: no}
+      bid1_price: {status: not_applicable, operation_fit: no, reference_fit: false}
+      ask1_price: {status: not_applicable, operation_fit: no, reference_fit: false}
+      turnover_rate: {status: not_applicable, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}

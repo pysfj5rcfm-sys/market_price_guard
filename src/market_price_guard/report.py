@@ -5,9 +5,13 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import yaml
 
 from .models import PriceRecord
 from .price_reconciliation import build_reconciliation_report, reconciliation_summary
+
+
+PROVIDER_CAPABILITIES_PATH = Path("config/provider_capabilities.yaml")
 
 
 OUTPUT_COLUMNS = [
@@ -80,6 +84,18 @@ OUTPUT_COLUMNS = [
     "exchange",
     "country_market",
     "trading_calendar",
+    "field_quality_summary",
+    "field_validation_status",
+    "volume_unit",
+    "amount_unit",
+    "volume_unit_confidence",
+    "amount_unit_confidence",
+    "volume_comparable_across_providers",
+    "amount_comparable_across_providers",
+    "price_change_pct_comparable",
+    "base_quote_comparable_score",
+    "provider_capability_status",
+    "provider_capability_notes",
 ]
 
 GOLD_NOTE = (
@@ -195,6 +211,7 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
     (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records, runtime=runtime), encoding="utf-8")
     (output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics_report(records, runtime), encoding="utf-8")
     (output_dir / "price_reconciliation_report.md").write_text(build_price_reconciliation_report(records, runtime), encoding="utf-8")
+    (output_dir / "provider_capability_report.md").write_text(build_provider_capability_report(records, runtime), encoding="utf-8")
     (output_dir / "provider_health_report.md").write_text(
         build_provider_health_report(records, provider_mode=provider_mode),
         encoding="utf-8",
@@ -394,6 +411,8 @@ def build_upload_bundle(
     base_quote_heading = "## 基础行情摘要 / Base Quote Summary" if profile in {"all", "controller"} else "## 基础行情快照 / Base Quote Snapshot"
     lines.extend(["", base_quote_heading])
     lines.extend(_base_quote_snapshot_lines(records, profile, str(runtime.get("universe_type", ""))))
+    lines.extend(["", "## 字段质量提示 / Field Quality Notes"])
+    lines.extend(_field_quality_note_lines())
     lines.extend(["", "## Reconciliation Summary"])
     lines.extend(_reconciliation_summary_lines(records))
     lines.extend(["", "## 项目核心内容"])
@@ -456,6 +475,10 @@ def build_debug_bundle(
     lines.extend(_base_quote_detail_table(records))
     lines.extend(["", "## Base Quote Field Sources"])
     lines.extend(_base_quote_field_sources_table(records))
+    lines.extend(["", "## Provider Capability Summary"])
+    lines.append("- full report: provider_capability_report.md")
+    lines.extend(_provider_capability_summary_table())
+    lines.extend(_field_quality_risk_lines(records))
     lines.extend(["", "## Provider Capability Notes"])
     lines.extend(_provider_capability_note_lines())
     lines.extend(["", "## prices_snapshot 关键明细摘要"])
@@ -523,6 +546,8 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(["", "## Base quote completeness summary"])
     lines.extend(_base_quote_completeness_lines(records))
     lines.extend(_base_quote_caveat_lines())
+    lines.extend(["", "## Field Quality / Provider Capability"])
+    lines.extend(_field_quality_capability_lines(records))
     lines.append("- See price_reconciliation_report.md for full multi-source comparison details.")
     lines.extend(["", "## Runtime freshness diagnostics"])
     lines.extend(_runtime_freshness_lines(runtime))
@@ -609,6 +634,34 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
 
 def build_price_reconciliation_report(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
     return build_reconciliation_report(records, runtime)
+
+
+def build_provider_capability_report(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
+    runtime = runtime or {}
+    lines = [
+        "# Provider Capability Report",
+        "",
+        "Provider capability data is diagnostic only. It does not upgrade trust tier, change strict, or provide trading advice.",
+        "",
+        "## Runtime Context",
+        f"- generated_at: {runtime.get('run_end_time_utc', '')}",
+        f"- profile: {runtime.get('profile', '')}",
+        f"- provider_mode: {runtime.get('provider_mode', '')}",
+        f"- provider_policy: {runtime.get('provider_policy', '')}",
+        f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
+        f"- universe_name: {runtime.get('universe_name', '')}",
+        f"- universe_type: {runtime.get('universe_type', '')}",
+        "",
+        "## Provider Capability Summary",
+    ]
+    lines.extend(_provider_capability_summary_table())
+    lines.extend(["", "## Field Capability Matrix By Provider"])
+    lines.extend(_field_capability_matrix_by_provider())
+    lines.extend(["", "## Symbol Field Quality"])
+    lines.extend(_symbol_field_quality_table(records))
+    lines.extend(["", "## Safe Usage Notes"])
+    lines.extend(_provider_capability_safe_usage_lines())
+    return "\n".join(lines) + "\n"
 
 
 def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
@@ -712,6 +765,8 @@ def build_candidate_watchlist_report(records: list[PriceRecord], runtime: dict[s
     lines.extend(_watchlist_base_quote_table(candidates or records, scan=False))
     lines.extend(["", "## Base Quote Summary"])
     lines.extend(_base_quote_completeness_lines(candidates or records))
+    lines.extend(["", "## Provider Coverage / Failure Reasons"])
+    lines.extend(_watchlist_scan_failure_reason_table(candidates or records))
     return "\n".join(lines) + "\n"
 
 
@@ -732,6 +787,8 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
     lines.extend(_watchlist_base_quote_table(scan_records or records, scan=True))
     lines.extend(["", "## Base Quote Summary"])
     lines.extend(_base_quote_completeness_lines(scan_records or records))
+    lines.extend(["", "## Provider Coverage / Failure Reasons"])
+    lines.extend(_watchlist_scan_failure_reason_table(scan_records or records))
     return "\n".join(lines) + "\n"
 
 
@@ -1119,6 +1176,7 @@ def _files_for_profile(runtime: dict[str, Any]) -> set[str]:
         "provider_health_report.md",
         "runtime_diagnostics.md",
         "price_reconciliation_report.md",
+        "provider_capability_report.md",
     }
     universe_type = str(runtime.get("universe_type", ""))
     if universe_type == "candidate_watchlist":
@@ -2003,6 +2061,84 @@ def _watchlist_scan_note_lines() -> list[str]:
     ]
 
 
+def _watchlist_scan_failure_reason_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | registry_found | provider_attempted | provider_status | data_status | likely_reason | suggested_next_step |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {registry_found} | {provider_attempted} | {provider_status} | {data_status} | {likely_reason} | {next_step} |".format(
+                symbol=record.symbol,
+                registry_found=record.registry_found,
+                provider_attempted=_provider_attempted(record),
+                provider_status=_provider_status(record),
+                data_status=_base_quote_data_status(record),
+                likely_reason=_likely_reason(record),
+                next_step=_suggested_next_step(record),
+            )
+        )
+    if not records:
+        lines.append("| none |  |  |  | missing | no_records | no action |")
+    return lines
+
+
+def _provider_attempted(record: PriceRecord) -> str:
+    attempts = record.provider_diagnostics.get("provider_attempts", []) or record.provider_diagnostics.get("attempts", [])
+    providers = []
+    for attempt in attempts:
+        if isinstance(attempt, dict) and attempt.get("provider"):
+            providers.append(str(attempt.get("provider")))
+    if providers:
+        return ",".join(dict.fromkeys(providers))
+    return record.selected_provider or record.source or "not_attempted"
+
+
+def _provider_status(record: PriceRecord) -> str:
+    diagnostic_status = record.provider_diagnostics.get("provider_status") or record.provider_diagnostics.get("status")
+    if diagnostic_status:
+        return str(diagnostic_status)
+    if record.price is not None and record.quote_time is not None:
+        return "success"
+    if record.quality_issues:
+        return ",".join(record.quality_issues)
+    return "unknown"
+
+
+def _likely_reason(record: PriceRecord) -> str:
+    issues = set(record.quality_issues)
+    if "symbol_not_found" in issues:
+        return "provider_symbol_not_found" if record.registry_found else "unsupported_symbol"
+    if "provider_error" in issues:
+        return "endpoint_failed"
+    if "quote_time_missing" in issues:
+        return "quote_time_missing"
+    if "invalid_price" in issues:
+        return "invalid_price"
+    if record.selected_provider in {"mock", "mock_fallback"} or record.source in {"mock", "mock_fallback"}:
+        return "mock/development only"
+    if record.price is None:
+        return "no_reference_provider_success"
+    if record.amount_unit == "unit_unknown" or record.volume_unit == "unit_unknown":
+        return "unit_unknown"
+    return "reference_available" if record.usable_for_reference else "check_required"
+
+
+def _suggested_next_step(record: PriceRecord) -> str:
+    reason = _likely_reason(record)
+    if reason in {"provider_symbol_not_found", "unsupported_symbol"}:
+        return "validate symbol/provider mapping"
+    if reason == "endpoint_failed":
+        return "keep as candidate; review provider_health/debug details"
+    if reason == "no_reference_provider_success":
+        return "try diagnostic provider coverage check"
+    if reason == "unit_unknown":
+        return "do not use volume/amount for cross-provider ranking"
+    if record.universe_type in {"candidate_watchlist", "scan_universe"}:
+        return "keep as candidate; does not affect core strict"
+    return "review provider_capability_report.md"
+
+
 def _base_quote_unit_note_lines() -> list[str]:
     return [
         "",
@@ -2017,7 +2153,7 @@ def _base_quote_caveat_lines() -> list[str]:
         "### Base quote caveats",
         "- volume/amount follow provider raw units unless unit normalization is explicitly available.",
         "- cross-provider volume/amount comparison is not reliable until provider field validation is completed.",
-        "- base quote missing does not change existing strict in v0.7.1.5.",
+        "- base quote missing does not change existing strict; base quote and field capability issues do not change existing strict in v0.7.1.6.",
         "- operation still depends on quote_trust_tier / usable_for_operation / strict / freshness.",
         "- field completeness is a diagnostic aid, not trading advice.",
     ]
@@ -2068,6 +2204,208 @@ def _provider_capability_note_lines() -> list[str]:
         "- development/testing only.",
         "- not valid for real market decisions.",
     ]
+
+
+def _provider_capabilities() -> dict[str, Any]:
+    if not PROVIDER_CAPABILITIES_PATH.exists():
+        return {}
+    with PROVIDER_CAPABILITIES_PATH.open("r", encoding="utf-8") as file:
+        return yaml.safe_load(file) or {}
+
+
+def _capability_entries() -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for provider, functions in _provider_capabilities().items():
+        if not isinstance(functions, dict):
+            continue
+        for function_name, config in functions.items():
+            if not isinstance(config, dict):
+                continue
+            entries.append(
+                {
+                    "provider": str(config.get("provider") or provider),
+                    "function_name": str(config.get("function_name") or function_name),
+                    "asset_types": config.get("asset_types", []),
+                    "operation_fit": str(config.get("operation_fit", "")),
+                    "notes": str(config.get("notes", "")),
+                    "fields": config.get("fields", {}) if isinstance(config.get("fields", {}), dict) else {},
+                }
+            )
+    return entries
+
+
+def _provider_capability_summary_table() -> list[str]:
+    lines = [
+        "| provider | function_name | asset_type | base_price_fields | volume_amount_status | bid_ask_status | turnover_status | minute_status | operation_fit | notes |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for entry in _capability_entries():
+        fields = entry["fields"]
+        base_status = _combined_field_status(
+            fields,
+            ["last_price", "prev_close", "open_price", "high_price", "low_price", "price_change_pct", "amplitude_pct"],
+        )
+        volume_amount = "volume={volume}; amount={amount}".format(
+            volume=_capability_field(fields, "volume").get("status", "missing"),
+            amount=_capability_field(fields, "amount").get("status", "missing"),
+        )
+        bid_ask = "bid1={bid}; ask1={ask}".format(
+            bid=_capability_field(fields, "bid1_price").get("status", "missing"),
+            ask=_capability_field(fields, "ask1_price").get("status", "missing"),
+        )
+        lines.append(
+            "| {provider} | {function} | {asset_types} | {base} | {volume_amount} | {bid_ask} | {turnover} | {minute} | {operation_fit} | {notes} |".format(
+                provider=entry["provider"],
+                function=entry["function_name"],
+                asset_types=", ".join(str(item) for item in entry["asset_types"]),
+                base=base_status,
+                volume_amount=volume_amount,
+                bid_ask=bid_ask,
+                turnover=_capability_field(fields, "turnover_rate").get("status", "missing"),
+                minute=_capability_field(fields, "minute_bars").get("status", "missing"),
+                operation_fit=entry["operation_fit"],
+                notes=entry["notes"],
+            )
+        )
+    if len(lines) == 2:
+        lines.append("| none | none | none | missing | missing | missing | missing | missing | no | config missing |")
+    return lines
+
+
+def _field_capability_matrix_by_provider() -> list[str]:
+    lines = [
+        "| provider | function_name | field | status | unit | unit_confidence | comparable_across_providers | operation_fit | reference_fit | notes |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for entry in _capability_entries():
+        for field, config in sorted(entry["fields"].items()):
+            if not isinstance(config, dict):
+                continue
+            lines.append(
+                "| {provider} | {function} | {field} | {status} | {unit} | {confidence} | {comparable} | {operation} | {reference} | {notes} |".format(
+                    provider=entry["provider"],
+                    function=entry["function_name"],
+                    field=field,
+                    status=config.get("status", ""),
+                    unit=config.get("unit", ""),
+                    confidence=config.get("unit_confidence", ""),
+                    comparable=config.get("comparable_across_providers", ""),
+                    operation=config.get("operation_fit", ""),
+                    reference=config.get("reference_fit", ""),
+                    notes=config.get("notes", ""),
+                )
+            )
+    if len(lines) == 2:
+        lines.append("| none | none | none | missing |  |  | false | no | false | config missing |")
+    return lines
+
+
+def _symbol_field_quality_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | name | provider | base | volume_unit | amount_unit | volume_comparable | amount_comparable | field_validation_status | notes |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {name} | {provider} | {base} | {volume_unit} | {amount_unit} | {volume_comp} | {amount_comp} | {status} | {notes} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                provider=record.selected_provider or record.source,
+                base=record.base_quote_completeness,
+                volume_unit=record.volume_unit,
+                amount_unit=record.amount_unit,
+                volume_comp=record.volume_comparable_across_providers,
+                amount_comp=record.amount_comparable_across_providers,
+                status=record.field_validation_status,
+                notes=record.provider_capability_notes or _likely_reason(record),
+            )
+        )
+    if not records:
+        lines.append("| none | none | none | missing | not_applicable | not_applicable | false | false | missing | no records |")
+    return lines
+
+
+def _provider_capability_safe_usage_lines() -> list[str]:
+    return [
+        "- Provider capability report is diagnostic only.",
+        "- Field capability does not upgrade trust tier.",
+        "- Field completeness does not imply operation-grade.",
+        "- volume/amount must not be compared across providers until unit validation is high.",
+        "- bid/ask and turnover are not validated in v0.7.1.6.",
+        "- minute bars / VWAP / QDII premium remain not implemented.",
+        "- This report is not trading advice.",
+    ]
+
+
+def _field_quality_note_lines() -> list[str]:
+    return [
+        "- volume/amount are shown in provider raw units unless explicitly validated.",
+        "- cross-provider volume/amount comparison is unsafe in this version.",
+        "- bid/ask, turnover_rate, minute_bars, VWAP and QDII premium are not validated or not implemented.",
+        "- See debug_bundle.md and provider_capability_report.md for details.",
+    ]
+
+
+def _field_quality_risk_lines(records: list[PriceRecord]) -> list[str]:
+    raw_units = sum(
+        1
+        for record in records
+        if record.volume_unit == "raw_provider_unit" or record.amount_unit == "raw_provider_unit"
+    )
+    unknown_units = sum(1 for record in records if record.volume_unit == "unit_unknown" or record.amount_unit == "unit_unknown")
+    non_comparable_volume = sum(1 for record in records if not record.volume_comparable_across_providers)
+    non_comparable_amount = sum(1 for record in records if not record.amount_comparable_across_providers)
+    return [
+        "",
+        "### Current field quality risks",
+        f"- raw_provider_unit records: {raw_units}",
+        f"- unit_unknown records: {unknown_units}",
+        f"- volume_comparable_across_providers=false records: {non_comparable_volume}",
+        f"- amount_comparable_across_providers=false records: {non_comparable_amount}",
+        "- bid/ask not validated; turnover_rate not validated; minute_bars/VWAP/QDII premium not implemented.",
+    ]
+
+
+def _field_quality_capability_lines(records: list[PriceRecord]) -> list[str]:
+    volume_comparable_count = sum(1 for record in records if record.volume_comparable_across_providers)
+    amount_comparable_count = sum(1 for record in records if record.amount_comparable_across_providers)
+    unit_unknown_count = sum(1 for record in records if "unit_unknown" in {record.volume_unit, record.amount_unit})
+    raw_unit_count = sum(1 for record in records if "raw_provider_unit" in {record.volume_unit, record.amount_unit})
+    status_counts: dict[str, int] = {}
+    for record in records:
+        status = record.field_validation_status or "missing"
+        status_counts[status] = status_counts.get(status, 0) + 1
+    lines = [
+        f"- volume_comparable_across_providers=true records: {volume_comparable_count}",
+        f"- amount_comparable_across_providers=true records: {amount_comparable_count}",
+        f"- unit_unknown records: {unit_unknown_count}",
+        f"- raw_provider_unit records: {raw_unit_count}",
+        "- field_validation_status counts: "
+        + (", ".join(f"{key}:{value}" for key, value in sorted(status_counts.items())) if status_counts else "none"),
+        "- not_validated fields: bid1_price, ask1_price, turnover_rate",
+        "- not_implemented fields: minute_bars, intraday_vwap, iopv, premium_pct",
+        "- field validation issues do not change existing strict in v0.7.1.6.",
+        "- operation still depends on quote_trust_tier / usable_for_operation / strict / freshness.",
+        "- capability data is diagnostic, not trading advice.",
+    ]
+    return lines
+
+
+def _capability_field(fields: dict[str, Any], field: str) -> dict[str, Any]:
+    value = fields.get(field, {})
+    return value if isinstance(value, dict) else {}
+
+
+def _combined_field_status(fields: dict[str, Any], names: list[str]) -> str:
+    statuses = {_capability_field(fields, name).get("status", "missing") for name in names}
+    statuses.discard("")
+    if not statuses:
+        return "missing"
+    if len(statuses) == 1:
+        return str(next(iter(statuses)))
+    if statuses <= {"supported", "supported_or_calculable", "calculable"}:
+        return "supported_or_calculable"
+    return "mixed:" + ",".join(sorted(str(status) for status in statuses))
 
 
 def _fmt(value: object) -> str:
