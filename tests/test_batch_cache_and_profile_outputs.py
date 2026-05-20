@@ -145,7 +145,8 @@ def test_profile_tech_outputs_are_scoped(tmp_path):
     assert (output_dir / "tech_price_block.md").exists()
     assert not (output_dir / "energy_price_block.md").exists()
     assert not (output_dir / "controller_price_summary.md").exists()
-    assert "tech_price_block.md" in index
+    assert "0_upload_bundle.md" in index
+    assert "debug_bundle.md" in index
     assert "energy_price_block.md" not in index
     assert "controller_price_summary.md" not in index
     assert set(df["project"]) == {"tech"}
@@ -161,7 +162,8 @@ def test_profile_energy_outputs_are_scoped(tmp_path):
     assert (output_dir / "energy_price_block.md").exists()
     assert not (output_dir / "tech_price_block.md").exists()
     assert not (output_dir / "controller_price_summary.md").exists()
-    assert "energy_price_block.md" in index
+    assert "0_upload_bundle.md" in index
+    assert "debug_bundle.md" in index
     assert "tech_price_block.md" not in index
     assert "controller_price_summary.md" not in index
     assert set(df["project"]) == {"energy"}
@@ -176,7 +178,8 @@ def test_profile_all_outputs_only_controller_summary(tmp_path):
     assert (output_dir / "controller_price_summary.md").exists()
     assert not (output_dir / "energy_price_block.md").exists()
     assert not (output_dir / "tech_price_block.md").exists()
-    assert "controller_price_summary.md" in index
+    assert "0_upload_bundle.md" in index
+    assert "debug_bundle.md" in index
     assert "energy_price_block.md" not in index
     assert "tech_price_block.md" not in index
 

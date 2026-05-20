@@ -1,0 +1,73 @@
+# market_price_guard Current Provider Chains
+
+## Tech Operation Fast
+
+Script: `.\scripts\run_tech_fast_strict.ps1`
+
+Output: `outputs_tech_latest/`
+
+- `quote_purpose=operation`
+- This is the operation / strict path.
+- It is not changed into a reference path by Eastmoney Direct or yfinance.
+- Eastmoney Direct is not operation-grade and cannot by itself pass operation strict.
+
+## Tech Reference Fast
+
+Script: `.\scripts\run_tech_fast_reference.ps1`
+
+Output: `outputs_tech_reference_latest/`
+
+- `quote_purpose=reference`
+- Fast reference path.
+- Effective ETF chain: `eastmoney_direct -> yfinance -> akshare -> mock`.
+- Slow AKShare may be skipped for speed.
+- Not usable for concrete operation advice.
+
+## Tech Reconcile
+
+Script: `.\scripts\run_tech_reconcile.ps1`
+
+Output: `outputs_tech_reconcile_latest/`
+
+- `quote_purpose=reference`
+- `reconcile_mode=full`
+- Tries Eastmoney Direct, yfinance, and AKShare for multi-source quality diagnostics.
+- Not usable for concrete operation advice.
+- Does not change operation strict.
+
+## Energy Fast Strict
+
+Script: `.\scripts\run_energy_fast_strict.ps1`
+
+Output: `outputs_energy_latest/`
+
+- `quote_purpose=operation`
+- Covers `00883.HK`, `601899.SH`, `601985.SH`, and `003816.SZ`.
+- Eastmoney Direct is not forced for `00883.HK`.
+- A-share energy reconciliation may be expanded later, but this path does not change operation strict.
+
+## All / Controller Fast Strict
+
+Script: `.\scripts\run_all_fast_strict.ps1`
+
+Output: `outputs_all_latest/`
+
+- Controller summary path.
+- Does not emit `energy_price_block.md` or `tech_price_block.md`.
+- Does not replace the energy or tech project operation paths.
+
+## Diagnostic
+
+Script: `.\scripts\run_diagnostic.ps1`
+
+Output: `outputs_diagnostic/`
+
+- Troubleshooting path.
+- May try multiple providers.
+- Does not change operation selected-provider judgment.
+
+## Upload Rule
+
+Daily upload starts with `0_upload_bundle.md`.
+
+Add `debug_bundle.md` only when the upload bundle shows strict blocking, provider errors, stale prices, quote_time issues, major reconciliation differences, runtime budget issues, or other contradictions.

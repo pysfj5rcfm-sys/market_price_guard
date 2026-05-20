@@ -25,6 +25,7 @@ class RouterConfig:
     provider_policy: str = "fast"
     timeout_seconds: float = 8.0
     quote_purpose: str = "operation"
+    reconcile_mode: str = "default"
 
 
 def collect_routed_prices(
@@ -239,10 +240,14 @@ def _attach_reconciliation_candidates(
     if config.provider_mode != "live" or instrument.symbol not in EASTMONEY_DIRECT_SYMBOLS:
         return
     candidate_providers = _reconciliation_candidate_providers(instrument, config, selected_provider, priority)
-    if not candidate_providers:
+    existing_sources = _reconciliation_sources_from_attempts(attempts, selected_provider)
+    if not candidate_providers and not existing_sources:
         return
-    sources: list[dict[str, object]] = []
+    sources: list[dict[str, object]] = list(existing_sources)
+    already_attempted = {str(source.get("source", "")) for source in sources}
     for provider_name in candidate_providers:
+        if provider_name in already_attempted:
+            continue
         provider = providers.get(provider_name)
         if provider is None:
             continue
@@ -311,7 +316,9 @@ def _attach_reconciliation_candidates(
 
 
 def _reconciliation_candidate_providers(instrument: Instrument, config: RouterConfig, selected_provider: str, priority: list[str]) -> list[str]:
-    if config.provider_policy == "diagnostic":
+    if config.reconcile_mode == "full" and instrument.symbol in ETF_SYMBOLS:
+        ordered = ["eastmoney_direct", "yfinance", "akshare"]
+    elif config.provider_policy == "diagnostic":
         ordered = ["eastmoney_direct", "akshare", "yfinance"]
     elif config.quote_purpose == "reference" and selected_provider == "eastmoney_direct":
         ordered = ["yfinance"]
@@ -324,6 +331,28 @@ def _reconciliation_candidate_providers(instrument: Instrument, config: RouterCo
     else:
         candidates = []
     return [provider for provider in candidates if provider != selected_provider and provider in priority + ["yfinance", "akshare", "eastmoney_direct"]]
+
+
+def _reconciliation_sources_from_attempts(attempts: list[dict[str, object]], selected_provider: str) -> list[dict[str, object]]:
+    sources: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for attempt in attempts:
+        provider = str(attempt.get("provider", ""))
+        if provider in seen or provider == selected_provider or provider not in {"eastmoney_direct", "akshare", "yfinance"}:
+            continue
+        if attempt.get("status") == "success":
+            continue
+        seen.add(provider)
+        sources.append(
+            {
+                "source": provider,
+                "status": "provider_error" if attempt.get("exception_type") else str(attempt.get("reason") or "failed"),
+                "quality_issues": ["provider_error"] if attempt.get("exception_type") else ["symbol_not_found"],
+                "exception_type": attempt.get("exception_type", ""),
+                "exception_message": attempt.get("exception_message", ""),
+            }
+        )
+    return sources
 
 
 def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
@@ -352,6 +381,11 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
             "category": attempt.get("category", ""),
             "provider_status": attempt.get("provider_status", ""),
             "elapsed_seconds_first_call": attempt.get("elapsed_seconds_first_call", ""),
+            "secid": attempt.get("secid", diagnostics.get("secid", "")),
+            "endpoint": attempt.get("endpoint", diagnostics.get("endpoint", "")),
+            "request_status": attempt.get("request_status", diagnostics.get("request_status", "")),
+            "retry_count": attempt.get("retry_count", diagnostics.get("retry_count", "")),
+            "final_status": attempt.get("final_status", diagnostics.get("final_status", "")),
         }
         for attempt in attempts
         if isinstance(attempt, dict)

@@ -3,7 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from market_price_guard.models import PriceRecord
+from market_price_guard.main import parse_args, run_pipeline
 from market_price_guard.price_reconciliation import apply_reconciliation, build_reconciliation_report
+from market_price_guard.providers.akshare_provider import AkshareProvider
+from market_price_guard.providers.eastmoney_direct_provider import EastmoneyDirectProvider
+from market_price_guard.providers.yfinance_provider import YFinanceProvider
 from market_price_guard.report import build_debug_bundle, build_upload_bundle
 
 
@@ -102,6 +106,75 @@ def test_reconciliation_does_not_change_operation_usability():
     assert record.operation_candidate_agreed is True
     assert record.quote_trust_tier == "reference"
     assert record.usable_for_operation is False
+
+
+def test_reconcile_mode_cli_accepts_default_and_full():
+    assert parse_args([]).reconcile_mode == "default"
+    assert parse_args(["--reconcile-mode", "full"]).reconcile_mode == "full"
+
+
+def test_full_reconcile_mode_attempts_multiple_sources_for_tech_etf(monkeypatch, tmp_path):
+    calls = {"eastmoney": 0, "yfinance": 0, "akshare": 0}
+
+    def eastmoney_fetch(self, symbols):
+        calls["eastmoney"] += 1
+        return {symbol: _raw_price(symbol, "eastmoney_direct", 1.000) for symbol in symbols if symbol in {"159819.SZ"}}
+
+    def yfinance_fetch(self, symbols):
+        calls["yfinance"] += 1
+        return {symbol: _raw_price(symbol, "yfinance", 1.001) for symbol in symbols if symbol in {"159819.SZ"}}
+
+    def akshare_fetch(self, symbols):
+        calls["akshare"] += 1
+        return {symbol: _raw_price(symbol, "akshare", 1.002) for symbol in symbols if symbol in {"159819.SZ"}}
+
+    monkeypatch.setattr(EastmoneyDirectProvider, "fetch", eastmoney_fetch)
+    monkeypatch.setattr(YFinanceProvider, "fetch", yfinance_fetch)
+    monkeypatch.setattr(AkshareProvider, "fetch", akshare_fetch)
+
+    output_dir = tmp_path / "reconcile"
+    run_pipeline(
+        output_dir=output_dir,
+        provider_mode="live",
+        provider_policy="diagnostic",
+        profile="tech",
+        quote_purpose="reference",
+        reconcile_mode="full",
+    )
+    report = (output_dir / "price_reconciliation_report.md").read_text(encoding="utf-8")
+    upload = (output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
+
+    assert calls["yfinance"] >= 1
+    assert calls["akshare"] >= 1
+    assert "reconcile_mode: full" in upload
+    assert "159819.SZ" in report
+    assert "single_source_only" not in _line_for_symbol(report, "159819.SZ")
+    assert not (output_dir / "energy_price_block.md").exists()
+    assert not (output_dir / "controller_price_summary.md").exists()
+
+
+def _raw_price(symbol: str, source: str, price: float):
+    from market_price_guard.models import RawPrice
+
+    return RawPrice(
+        symbol=symbol,
+        name=symbol,
+        market="CN",
+        price=price,
+        currency="CNY",
+        source=source,
+        quote_time=BASE_TIME,
+        fetch_time=BASE_TIME,
+        market_status="open",
+        provider_diagnostics={"provider": source, "function_name": f"{source}.mock"},
+        quote_trust_tier="reference" if source == "eastmoney_direct" else None,
+        confirmation_required=True if source == "eastmoney_direct" else None,
+        operation_blocking_reason="reference_tier_requires_operation_confirmation" if source == "eastmoney_direct" else "",
+    )
+
+
+def _line_for_symbol(report: str, symbol: str) -> str:
+    return next(line for line in report.splitlines() if line.startswith(f"| {symbol} |"))
 
 
 def _record(symbol: str, source: str, price: float | None, reconciliation_sources: list[dict[str, object]]) -> PriceRecord:

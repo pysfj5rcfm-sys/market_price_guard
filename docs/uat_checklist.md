@@ -185,3 +185,22 @@ Tech Reference UAT：
 - `operation_candidate_agreed=true` 不改变 strict 结果；
 - reference-grade 不得因为多源一致性被写成 operation-grade；
 - 报告不输出实质性交易建议。
+
+# Tech Reconcile UAT (v0.7.1.1)
+
+运行：
+
+```powershell
+.\scripts\run_tech_reconcile.ps1
+```
+
+检查：
+- `outputs_tech_reconcile_latest/0_upload_bundle.md` 存在；
+- `outputs_tech_reconcile_latest/debug_bundle.md` 存在；
+- `outputs_tech_reconcile_latest/price_reconciliation_report.md` 存在；
+- `quote_purpose=reference`；
+- `reconcile_mode=full`；
+- Eastmoney Direct / yfinance / AKShare attempts 可见；
+- 如果仍为 `single_source_only`，报告必须说明失败或跳过原因；
+- Eastmoney Direct 仍不得显示为 operation-grade；
+- 日常上传优先 `0_upload_bundle.md`，异常再补 `debug_bundle.md`。

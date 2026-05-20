@@ -73,8 +73,10 @@ def reconcile_record(record: PriceRecord) -> dict[str, object]:
             "compared_sources": _join_sources([quote.source for quote in quotes if quote.source in REAL_SOURCES]),
         }
     if len(valid) == 1:
+        failed = [quote.source for quote in quotes if quote.source in REAL_SOURCES and not quote.valid]
+        failed_note = f"; failed_or_unusable_sources={_join_sources(failed)}" if failed else ""
         return {
-            **_empty_result("only one valid real provider quote"),
+            **_empty_result(f"only one valid real provider quote{failed_note}"),
             "reconciliation_enabled": True,
             "source_agreement_status": "single_source_only",
             "compared_sources": valid[0].source,
@@ -123,6 +125,7 @@ def build_reconciliation_report(records: list[PriceRecord], runtime: dict[str, A
         f"- provider_mode: {runtime.get('provider_mode', '')}",
         f"- provider_policy: {runtime.get('provider_policy', '')}",
         f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
+        f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         "- reconciliation_enabled: true",
         "",
         "## 总结",

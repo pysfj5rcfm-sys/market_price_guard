@@ -14,6 +14,7 @@ from market_price_guard.providers.base import PriceProvider
 
 SHANGHAI_TZ = timezone(timedelta(hours=8))
 BASE_URL = "https://push2.eastmoney.com/api/qt/stock/get"
+FALLBACK_URLS = ["https://push2.eastmoney.com/api/qt/stock/get", "http://push2.eastmoney.com/api/qt/stock/get"]
 FUNCTION_NAME = "eastmoney_direct.stock_get"
 FIELDS = "f43,f57,f58,f60,f44,f45,f46,f47,f48,f86,f170,f169"
 SUPPORTED_SYMBOLS = {
@@ -43,10 +44,11 @@ SOURCE_LIMIT_NOTE = (
 
 
 class EastmoneyDirectProvider(PriceProvider):
-    def __init__(self, http_get: Any | None = None, base_url: str = BASE_URL, timeout_seconds: float = 5.0):
+    def __init__(self, http_get: Any | None = None, base_url: str = BASE_URL, timeout_seconds: float = 5.0, max_retries: int = 1):
         self.http_get = http_get or _default_http_get
         self.base_url = base_url
         self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
 
     def fetch(self, symbols: list[str]) -> dict[str, RawPrice]:
         fetch_time = now_utc()
@@ -71,16 +73,43 @@ class EastmoneyDirectProvider(PriceProvider):
             "ut": "fa5fd1943c7b386f172d6893dbfba10b",
             "_": str(int(time.time() * 1000)),
         }
-        diagnostics = _base_diagnostics(symbol, fetch_time, secid)
-        try:
-            payload = _as_payload(self.http_get(self.base_url, params, self.timeout_seconds))
-        except TypeError:
-            try:
-                payload = _as_payload(self.http_get(self.base_url, params))
-            except Exception as exc:
-                return _error_price(symbol, fetch_time, ["provider_error"], exception=exc, diagnostics=diagnostics)
-        except Exception as exc:
-            return _error_price(symbol, fetch_time, ["provider_error"], exception=exc, diagnostics=diagnostics)
+        endpoints = list(dict.fromkeys([self.base_url, *FALLBACK_URLS]))
+        diagnostics = _base_diagnostics(symbol, fetch_time, secid, endpoint=self.base_url)
+        payload: dict[str, Any] | None = None
+        last_exception: Exception | None = None
+        attempts_made = 0
+        for endpoint in endpoints:
+            for retry_index in range(self.max_retries + 1):
+                attempts_made += 1
+                diagnostics.update({"endpoint": endpoint, "request_status": "attempting", "retry_count": retry_index})
+                try:
+                    payload = _as_payload(self.http_get(endpoint, params, self.timeout_seconds))
+                    diagnostics.update({"endpoint": endpoint, "request_status": "success", "retry_count": retry_index, "final_status": "success"})
+                    break
+                except TypeError:
+                    try:
+                        payload = _as_payload(self.http_get(endpoint, params))
+                        diagnostics.update({"endpoint": endpoint, "request_status": "success", "retry_count": retry_index, "final_status": "success"})
+                        break
+                    except Exception as exc:
+                        last_exception = exc
+                except Exception as exc:
+                    last_exception = exc
+                diagnostics.update(
+                    {
+                        "endpoint": endpoint,
+                        "request_status": "failed",
+                        "retry_count": retry_index,
+                        "final_status": "failed",
+                        "exception_type": type(last_exception).__name__ if last_exception else "",
+                        "exception_message": str(last_exception) if last_exception else "",
+                    }
+                )
+            if payload is not None:
+                break
+        diagnostics["attempt_count"] = attempts_made
+        if payload is None:
+            return _error_price(symbol, fetch_time, ["provider_error"], exception=last_exception, diagnostics=diagnostics)
 
         rc = payload.get("rc")
         data = payload.get("data")
@@ -122,7 +151,10 @@ class EastmoneyDirectProvider(PriceProvider):
                         "matched_symbols": [symbol] if price is not None else [],
                         "affected_symbols": [symbol],
                         "secid": secid,
-                        "endpoint": "/api/qt/stock/get",
+                        "endpoint": diagnostics.get("endpoint", ""),
+                        "request_status": diagnostics.get("request_status", ""),
+                        "retry_count": diagnostics.get("retry_count", 0),
+                        "final_status": diagnostics.get("final_status", ""),
                         "fetch_time_utc": fetch_time.isoformat(),
                     }
                 ],
@@ -161,9 +193,18 @@ def eastmoney_secid_for_symbol(symbol: str) -> str:
 
 
 def _default_http_get(url: str, params: dict[str, str], timeout_seconds: float = 5.0) -> dict[str, Any]:
-    request = Request(f"{url}?{urlencode(params)}", headers={"User-Agent": "Mozilla/5.0"})
+    request = Request(f"{url}?{urlencode(params)}", headers=_eastmoney_headers())
     with urlopen(request, timeout=timeout_seconds) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _eastmoney_headers() -> dict[str, str]:
+    return {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) market_price_guard/0.7",
+        "Referer": "https://quote.eastmoney.com/",
+        "Accept": "application/json,text/plain,*/*",
+        "Connection": "close",
+    }
 
 
 def _as_payload(value: Any) -> dict[str, Any]:
@@ -219,13 +260,16 @@ def _category_for_symbol(symbol: str) -> str:
     return "A_SHARE"
 
 
-def _base_diagnostics(symbol: str, fetch_time: datetime, secid: str) -> dict[str, object]:
+def _base_diagnostics(symbol: str, fetch_time: datetime, secid: str, endpoint: str = BASE_URL) -> dict[str, object]:
     return {
         "provider": "eastmoney_direct",
         "function_name": FUNCTION_NAME,
         "symbol": symbol,
         "secid": secid,
-        "endpoint": "/api/qt/stock/get",
+        "endpoint": endpoint,
+        "request_status": "",
+        "retry_count": 0,
+        "final_status": "",
         "category": _category_for_symbol(symbol),
         "fetch_time_utc": fetch_time.isoformat(),
         "quote_trust_tier": "reference",
@@ -267,7 +311,10 @@ def _error_price(
                     "matched_symbols": [],
                     "affected_symbols": [symbol],
                     "secid": secid,
-                    "endpoint": "/api/qt/stock/get",
+                    "endpoint": provider_diagnostics.get("endpoint", ""),
+                    "request_status": provider_diagnostics.get("request_status", "failed"),
+                    "retry_count": provider_diagnostics.get("retry_count", 0),
+                    "final_status": provider_diagnostics.get("final_status", "failed"),
                     "exception_type": provider_diagnostics.get("exception_type", ""),
                     "exception_message": provider_diagnostics.get("exception_message", ""),
                     "fetch_time_utc": fetch_time.isoformat(),

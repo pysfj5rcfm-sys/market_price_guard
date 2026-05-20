@@ -167,10 +167,12 @@ def test_run_uat_script_contract():
         "run_tech_fast_strict.ps1",
         "run_energy_fast_strict.ps1",
         "run_all_fast_strict.ps1",
+        "run_tech_reconcile.ps1",
         "run_diagnostic.ps1",
     ]:
         assert script_name in script
     assert "strict_blocked_but_reported" in script
+    assert "price_reconciliation_report.md" in script
     assert "outputs_uat_summary.md" in script
 
 

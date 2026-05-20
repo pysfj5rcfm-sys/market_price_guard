@@ -409,3 +409,15 @@ Eastmoney Direct 使用东方财富公开网页行情接口路径，不是官方
 - `reconciliation_note`
 
 多源一致性检查只用于数据质量诊断，不自动构成交易建议，不自动提升 reference-grade 到 operation-grade。即使 `operation_candidate_agreed=true`，operation strict 仍以原有 strict / freshness / quote_trust_tier / usable_for_operation 规则为准。
+
+### 13.10 Tech Reconcile Output
+
+`outputs_tech_reconcile_latest/` 是 v0.7.1.1 新增的科技多源对账目录：
+
+- `quote_purpose=reference`
+- `reconcile_mode=full`
+- 生成 `0_upload_bundle.md`、`debug_bundle.md`、`price_reconciliation_report.md`、`provider_health_report.md`、`runtime_diagnostics.md`、`tech_price_block.md`、`prices_snapshot.csv`
+- 不生成 `energy_price_block.md`
+- 不生成 `controller_price_summary.md`
+
+最小上传口径：日常只上传 `0_upload_bundle.md`；当出现 strict 阻断、provider_error、stale、quote_time_missing、major_diff、run_time_budget_exceeded 或报告冲突时，再补充 `debug_bundle.md`。原始报告用于人工核查，不是日常首选上传文件。

@@ -45,6 +45,28 @@ def test_eastmoney_provider_parses_valid_response():
     assert "assumed_currency_cny" in raw.quality_issues
 
 
+def test_eastmoney_request_includes_secid_and_uses_headers():
+    captured = {}
+
+    def fake_get(url, params, timeout):
+        captured["url"] = url
+        captured["params"] = params
+        captured["timeout"] = timeout
+        return _response(price=1.234)
+
+    provider = EastmoneyDirectProvider(http_get=fake_get)
+    provider.fetch(["159819.SZ"])
+
+    assert captured["params"]["secid"] == "0.159819"
+    assert captured["url"].startswith("https://push2.eastmoney.com")
+
+    from market_price_guard.providers.eastmoney_direct_provider import _eastmoney_headers
+
+    headers = _eastmoney_headers()
+    assert headers["User-Agent"]
+    assert headers["Referer"] == "https://quote.eastmoney.com/"
+
+
 def test_eastmoney_provider_error_cases():
     cases = [
         (_response(price=None), "invalid_price"),
@@ -183,6 +205,23 @@ def test_reports_include_eastmoney_direct_limitation():
     assert "eastmoney_direct" in build_provider_health_report([record], provider_mode="live")
     assert "eastmoney_direct" in build_upload_bundle([record], __import__("pathlib").Path("outputs"), provider_mode="live", runtime={"quote_purpose": "reference", "profile": "tech"})
     assert "eastmoney_direct" in build_debug_bundle([record], __import__("pathlib").Path("outputs"), provider_mode="live", runtime={"quote_purpose": "reference", "profile": "tech"})
+
+
+def test_provider_health_and_debug_bundle_show_eastmoney_secid():
+    provider = EastmoneyDirectProvider(http_get=lambda url, params, timeout: _response(price=1.234))
+    raw = provider.fetch(["159819.SZ"])["159819.SZ"]
+    records = normalize_records(
+        _watchlist("159819.SZ"),
+        {"159819.SZ": raw},
+        load_yaml(__import__("pathlib").Path("config/stale_rules.yaml")),
+        now=datetime(2026, 5, 19, 7, 0, tzinfo=timezone.utc),
+    )
+    health = build_provider_health_report(records, provider_mode="live")
+    debug = build_debug_bundle(records, __import__("pathlib").Path("outputs"), provider_mode="live", runtime={"quote_purpose": "reference", "profile": "tech"})
+
+    assert "secid=0.159819" in health
+    assert "secid=0.159819" in debug
+    assert "retry_count=" in debug
 
 
 def _response(price=1.23, quote_time=1779163200, code="159819", name="人工智能ETF"):

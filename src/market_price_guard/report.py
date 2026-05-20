@@ -205,10 +205,12 @@ def build_index_report(
         f"- profile: {runtime.get('profile', '')}",
         f"- provider_mode: {runtime.get('provider_mode', provider_mode)}",
         f"- provider_policy: {runtime.get('provider_policy', '')}",
+        f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         f"- strict: {str(runtime.get('strict', False)).lower()}",
         f"- exit_code: {runtime.get('exit_code', '')}",
         f"- output_dir: {output_dir}",
         f"- quote_purpose: {quote_purpose}",
+        f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         "",
         "## 本轮结论",
         f"- 可用于具体操作建议：{usable_text}",
@@ -311,6 +313,7 @@ def build_upload_bundle(
         f"- provider_mode: {runtime.get('provider_mode', provider_mode)}",
         f"- provider_policy: {provider_policy}",
         f"- quote_purpose: {quote_purpose}",
+        f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         f"- strict: {str(runtime.get('strict', False)).lower()}",
         f"- exit_code: {runtime.get('exit_code', '')}",
         f"- output_dir: {output_dir}",
@@ -369,6 +372,7 @@ def build_debug_bundle(
         f"- provider_mode: {runtime.get('provider_mode', provider_mode)}",
         f"- provider_policy: {runtime.get('provider_policy', '')}",
         f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
+        f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         f"- strict: {str(runtime.get('strict', False)).lower()}",
         f"- exit_code: {runtime.get('exit_code', '')}",
         f"- output_dir: {output_dir}",
@@ -414,6 +418,7 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
         "# 数据完整度报告",
         "",
         f"quote_purpose: {quote_purpose}",
+        f"reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         f"可用于具体操作建议：{usable_text}",
         "",
         "本工具不做自动交易，不输出买卖建议，只输出价格事实、数据源、时间戳、市场状态和数据完整度。",
@@ -549,6 +554,7 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- provider_policy: {runtime.get('provider_policy', '')}",
         f"- strict: {runtime.get('strict', '')}",
         f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
+        f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
         f"- max_run_seconds: {runtime.get('max_run_seconds', '')}",
         f"- max_data_lag_seconds: {runtime.get('max_data_lag_seconds', '')}",
@@ -914,11 +920,15 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
                 and str(attempt.get("provider", "")) == str(diagnostic.get("selected_provider", record.source))
             )
             lines.append(
-                "  - provider={provider}, function_name={function_name}, status={status}, secid={secid}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, quote_trust_tier={quote_trust_tier}, usable_for_reference={usable_for_reference}, confirmation_required={confirmation_required}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
+                "  - provider={provider}, function_name={function_name}, status={status}, secid={secid}, endpoint={endpoint}, request_status={request_status}, retry_count={retry_count}, final_status={final_status}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, quote_trust_tier={quote_trust_tier}, usable_for_reference={usable_for_reference}, confirmation_required={confirmation_required}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
                     provider=attempt.get("provider", ""),
                     function_name=attempt.get("function_name", ""),
                     status=attempt.get("status", ""),
                     secid=attempt.get("secid", ""),
+                    endpoint=attempt.get("endpoint", ""),
+                    request_status=attempt.get("request_status", ""),
+                    retry_count=attempt.get("retry_count", ""),
+                    final_status=attempt.get("final_status", ""),
                     from_cache=attempt.get("from_cache", ""),
                     price=attempt.get("price", ""),
                     quote_time=attempt.get("quote_time", ""),
@@ -1173,6 +1183,7 @@ def _reconciliation_summary_lines(records: list[PriceRecord]) -> list[str]:
         f"- operation_candidate_agreed count: {sum(1 for record in records if record.operation_candidate_agreed)}",
         "- multi-source reconciliation is diagnostic only and does not upgrade reference-grade to operation-grade.",
         "- full report: price_reconciliation_report.md",
+        "- upload: daily use should start with 0_upload_bundle.md; add debug_bundle.md only for blocking, provider_error, stale, quote_time_missing, major_diff, or runtime budget issues.",
     ]
     if summary.get("major_diff", 0):
         lines.append("- major_diff present: review debug_bundle.md and price_reconciliation_report.md.")
@@ -1332,13 +1343,7 @@ def _provider_cache_hits(records: list[PriceRecord]) -> int:
 
 
 def _recommended_files(profile: str, provider_policy: str) -> list[str]:
-    if provider_policy == "diagnostic":
-        return ["provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "data_completeness_report.md", "prices_snapshot.csv"]
-    if profile == "energy":
-        return ["energy_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "prices_snapshot.csv"]
-    if profile == "tech":
-        return ["tech_price_block.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "prices_snapshot.csv"]
-    return ["controller_price_summary.md", "data_completeness_report.md", "provider_health_report.md", "runtime_diagnostics.md", "price_reconciliation_report.md", "prices_snapshot.csv"]
+    return ["0_upload_bundle.md", "debug_bundle.md if blocking/provider_error/stale/quote_time_missing/major_diff/runtime issues appear"]
 
 
 def _oldest_quote_time(records: list[PriceRecord]) -> str:

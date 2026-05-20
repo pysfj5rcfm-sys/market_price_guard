@@ -19,6 +19,12 @@ $Items = @(
         PriceBlock = 'tech_price_block.md'
     },
     @{
+        Name = 'tech_reconcile'
+        Script = 'run_tech_reconcile.ps1'
+        OutputDir = 'outputs_tech_reconcile_latest'
+        PriceBlock = 'tech_price_block.md'
+    },
+    @{
         Name = 'energy_fast_strict'
         Script = 'run_energy_fast_strict.ps1'
         OutputDir = 'outputs_energy_latest'
@@ -74,6 +80,7 @@ foreach ($Item in $Items) {
         'data_completeness_report.md',
         'provider_health_report.md',
         'runtime_diagnostics.md',
+        'price_reconciliation_report.md',
         $Item.PriceBlock
     )
     $MissingFiles = @()
@@ -125,6 +132,7 @@ foreach ($Item in $Items) {
         CompletenessExists = Test-Path (Join-Path $OutputPath 'data_completeness_report.md')
         HealthExists = Test-Path (Join-Path $OutputPath 'provider_health_report.md')
         RuntimeExists = Test-Path (Join-Path $OutputPath 'runtime_diagnostics.md')
+        ReconciliationExists = Test-Path (Join-Path $OutputPath 'price_reconciliation_report.md')
         PriceBlockExists = Test-Path (Join-Path $OutputPath $Item.PriceBlock)
         QuotePurpose = $QuotePurpose
         MissingFiles = $MissingFiles
@@ -164,6 +172,7 @@ foreach ($Result in $Results) {
     $Lines += ('- data_completeness_report.md exists: ' + $Result.CompletenessExists)
     $Lines += ('- provider_health_report.md exists: ' + $Result.HealthExists)
     $Lines += ('- runtime_diagnostics.md exists: ' + $Result.RuntimeExists)
+    $Lines += ('- price_reconciliation_report.md exists: ' + $Result.ReconciliationExists)
     $Lines += ('- price_block exists: ' + $Result.PriceBlockExists)
     if ($Result.MissingFiles.Count -gt 0) {
         $Lines += ('- missing_files: ' + ($Result.MissingFiles -join ', '))

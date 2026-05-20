@@ -5,15 +5,8 @@ import pytest
 from market_price_guard.main import EXIT_OK, EXIT_STRICT_BLOCKED, PROJECT_ROOT, run_pipeline
 
 
-@pytest.mark.parametrize(
-    ("profile", "recommended_file"),
-    [
-        ("energy", "energy_price_block.md"),
-        ("tech", "tech_price_block.md"),
-        ("all", "controller_price_summary.md"),
-    ],
-)
-def test_profile_generates_index_with_recommended_file(tmp_path, profile, recommended_file):
+@pytest.mark.parametrize("profile", ["energy", "tech", "all"])
+def test_profile_generates_index_with_upload_bundle_first(tmp_path, profile):
     output_dir = tmp_path / profile
 
     result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile=profile, strict=True)
@@ -22,7 +15,8 @@ def test_profile_generates_index_with_recommended_file(tmp_path, profile, recomm
     assert result.exit_code == EXIT_OK
     assert "# market_price_guard 本轮刷新索引" in index
     assert f"profile: {profile}" in index
-    assert recommended_file in index
+    assert "0_upload_bundle.md" in index
+    assert "debug_bundle.md if blocking" in index
 
 
 def test_index_contains_basic_fields_and_report_links(tmp_path):
@@ -83,6 +77,7 @@ def test_scripts_exist_and_use_expected_arguments():
         "run_diagnostic.ps1": ["--profile all", "--provider-policy diagnostic", "outputs_diagnostic"],
         "run_mock_strict.ps1": ["--provider-mode mock", "--strict", "outputs_mock_latest"],
         "run_tech_fast_reference.ps1": ["--profile tech", "--provider-policy fast", "--quote-purpose reference", "outputs_tech_reference_latest"],
+        "run_tech_reconcile.ps1": ["--profile tech", "--provider-policy diagnostic", "--quote-purpose reference", "--reconcile-mode full", "outputs_tech_reconcile_latest"],
     }
 
     assert scripts_dir.exists()
@@ -100,4 +95,5 @@ def test_scripts_exist_and_use_expected_arguments():
             assert snippet in content
     reference_content = (scripts_dir / "run_tech_fast_reference.ps1").read_text(encoding="utf-8")
     assert "--strict" not in reference_content
+    assert "--strict" not in (scripts_dir / "run_tech_reconcile.ps1").read_text(encoding="utf-8")
     assert "--quote-purpose reference" not in (scripts_dir / "run_tech_fast_strict.ps1").read_text(encoding="utf-8")
