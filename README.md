@@ -378,6 +378,32 @@ This version does not add providers, does not repair Eastmoney Direct, and does 
 
 Watchlist and scan reports now distinguish candidate data coverage problems such as `provider_symbol_not_found` from system failure. These records remain `required_for_operation=false` and do not affect core strict.
 
+## Scan Universe Basic Ranking
+
+v0.7.1.7 adds conservative review-priority ranking for `candidate_watchlist` and `scan_universe` outputs.
+
+New CSV/report fields include:
+
+- `rankable`
+- `rank_exclusion_reason`
+- `scan_status`
+- `watch_priority`
+- `scan_score_basic`
+- `data_quality_score`
+- `momentum_score_basic`
+- `field_reliability_score`
+- `liquidity_score_basic`
+- `reconciliation_score`
+- `scan_score_notes`
+
+The score is a data-quality-first review priority:
+
+`scan_score_basic = data_quality * 0.35 + momentum * 0.25 + field_reliability * 0.20 + liquidity * 0.10 + reconciliation * 0.10`
+
+`rankable=false` means the current data is insufficient for basic ordering, for reasons such as `symbol_not_found`, `provider_error`, missing last price, missing quote time, development-only data, or missing base quote. It does not mean the symbol is permanently uninteresting.
+
+`watch_priority=high/medium/low/not_rankable` is a review queue label only. It is not a trading instruction and does not change `strict`, `quote_trust_tier`, or `usable_for_operation`. `volume` and `amount` are not used to lift a candidate when comparability flags are false. Operation decisions still require operation-grade guard output.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。

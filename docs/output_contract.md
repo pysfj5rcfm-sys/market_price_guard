@@ -518,6 +518,32 @@ Required concepts:
 
 Capability fields are not operation-grade permissions. Field completeness does not upgrade a quote from reference to operation. `volume` and `amount` must not be compared across providers until unit confidence and comparability are explicitly validated. `bid/ask`, `turnover_rate`, `minute_bars`, VWAP, and QDII premium remain not validated or not implemented in v0.7.1.6.
 
+### 13.16 Scan Ranking Contract
+
+v0.7.1.7 adds basic review-priority ranking for `candidate_watchlist` and `scan_universe` outputs. It is not trading advice and must not change strict, freshness, provider chain, quote trust tier, or operation/reference semantics.
+
+Additive CSV fields:
+- `rankable`
+- `rank_exclusion_reason`
+- `scan_status`
+- `watch_priority`
+- `scan_score_basic`
+- `data_quality_score`
+- `momentum_score_basic`
+- `field_reliability_score`
+- `liquidity_score_basic`
+- `reconciliation_score`
+- `scan_score_notes`
+
+Report requirements:
+- `scan_universe_report.md` includes `Scan Universe Basic Ranking`, `Scan Summary`, `Basic Ranking Table`, `Not Rankable`, and safety notes.
+- `candidate_watchlist_report.md` includes `Watchlist Review Priority`.
+- `0_upload_bundle.md` includes `Scan Priority Summary` and `Top Scan Candidates` for scan/watchlist outputs.
+- `debug_bundle.md` includes `Scan Ranking Trace`.
+- `data_completeness_report.md` includes `Scan Ranking Summary`.
+
+Ranking is only a review-priority queue. It must not emit execution instructions, preferred actions, action hints, target prices, or entry/stop labels. `volume` and `amount` must not inflate ranking when provider comparability flags are false.
+
 ### 13.10 Tech Reconcile Output
 
 `outputs_tech_reconcile_latest/` 是 v0.7.1.1 新增的科技多源对账目录：

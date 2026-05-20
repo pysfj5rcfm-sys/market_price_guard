@@ -96,6 +96,17 @@ OUTPUT_COLUMNS = [
     "base_quote_comparable_score",
     "provider_capability_status",
     "provider_capability_notes",
+    "rankable",
+    "rank_exclusion_reason",
+    "scan_status",
+    "watch_priority",
+    "scan_score_basic",
+    "data_quality_score",
+    "momentum_score_basic",
+    "field_reliability_score",
+    "liquidity_score_basic",
+    "reconciliation_score",
+    "scan_score_notes",
 ]
 
 GOLD_NOTE = (
@@ -219,7 +230,7 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
     if "energy_price_block.md" in emit_files:
         (output_dir / "energy_price_block.md").write_text(build_project_block(records, "energy", "能源账户价格事实块"), encoding="utf-8")
     if "tech_price_block.md" in emit_files:
-        (output_dir / "tech_price_block.md").write_text(build_tech_block(records), encoding="utf-8")
+        (output_dir / "tech_price_block.md").write_text(build_tech_block(records, runtime=runtime), encoding="utf-8")
     if "controller_price_summary.md" in emit_files:
         (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
     if "candidate_watchlist_report.md" in emit_files:
@@ -413,6 +424,12 @@ def build_upload_bundle(
     lines.extend(_base_quote_snapshot_lines(records, profile, str(runtime.get("universe_type", ""))))
     lines.extend(["", "## 字段质量提示 / Field Quality Notes"])
     lines.extend(_field_quality_note_lines())
+    if str(runtime.get("universe_type", "")) in {"candidate_watchlist", "scan_universe"}:
+        lines.extend(["", "## 扫描优先级摘要 / Scan Priority Summary"])
+        lines.extend(_scan_priority_summary_table(records))
+        lines.extend(["", "## Top Scan Candidates"])
+        lines.extend(_top_scan_candidates_table(records, limit=5))
+        lines.extend(_scan_ranking_safety_lines())
     lines.extend(["", "## Reconciliation Summary"])
     lines.extend(_reconciliation_summary_lines(records))
     lines.extend(["", "## 项目核心内容"])
@@ -481,6 +498,8 @@ def build_debug_bundle(
     lines.extend(_field_quality_risk_lines(records))
     lines.extend(["", "## Provider Capability Notes"])
     lines.extend(_provider_capability_note_lines())
+    lines.extend(["", "## Scan Ranking Trace"])
+    lines.extend(_scan_ranking_trace_table(records))
     lines.extend(["", "## prices_snapshot 关键明细摘要"])
     lines.extend(_debug_snapshot_table(records))
     lines.extend(["", "## Blocking / Error 摘要"])
@@ -548,6 +567,8 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(_base_quote_caveat_lines())
     lines.extend(["", "## Field Quality / Provider Capability"])
     lines.extend(_field_quality_capability_lines(records))
+    lines.extend(["", "## Scan Ranking Summary"])
+    lines.extend(_scan_ranking_summary_lines(records))
     lines.append("- See price_reconciliation_report.md for full multi-source comparison details.")
     lines.extend(["", "## Runtime freshness diagnostics"])
     lines.extend(_runtime_freshness_lines(runtime))
@@ -734,9 +755,22 @@ def build_project_block(records: list[PriceRecord], project: str, title: str) ->
     return "\n".join(lines) + "\n"
 
 
-def build_tech_block(records: list[PriceRecord]) -> str:
+def build_tech_block(records: list[PriceRecord], runtime: dict[str, Any] | None = None) -> str:
+    runtime = runtime or {}
     project_records = [record for record in records if record.project == "tech"]
     lines = ["# 科技账户价格事实块", "", "仅为价格事实和新鲜度记录，不包含买卖建议。"]
+    if runtime.get("quote_purpose") == "reference" and runtime.get("reconcile_mode") == "full":
+        lines.extend(
+            [
+                "",
+                "## Reference / Reconcile Boundary",
+                "- quote_purpose=reference",
+                "- reconcile_mode=full",
+                "- This block is for multi-source reconciliation review only.",
+                "- It is not operation-grade and must not be used for concrete operation advice.",
+                "- It does not upgrade any quote to operation.",
+            ]
+        )
     for title, asset_role in TECH_GROUPS:
         grouped = [record for record in project_records if record.asset_role == asset_role]
         lines.extend(["", f"## {title}"])
@@ -761,12 +795,16 @@ def build_candidate_watchlist_report(records: list[PriceRecord], runtime: dict[s
         "",
     ]
     lines.extend(_watchlist_table(candidates or records))
+    lines.extend(["", "## Watchlist Review Priority"])
+    lines.extend(_watchlist_review_priority_table(candidates or records))
     lines.extend(["", "## Compact Base Quote Table"])
     lines.extend(_watchlist_base_quote_table(candidates or records, scan=False))
     lines.extend(["", "## Base Quote Summary"])
     lines.extend(_base_quote_completeness_lines(candidates or records))
     lines.extend(["", "## Provider Coverage / Failure Reasons"])
     lines.extend(_watchlist_scan_failure_reason_table(candidates or records))
+    lines.extend(["", "## Safety Notes"])
+    lines.extend(_scan_ranking_safety_lines())
     return "\n".join(lines) + "\n"
 
 
@@ -783,12 +821,29 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
         "",
     ]
     lines.extend(_watchlist_table(scan_records or records))
+    lines.extend(["", "# Scan Universe Basic Ranking"])
+    lines.extend(
+        [
+            "- This is a review-priority ranking, not trading advice.",
+            "- It does not produce execution instructions.",
+            "- Operation decisions require operation-grade price guard output.",
+            "- volume/amount are not used for cross-provider liquidity ranking unless comparable flags allow it.",
+        ]
+    )
+    lines.extend(["", "## Scan Summary"])
+    lines.extend(_scan_ranking_summary_lines(scan_records or records))
+    lines.extend(["", "## Basic Ranking Table"])
+    lines.extend(_scan_basic_ranking_table(scan_records or records))
+    lines.extend(["", "## Not Rankable"])
+    lines.extend(_not_rankable_table(scan_records or records))
     lines.extend(["", "## Compact Base Quote Table"])
     lines.extend(_watchlist_base_quote_table(scan_records or records, scan=True))
     lines.extend(["", "## Base Quote Summary"])
     lines.extend(_base_quote_completeness_lines(scan_records or records))
     lines.extend(["", "## Provider Coverage / Failure Reasons"])
     lines.extend(_watchlist_scan_failure_reason_table(scan_records or records))
+    lines.extend(["", "## Safety Notes"])
+    lines.extend(_scan_ranking_safety_lines())
     return "\n".join(lines) + "\n"
 
 
@@ -1183,9 +1238,11 @@ def _files_for_profile(runtime: dict[str, Any]) -> set[str]:
         return {*common, "candidate_watchlist_report.md"}
     if universe_type == "scan_universe":
         return {*common, "scan_universe_report.md"}
+    profile = str(runtime.get("profile", "all"))
+    if profile == "tech" and str(runtime.get("reconcile_mode", "")) == "full":
+        return {*common, "tech_price_block.md"}
     if runtime.get("provider_policy") == "diagnostic":
         return common
-    profile = str(runtime.get("profile", "all"))
     if profile == "tech":
         return {*common, "tech_price_block.md"}
     if profile == "energy":
@@ -2406,6 +2463,187 @@ def _combined_field_status(fields: dict[str, Any], names: list[str]) -> str:
     if statuses <= {"supported", "supported_or_calculable", "calculable"}:
         return "supported_or_calculable"
     return "mixed:" + ",".join(sorted(str(status) for status in statuses))
+
+
+def _ranking_records(records: list[PriceRecord]) -> list[PriceRecord]:
+    return [record for record in records if record.universe_type in {"candidate_watchlist", "scan_universe"}]
+
+
+def _ranked_records(records: list[PriceRecord]) -> list[PriceRecord]:
+    return sorted(
+        [record for record in _ranking_records(records) if record.rankable and record.scan_score_basic is not None],
+        key=lambda record: (-(record.scan_score_basic or 0), record.symbol),
+    )
+
+
+def _scan_priority_summary_table(records: list[PriceRecord]) -> list[str]:
+    scoped = _ranking_records(records)
+    counts = _scan_priority_counts(scoped)
+    return [
+        "| priority | count | note |",
+        "|---|---:|---|",
+        f"| high | {counts.get('high', 0)} | review candidates only |",
+        f"| medium | {counts.get('medium', 0)} | reference candidates |",
+        f"| low | {counts.get('low', 0)} | weak or incomplete |",
+        f"| not_rankable | {counts.get('not_rankable', 0)} | data unavailable / provider issue |",
+    ]
+
+
+def _top_scan_candidates_table(records: list[PriceRecord], limit: int = 5) -> list[str]:
+    ranked = _ranked_records(records)[:limit]
+    lines = [
+        "| rank | symbol | name | score | priority | chg% | base | provider | note |",
+        "|---:|---|---|---:|---|---:|---|---|---|",
+    ]
+    for idx, record in enumerate(ranked, start=1):
+        lines.append(
+            f"| {idx} | {record.symbol} | {record.name} | {_fmt(record.scan_score_basic)} | {record.watch_priority} | {_fmt(record.price_change_pct)} | {record.base_quote_completeness} | {record.selected_provider or record.source} | {record.scan_score_notes} |"
+        )
+    if not ranked:
+        lines.append("|  |  |  |  | not_rankable |  | missing |  | no rankable records |")
+    return lines
+
+
+def _watchlist_review_priority_table(records: list[PriceRecord]) -> list[str]:
+    scoped = _ranking_records(records) or records
+    lines = [
+        "| priority | symbol | name | score | status | last | chg% | base | provider | note |",
+        "|---|---|---|---:|---|---:|---:|---|---|---|",
+    ]
+    for record in sorted(scoped, key=lambda item: (item.watch_priority == "not_rankable", -(item.scan_score_basic or -1), item.symbol)):
+        lines.append(
+            f"| {record.watch_priority or 'not_rankable'} | {record.symbol} | {record.name} | {_fmt(record.scan_score_basic)} | {record.scan_status or 'not_rankable'} | {_fmt(record.last_price if record.last_price is not None else record.price)} | {_fmt(record.price_change_pct)} | {record.base_quote_completeness} | {record.selected_provider or record.source} | {record.scan_score_notes or record.rank_exclusion_reason} |"
+        )
+    if not scoped:
+        lines.append("| not_rankable |  |  |  | not_rankable |  |  | missing |  | no records |")
+    return lines
+
+
+def _scan_basic_ranking_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| rank | symbol | name | tags | score | priority | last | chg% | base | data_quality | momentum | field_quality | liquidity | reconciliation | provider | status | note |",
+        "|---:|---|---|---|---:|---|---:|---:|---|---:|---:|---:|---:|---:|---|---|---|",
+    ]
+    ranked = _ranked_records(records)
+    for idx, record in enumerate(ranked, start=1):
+        lines.append(
+            "| {rank} | {symbol} | {name} | {tags} | {score} | {priority} | {last} | {chg} | {base} | {data} | {momentum} | {field} | {liquidity} | {recon} | {provider} | {status} | {note} |".format(
+                rank=idx,
+                symbol=record.symbol,
+                name=record.name,
+                tags=", ".join(record.universe_tags),
+                score=_fmt(record.scan_score_basic),
+                priority=record.watch_priority,
+                last=_fmt(record.last_price if record.last_price is not None else record.price),
+                chg=_fmt(record.price_change_pct),
+                base=record.base_quote_completeness,
+                data=_fmt(record.data_quality_score),
+                momentum=_fmt(record.momentum_score_basic),
+                field=_fmt(record.field_reliability_score),
+                liquidity=_fmt(record.liquidity_score_basic),
+                recon=_fmt(record.reconciliation_score),
+                provider=record.selected_provider or record.source,
+                status=record.scan_status,
+                note=record.scan_score_notes,
+            )
+        )
+    if not ranked:
+        lines.append("|  |  |  |  |  | not_rankable |  |  | missing |  |  |  |  |  |  | not_rankable | no rankable records |")
+    return lines
+
+
+def _not_rankable_table(records: list[PriceRecord]) -> list[str]:
+    scoped = [record for record in _ranking_records(records) if not record.rankable]
+    lines = [
+        "| symbol | name | reason | provider_status | suggested_next_step |",
+        "|---|---|---|---|---|",
+    ]
+    for record in scoped:
+        lines.append(
+            f"| {record.symbol} | {record.name} | {record.rank_exclusion_reason or 'not_rankable'} | {_provider_status(record)} | {_suggested_next_step(record)} |"
+        )
+    if not scoped:
+        lines.append("|  |  | none |  |  |")
+    return lines
+
+
+def _scan_ranking_summary_lines(records: list[PriceRecord]) -> list[str]:
+    scoped = _ranking_records(records)
+    counts = _scan_priority_counts(scoped)
+    exclusion_counts: dict[str, int] = {}
+    for record in scoped:
+        reason = record.rank_exclusion_reason or "none"
+        if not record.rankable:
+            exclusion_counts[reason] = exclusion_counts.get(reason, 0) + 1
+    provider_issue_count = sum(1 for record in scoped if record.scan_status == "provider_issue")
+    data_insufficient_count = sum(1 for record in scoped if record.scan_status == "data_insufficient")
+    return [
+        f"- total_symbols: {len(scoped)}",
+        f"- rankable_count: {sum(1 for record in scoped if record.rankable)}",
+        f"- not_rankable_count: {counts.get('not_rankable', 0)}",
+        f"- high_priority_count: {counts.get('high', 0)}",
+        f"- medium_priority_count: {counts.get('medium', 0)}",
+        f"- low_priority_count: {counts.get('low', 0)}",
+        f"- symbol_not_found_count: {exclusion_counts.get('symbol_not_found', 0)}",
+        f"- provider_issue_count: {provider_issue_count}",
+        f"- data_insufficient_count: {data_insufficient_count}",
+        "- exclusion reasons: "
+        + (", ".join(f"{key}:{value}" for key, value in sorted(exclusion_counts.items())) if exclusion_counts else "none"),
+        "- ranking does not affect strict.",
+    ]
+
+
+def _scan_priority_counts(records: list[PriceRecord]) -> dict[str, int]:
+    counts = {"high": 0, "medium": 0, "low": 0, "not_rankable": 0}
+    for record in records:
+        key = record.watch_priority or "not_rankable"
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _scan_ranking_trace_table(records: list[PriceRecord]) -> list[str]:
+    scoped = _ranking_records(records)
+    lines = [
+        "| symbol | rankable | exclusion_reason | data_quality_inputs | momentum_inputs | field_quality_inputs | liquidity_inputs | reconciliation_inputs | final_score | priority | notes |",
+        "|---|---|---|---|---|---|---|---|---:|---|---|",
+    ]
+    for record in scoped:
+        lines.append(
+            "| {symbol} | {rankable} | {reason} | base={base}; stale={stale}; reference={reference} | price_change_pct={chg} | status={field_status}; provider_capability={capability} | volume_comp={volume_comp}; amount_comp={amount_comp}; volume_unit={volume_unit}; amount_unit={amount_unit} | agreement={agreement} | {score} | {priority} | {notes} |".format(
+                symbol=record.symbol,
+                rankable=record.rankable,
+                reason=record.rank_exclusion_reason or "none",
+                base=record.base_quote_completeness,
+                stale=record.is_stale,
+                reference=record.usable_for_reference,
+                chg=_fmt(record.price_change_pct),
+                field_status=record.field_validation_status,
+                capability=record.provider_capability_status,
+                volume_comp=record.volume_comparable_across_providers,
+                amount_comp=record.amount_comparable_across_providers,
+                volume_unit=record.volume_unit,
+                amount_unit=record.amount_unit,
+                agreement=record.source_agreement_status,
+                score=_fmt(record.scan_score_basic),
+                priority=record.watch_priority or "not_rankable",
+                notes=record.scan_score_notes,
+            )
+        )
+    if not scoped:
+        lines.append("|  | false | not_applicable |  |  |  |  |  |  | not_rankable | scan ranking not applicable for operation profile |")
+    return lines
+
+
+def _scan_ranking_safety_lines() -> list[str]:
+    return [
+        "",
+        "- Scan ranking is not trading advice.",
+        "- Reference-only does not mean operation-ready.",
+        "- Operation decisions require operation-grade guard output.",
+        "- Candidate/watchlist/scan records do not affect core strict.",
+        "- volume/amount unit normalization is not complete.",
+        "- minute bars / VWAP / QDII premium are not implemented.",
+    ]
 
 
 def _fmt(value: object) -> str:

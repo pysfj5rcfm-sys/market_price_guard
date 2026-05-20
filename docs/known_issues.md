@@ -43,3 +43,7 @@ v0.7.1.6 adds `config/provider_capabilities.yaml`, `provider_capability_report.m
 ## Provider Capability And Scan Ranking
 
 Provider Capability Expansion / Field Validation delivered the basic report/config layer in v0.7.1.6. Future scan ranking in v0.7.1.7 should use `field_validation_status`, unit confidence, and comparability flags before using any volume/amount or field-derived ranking input.
+
+## Scan Ranking Limits
+
+v0.7.1.7 adds basic scan/watchlist review ranking. It is intentionally conservative and must not be treated as a trade signal. It does not include sector strength, minute bars, VWAP, QDII premium, bid/ask validation, turnover validation, or advice-level gating. `volume` and `amount` limitations still apply.

@@ -193,6 +193,17 @@ class PriceRecord(BaseModel):
     base_quote_comparable_score: float | None = None
     provider_capability_status: str = ""
     provider_capability_notes: str = ""
+    rankable: bool = False
+    rank_exclusion_reason: str = ""
+    scan_status: str = ""
+    watch_priority: str = ""
+    scan_score_basic: float | None = None
+    data_quality_score: float | None = None
+    momentum_score_basic: float | None = None
+    field_reliability_score: float | None = None
+    liquidity_score_basic: float | None = None
+    reconciliation_score: float | None = None
+    scan_score_notes: str = ""
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

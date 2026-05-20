@@ -91,6 +91,29 @@ def test_diagnostic_upload_bundle_is_diagnostic_only(tmp_path):
     assert "诊断输出用于排查" in bundle
 
 
+def test_tech_reconcile_outputs_tech_price_block_with_reference_boundary(tmp_path):
+    output_dir = tmp_path / "tech_reconcile"
+
+    run_pipeline(
+        output_dir=output_dir,
+        provider_mode="mock",
+        profile="tech",
+        provider_policy="diagnostic",
+        quote_purpose="reference",
+        reconcile_mode="full",
+    )
+
+    tech_block = output_dir / "tech_price_block.md"
+    assert tech_block.exists()
+    content = tech_block.read_text(encoding="utf-8")
+    assert "quote_purpose=reference" in content
+    assert "reconcile_mode=full" in content
+    assert "multi-source reconciliation review" in content
+    assert "not operation-grade" in content
+    assert not (output_dir / "energy_price_block.md").exists()
+    assert not (output_dir / "controller_price_summary.md").exists()
+
+
 def test_debug_bundle_contains_provider_runtime_and_snapshot(tmp_path):
     output_dir = tmp_path / "debug"
 

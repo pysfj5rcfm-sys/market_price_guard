@@ -259,3 +259,18 @@ v0.7.1.6 formalizes the provider capability and field validation layer:
 - `minute_bars`, VWAP, IOPV, and QDII premium remain future modules.
 
 This update does not add providers, does not change provider chain, does not change strict, does not change freshness, and does not upgrade any reference-grade quote to operation-grade.
+
+## v0.7.1.7 Scan Universe Basic Ranking Update
+
+v0.7.1.7 introduces basic scan/watchlist review ranking based on existing base quote and provider capability fields:
+
+- `rankable`
+- `watch_priority`
+- `scan_score_basic`
+- `data_quality_score`
+- `momentum_score_basic`
+- `field_reliability_score`
+- `liquidity_score_basic`
+- `reconciliation_score`
+
+This ranking is a data quality and review-priority aid only. It does not implement `minute_bars`, VWAP, QDII premium, `allowed_advice_level`, `action_hint`, or `preferred_action`. It does not change operation/reference semantics or strict.

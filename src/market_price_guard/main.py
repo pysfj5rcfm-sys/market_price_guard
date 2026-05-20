@@ -16,6 +16,7 @@ from .providers.manual_provider import ManualProvider
 from .providers.mock_provider import MockProvider
 from .providers.yfinance_provider import YFinanceProvider
 from .report import CompletenessSummary, build_completeness_summary, format_blocking_record, write_outputs
+from .scan_ranking import apply_scan_ranking
 from .symbol_registry import build_watchlist_from_registry, merge_watchlist_with_registry
 
 
@@ -166,7 +167,7 @@ def run_pipeline(
         universe_type,
     )
     rules = load_yaml(stale_rules_path)
-    records = apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules))
+    records = apply_scan_ranking(apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules)))
     elapsed = time.perf_counter() - perf_start
     runtime = _runtime_diagnostics(
         records=records,
