@@ -440,6 +440,34 @@ When the registry layer is active, `0_upload_bundle.md` and `debug_bundle.md` mu
 
 If a future version adds fields from the matrix into `prices_snapshot.csv`, bundles, or reports, this output contract must be upgraded separately.
 
+### 13.13 Base Quote Fields Contract
+
+v0.7.1.4 standardizes provider-supplied base quote fields as additive output fields:
+
+- `last_price`
+- `prev_close`
+- `open_price`
+- `high_price`
+- `low_price`
+- `volume`
+- `amount`
+- `price_change`
+- `price_change_pct`
+- `amplitude_pct`
+- `base_quote_completeness`
+- `base_quote_missing_fields`
+- `base_quote_fields_available_count`
+- `base_quote_fields_missing_count`
+- `exchange`
+- `country_market`
+- `trading_calendar`
+
+These fields are auxiliary quote diagnostics. Field completeness does not equal operation-grade permission. Operation use still depends on `quote_trust_tier`, `usable_for_operation`, strict blocking records, freshness, and provider health.
+
+`price` remains the legacy primary price field. `last_price` is an additive normalized alias and must not replace `price` in old consumers without a contract update. The legacy `market` field is retained to avoid freshness regression. `exchange`, `country_market`, and `trading_calendar` provide more precise market metadata for future modules.
+
+Missing base quote fields must not automatically change strict exit code in v0.7.1.4. If future versions make any base quote field operation-blocking, this contract and UAT must be updated first.
+
 ### 13.10 Tech Reconcile Output
 
 `outputs_tech_reconcile_latest/` 是 v0.7.1.1 新增的科技多源对账目录：

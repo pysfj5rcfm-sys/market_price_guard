@@ -82,9 +82,18 @@ class YFinanceProvider(PriceProvider):
         currency = _text(_first_present(fast_info, ["currency"]))
         quote_time = _parse_quote_time(_first_present(fast_info, ["last_trade_time", "lastTradeTime", "regularMarketTime"]))
         quote_time_raw = quote_time.isoformat() if quote_time else ""
+        base_fields = {
+            "last_price": price,
+            "prev_close": _positive_float(_first_present(fast_info, ["previous_close", "previousClose", "regularMarketPreviousClose"])),
+            "open_price": _positive_float(_first_present(fast_info, ["open", "regularMarketOpen"])),
+            "high_price": _positive_float(_first_present(fast_info, ["day_high", "dayHigh", "regularMarketDayHigh"])),
+            "low_price": _positive_float(_first_present(fast_info, ["day_low", "dayLow", "regularMarketDayLow"])),
+            "volume": _positive_float(_first_present(fast_info, ["last_volume", "lastVolume", "volume", "regularMarketVolume"])),
+        }
 
         if price is None and history_result.price is not None:
             price = history_result.price
+            base_fields["last_price"] = history_result.price
         if quote_time is None and history_result.quote_time is not None:
             quote_time = history_result.quote_time
             quote_time_raw = history_result.quote_time_raw
@@ -107,6 +116,7 @@ class YFinanceProvider(PriceProvider):
                 "quote_time_raw": quote_time_raw,
                 "quote_time_utc": quote_time.astimezone(timezone.utc).isoformat() if quote_time else "",
                 "currency": currency,
+                "mapped_base_quote_fields": [field for field, value in base_fields.items() if value is not None],
                 "attempts": [
                     {
                         "provider": "yfinance",
@@ -133,6 +143,18 @@ class YFinanceProvider(PriceProvider):
             market_status=_market_status_for_symbol(internal_symbol, quote_time or fetch_time),
             quality_issues=list(dict.fromkeys(issues)),
             provider_diagnostics=diagnostics,
+            last_price=base_fields["last_price"],
+            prev_close=base_fields["prev_close"],
+            open_price=base_fields["open_price"],
+            high_price=base_fields["high_price"],
+            low_price=base_fields["low_price"],
+            volume=base_fields["volume"],
+            last_price_source="yfinance" if base_fields["last_price"] is not None else "",
+            prev_close_source="yfinance" if base_fields["prev_close"] is not None else "",
+            open_price_source="yfinance" if base_fields["open_price"] is not None else "",
+            high_price_source="yfinance" if base_fields["high_price"] is not None else "",
+            low_price_source="yfinance" if base_fields["low_price"] is not None else "",
+            volume_source="yfinance_raw_unit" if base_fields["volume"] is not None else "",
         )
 
 
@@ -232,7 +254,29 @@ def _as_mapping(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
     result: dict[str, Any] = {}
-    for key in ["last_price", "lastPrice", "currency", "last_trade_time", "lastTradeTime", "regularMarketTime"]:
+    for key in [
+        "last_price",
+        "lastPrice",
+        "currency",
+        "last_trade_time",
+        "lastTradeTime",
+        "regularMarketTime",
+        "previous_close",
+        "previousClose",
+        "regularMarketPreviousClose",
+        "open",
+        "regularMarketOpen",
+        "day_high",
+        "dayHigh",
+        "regularMarketDayHigh",
+        "day_low",
+        "dayLow",
+        "regularMarketDayLow",
+        "last_volume",
+        "lastVolume",
+        "volume",
+        "regularMarketVolume",
+    ]:
         try:
             result[key] = value[key]
         except Exception:

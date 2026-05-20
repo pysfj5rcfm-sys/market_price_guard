@@ -129,6 +129,18 @@ class EastmoneyDirectProvider(PriceProvider):
         issues.append("assumed_currency_cny")
         name = str(data.get("f58") or SYMBOL_NAMES.get(symbol, symbol))
         code = str(data.get("f57") or symbol.split(".")[0])
+        base_fields = {
+            "last_price": price,
+            "prev_close": _positive_float(data.get("f60")),
+            "open_price": _positive_float(data.get("f46")),
+            "high_price": _positive_float(data.get("f44")),
+            "low_price": _positive_float(data.get("f45")),
+            "volume": _positive_float(data.get("f47")),
+            "amount": _positive_float(data.get("f48")),
+            "price_change": _float_or_none(data.get("f169")),
+            "price_change_pct": _float_or_none(data.get("f170")),
+        }
+        mapped_base_fields = [field for field, value in base_fields.items() if value is not None]
 
         diagnostics.update(
             {
@@ -141,6 +153,18 @@ class EastmoneyDirectProvider(PriceProvider):
                 "quote_time_raw": data.get("f86", ""),
                 "quote_time_utc": quote_time.astimezone(timezone.utc).isoformat() if quote_time else "",
                 "reference_note": SOURCE_LIMIT_NOTE,
+                "mapped_base_quote_fields": mapped_base_fields,
+                "base_quote_raw_fields": {
+                    "f43": data.get("f43", ""),
+                    "f44": data.get("f44", ""),
+                    "f45": data.get("f45", ""),
+                    "f46": data.get("f46", ""),
+                    "f47": data.get("f47", ""),
+                    "f48": data.get("f48", ""),
+                    "f60": data.get("f60", ""),
+                    "f169": data.get("f169", ""),
+                    "f170": data.get("f170", ""),
+                },
                 "attempts": [
                     {
                         "provider": "eastmoney_direct",
@@ -178,6 +202,24 @@ class EastmoneyDirectProvider(PriceProvider):
             confirmation_required=True,
             operation_blocking_reason="reference_tier_requires_operation_confirmation",
             reference_note=SOURCE_LIMIT_NOTE,
+            last_price=base_fields["last_price"],
+            prev_close=base_fields["prev_close"],
+            open_price=base_fields["open_price"],
+            high_price=base_fields["high_price"],
+            low_price=base_fields["low_price"],
+            volume=base_fields["volume"],
+            amount=base_fields["amount"],
+            price_change=base_fields["price_change"],
+            price_change_pct=base_fields["price_change_pct"],
+            last_price_source="eastmoney_direct" if base_fields["last_price"] is not None else "",
+            prev_close_source="eastmoney_direct" if base_fields["prev_close"] is not None else "",
+            open_price_source="eastmoney_direct" if base_fields["open_price"] is not None else "",
+            high_price_source="eastmoney_direct" if base_fields["high_price"] is not None else "",
+            low_price_source="eastmoney_direct" if base_fields["low_price"] is not None else "",
+            volume_source="eastmoney_direct_raw_unit" if base_fields["volume"] is not None else "",
+            amount_source="eastmoney_direct_cny" if base_fields["amount"] is not None else "",
+            price_change_source="eastmoney_direct" if base_fields["price_change"] is not None else "",
+            price_change_pct_source="eastmoney_direct" if base_fields["price_change_pct"] is not None else "",
         )
 
 
@@ -229,6 +271,15 @@ def _positive_float(value: Any) -> float | None:
     if price <= 0:
         return None
     return price
+
+
+def _float_or_none(value: Any) -> float | None:
+    if value in (None, "", "-"):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _parse_f86(value: Any) -> datetime | None:

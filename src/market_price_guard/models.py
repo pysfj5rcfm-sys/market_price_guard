@@ -71,6 +71,26 @@ class RawPrice(BaseModel):
     confirmation_required: bool | None = None
     operation_blocking_reason: str = ""
     reference_note: str = ""
+    last_price: float | None = None
+    prev_close: float | None = None
+    open_price: float | None = None
+    high_price: float | None = None
+    low_price: float | None = None
+    volume: float | None = None
+    amount: float | None = None
+    price_change: float | None = None
+    price_change_pct: float | None = None
+    amplitude_pct: float | None = None
+    last_price_source: str = ""
+    prev_close_source: str = ""
+    open_price_source: str = ""
+    high_price_source: str = ""
+    low_price_source: str = ""
+    volume_source: str = ""
+    amount_source: str = ""
+    price_change_source: str = ""
+    price_change_pct_source: str = ""
+    amplitude_pct_source: str = ""
 
     @field_validator("price")
     @classmethod
@@ -133,6 +153,34 @@ class PriceRecord(BaseModel):
     notes: str = ""
     registry_found: bool = True
     unsupported_reason: str = ""
+    last_price: float | None = None
+    prev_close: float | None = None
+    open_price: float | None = None
+    high_price: float | None = None
+    low_price: float | None = None
+    volume: float | None = None
+    amount: float | None = None
+    price_change: float | None = None
+    price_change_pct: float | None = None
+    amplitude_pct: float | None = None
+    last_price_source: str = ""
+    prev_close_source: str = ""
+    open_price_source: str = ""
+    high_price_source: str = ""
+    low_price_source: str = ""
+    volume_source: str = ""
+    amount_source: str = ""
+    price_change_source: str = ""
+    price_change_pct_source: str = ""
+    amplitude_pct_source: str = ""
+    base_quote_missing_fields: str = ""
+    base_quote_field_errors: str = ""
+    base_quote_completeness: str = ""
+    base_quote_fields_available_count: int = 0
+    base_quote_fields_missing_count: int = 0
+    exchange: str = ""
+    country_market: str = ""
+    trading_calendar: str = ""
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

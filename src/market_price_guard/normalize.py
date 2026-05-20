@@ -63,6 +63,18 @@ def normalize_records(
                     "reference_note": trust["reference_note"],
                 }
             )
+            base_quote = _base_quote_fields(raw, instrument.market)
+            provider_diagnostics.update(
+                {
+                    "base_quote_completeness": base_quote["base_quote_completeness"],
+                    "base_quote_missing_fields": base_quote["base_quote_missing_fields"],
+                    "base_quote_fields_available_count": base_quote["base_quote_fields_available_count"],
+                    "base_quote_fields_missing_count": base_quote["base_quote_fields_missing_count"],
+                    "exchange": base_quote["exchange"],
+                    "country_market": base_quote["country_market"],
+                    "trading_calendar": base_quote["trading_calendar"],
+                }
+            )
             records.append(
                 PriceRecord(
                     project=project_key,
@@ -105,9 +117,99 @@ def normalize_records(
                     notes=instrument.notes or "",
                     registry_found=instrument.registry_found,
                     unsupported_reason=instrument.unsupported_reason,
+                    **base_quote,
                 )
             )
     return records
+
+
+def _base_quote_fields(raw: RawPrice, market: str) -> dict[str, object]:
+    provider_source = str(raw.provider_diagnostics.get("selected_provider") or raw.source or "")
+    last_price = raw.last_price if raw.last_price is not None else raw.price
+    values: dict[str, float | None] = {
+        "last_price": last_price,
+        "prev_close": raw.prev_close,
+        "open_price": raw.open_price,
+        "high_price": raw.high_price,
+        "low_price": raw.low_price,
+        "volume": raw.volume,
+        "amount": raw.amount,
+        "price_change": raw.price_change,
+        "price_change_pct": raw.price_change_pct,
+        "amplitude_pct": raw.amplitude_pct,
+    }
+    sources = {
+        "last_price_source": raw.last_price_source or (provider_source if last_price is not None else "missing"),
+        "prev_close_source": raw.prev_close_source or (provider_source if raw.prev_close is not None else "missing"),
+        "open_price_source": raw.open_price_source or (provider_source if raw.open_price is not None else "missing"),
+        "high_price_source": raw.high_price_source or (provider_source if raw.high_price is not None else "missing"),
+        "low_price_source": raw.low_price_source or (provider_source if raw.low_price is not None else "missing"),
+        "volume_source": raw.volume_source or (provider_source if raw.volume is not None else "missing"),
+        "amount_source": raw.amount_source or (provider_source if raw.amount is not None else "missing"),
+        "price_change_source": raw.price_change_source or (provider_source if raw.price_change is not None else "missing"),
+        "price_change_pct_source": raw.price_change_pct_source or (provider_source if raw.price_change_pct is not None else "missing"),
+        "amplitude_pct_source": raw.amplitude_pct_source or (provider_source if raw.amplitude_pct is not None else "missing"),
+    }
+    errors: list[str] = []
+    prev_close = values["prev_close"]
+    if values["price_change"] is None and last_price is not None and prev_close is not None:
+        values["price_change"] = round(last_price - prev_close, 6)
+        sources["price_change_source"] = "calculated_from_last_and_prev_close"
+    if values["price_change_pct"] is None and last_price is not None and prev_close is not None:
+        if prev_close > 0:
+            values["price_change_pct"] = round((last_price - prev_close) / prev_close * 100, 6)
+            sources["price_change_pct_source"] = "calculated_from_last_and_prev_close"
+        else:
+            errors.append("price_change_pct_prev_close_not_positive")
+    high_price = values["high_price"]
+    low_price = values["low_price"]
+    if values["amplitude_pct"] is None and high_price is not None and low_price is not None and prev_close is not None:
+        if prev_close > 0:
+            values["amplitude_pct"] = round((high_price - low_price) / prev_close * 100, 6)
+            sources["amplitude_pct_source"] = "calculated_from_high_low_prev_close"
+        else:
+            errors.append("amplitude_pct_prev_close_not_positive")
+
+    required_fields = ["last_price", "prev_close", "open_price", "high_price", "low_price", "volume", "amount"]
+    missing_fields = [field for field in required_fields if values[field] is None]
+    available_count = len(required_fields) - len(missing_fields)
+    optional_available = available_count - (1 if values["last_price"] is not None else 0)
+    if values["last_price"] is None:
+        completeness = "missing"
+    elif not missing_fields:
+        completeness = "complete"
+    elif optional_available >= 3:
+        completeness = "partial"
+    else:
+        completeness = "price_only"
+
+    exchange_fields = _exchange_fields(raw.symbol, market)
+    return {
+        **values,
+        **sources,
+        "base_quote_missing_fields": ",".join(missing_fields),
+        "base_quote_field_errors": ",".join(errors),
+        "base_quote_completeness": completeness,
+        "base_quote_fields_available_count": available_count,
+        "base_quote_fields_missing_count": len(missing_fields),
+        **exchange_fields,
+    }
+
+
+def _exchange_fields(symbol: str, market: str) -> dict[str, str]:
+    if symbol.endswith(".SZ"):
+        return {"exchange": "SZ", "country_market": "CN", "trading_calendar": "CN_A_SHARE"}
+    if symbol.endswith(".SH"):
+        return {"exchange": "SH", "country_market": "CN", "trading_calendar": "CN_A_SHARE"}
+    if symbol.endswith(".HK"):
+        return {"exchange": "HK", "country_market": "HK", "trading_calendar": "HK"}
+    if symbol in {"GOLD_CNY"} or market == "MANUAL":
+        return {"exchange": "MANUAL", "country_market": "MANUAL", "trading_calendar": "MANUAL"}
+    if symbol in {"USD_CNY", "HKD_CNY"} or market == "FX":
+        return {"exchange": "FX", "country_market": "FX", "trading_calendar": "FX"}
+    if symbol == "IXIC" or market in {"US", "INDEX"}:
+        return {"exchange": "US", "country_market": "US", "trading_calendar": "US"}
+    return {"exchange": market or "UNKNOWN", "country_market": market or "UNKNOWN", "trading_calendar": market or "UNKNOWN"}
 
 
 def _quote_trust_fields(raw: RawPrice, is_stale: bool, required_for_operation: bool) -> dict[str, object]:

@@ -333,6 +333,29 @@ Read it as a provider/field support map:
 
 v0.7.1.3 does not develop the requested fields. It documents what exists now and what should move into later versions: v0.7.1.4 base quote field normalization, v0.7.1.5 provider capability expansion, v0.7.1.6 scan ranking, v0.7.2 advice-level gating, v0.7.3 minute bars/VWAP, and v0.7.4 QDII premium.
 
+## Base Quote Field Normalization
+
+v0.7.1.4 standardizes additive base quote fields when current providers already supply them:
+
+- `last_price`
+- `prev_close`
+- `open_price`
+- `high_price`
+- `low_price`
+- `volume`
+- `amount`
+- `price_change`
+- `price_change_pct`
+- `amplitude_pct`
+- `base_quote_completeness`
+- `exchange`
+- `country_market`
+- `trading_calendar`
+
+These fields support future scan ranking, day-position diagnostics, liquidity checks, and advice-level gating. They do not change provider trust tier, freshness, strict, or operation/reference semantics. `price` remains the legacy primary price field, and `market` keeps its current meaning for freshness compatibility.
+
+Use `prices_snapshot.csv` for the full normalized fields. `0_upload_bundle.md` includes a compact base quote summary, while `debug_bundle.md` includes field sources and missing-field diagnostics.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。

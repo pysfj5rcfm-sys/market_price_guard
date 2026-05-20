@@ -186,7 +186,7 @@ Manual GOLD_CNY is supported as a manually entered account reference. Broker cas
 - `timezone`: available in parsing/diagnostics but not a stable output column.
 - `stale_seconds`: available as `age_seconds` diagnostics but not standardized.
 - `data_completeness_level`: expressed through summary/reasons, not a single enum.
-- `prev_close`, `open_price`, `high_price`, `low_price`, `volume`, `amount`: provider-dependent and not standardized.
+- `prev_close`, `open_price`, `high_price`, `low_price`, `volume`, `amount`: standardized in v0.7.1.4 when supplied by provider; still provider-dependent for coverage.
 - `bid1_price`, `ask1_price`, `bid1_volume`, `ask1_volume`: missing.
 - `minute_bars` or `intraday_vwap` / `intraday_avg_price`: missing.
 - QDII `iopv`, `estimated_nav`, `premium_pct`: missing.
@@ -194,7 +194,7 @@ Manual GOLD_CNY is supported as a manually entered account reference. Broker cas
 
 ## P1 Gap List
 
-- `bid_ask_spread`, `turnover_rate`, `amplitude_pct`, `price_change`, `price_change_pct`: not standardized.
+- `bid_ask_spread`, `turnover_rate`: not standardized. `amplitude_pct`, `price_change`, and `price_change_pct` are standardized/calculable in v0.7.1.4 when required base fields exist.
 - Recent volume/amount windows: missing.
 - `day_position`, VWAP distance, high/low distance, open gap, intraday return: calculable later, blocked by missing base/minute fields.
 - `chase_risk`, `buy_zone`, `volume_ratio`, `liquidity_flag`: planned.
@@ -217,3 +217,25 @@ Manual GOLD_CNY is supported as a manually entered account reference. Broker cas
 - v0.7.2 Advice Level Decision Layer Lite: introduce `allowed_advice_level`, risk flags, and gated output labels without changing provider trust by accident.
 - v0.7.3 Minute Bars + VWAP: implement minute bars, VWAP, recent volume windows, and intraday position fields.
 - v0.7.4 QDII Premium Module: implement IOPV/NAV/premium, FX, NDX/QQQ/futures references, and QDII-specific stale flags.
+
+## v0.7.1.4 Base Quote Field Normalization Update
+
+v0.7.1.4 standardized base quote fields in the data model, CSV, bundles, and debug reports:
+
+- `last_price`
+- `prev_close`
+- `open_price`
+- `high_price`
+- `low_price`
+- `volume`
+- `amount`
+- `price_change`
+- `price_change_pct`
+- `amplitude_pct`
+- `exchange`
+- `country_market`
+- `trading_calendar`
+
+Current support status for these base quote fields is now `supported` when a selected provider supplies the raw field, and `missing` when that provider does not. `price_change`, `price_change_pct`, and `amplitude_pct` are `calculable` when the required base fields exist. This update does not make any provider operation-grade by itself and does not change strict, freshness, or quote trust tier rules.
+
+`minute_bars / VWAP are not developed`, `QDII premium is not developed`, and `action_hint / preferred_action` remain future strategy or advice-layer fields, not API-native fields.

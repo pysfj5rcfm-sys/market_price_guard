@@ -43,6 +43,15 @@ PRICE_COLUMNS = [
     "lastPrice",
     "price",
 ]
+PREV_CLOSE_COLUMNS = ["\u6628\u6536", "\u6628\u6536\u4ef7", "\u6628\u6536\u76d8", "prev_close", "previous_close"]
+OPEN_PRICE_COLUMNS = ["\u4eca\u5f00", "\u5f00\u76d8", "\u5f00\u76d8\u4ef7", "open", "open_price"]
+HIGH_PRICE_COLUMNS = ["\u6700\u9ad8", "\u6700\u9ad8\u4ef7", "high", "high_price"]
+LOW_PRICE_COLUMNS = ["\u6700\u4f4e", "\u6700\u4f4e\u4ef7", "low", "low_price"]
+VOLUME_COLUMNS = ["\u6210\u4ea4\u91cf", "\u6210\u4ea4\u91cf(\u624b)", "volume"]
+AMOUNT_COLUMNS = ["\u6210\u4ea4\u989d", "\u6210\u4ea4\u989d(\u5143)", "amount"]
+PRICE_CHANGE_COLUMNS = ["\u6da8\u8dcc\u989d", "\u6da8\u8dcc", "price_change", "change"]
+PRICE_CHANGE_PCT_COLUMNS = ["\u6da8\u8dcc\u5e45", "\u6da8\u5e45", "price_change_pct", "change_pct", "pct_chg"]
+AMPLITUDE_COLUMNS = ["\u632f\u5e45", "amplitude", "amplitude_pct"]
 QUOTE_TIME_COLUMNS = [
     "\u66f4\u65b0\u65f6\u95f4",
     "update_time",
@@ -293,6 +302,20 @@ class AkshareProvider(PriceProvider):
             issues.append("invalid_price")
         quote_time, quote_issues, quote_raw = _extract_quote_time(row)
         issues.extend(quote_issues)
+        base_fields = {
+            "last_price": price,
+            "prev_close": _extract_positive_optional(row, PREV_CLOSE_COLUMNS),
+            "open_price": _extract_positive_optional(row, OPEN_PRICE_COLUMNS),
+            "high_price": _extract_positive_optional(row, HIGH_PRICE_COLUMNS),
+            "low_price": _extract_positive_optional(row, LOW_PRICE_COLUMNS),
+            "volume": _extract_positive_optional(row, VOLUME_COLUMNS),
+            "amount": _extract_positive_optional(row, AMOUNT_COLUMNS),
+            "price_change": _extract_float_optional(row, PRICE_CHANGE_COLUMNS),
+            "price_change_pct": _extract_float_optional(row, PRICE_CHANGE_PCT_COLUMNS),
+            "amplitude_pct": _extract_float_optional(row, AMPLITUDE_COLUMNS),
+        }
+        mapped_base_fields = [field for field, value in base_fields.items() if value is not None]
+        missing_base_fields = [field for field, value in base_fields.items() if value is None]
 
         row_diagnostics = {
             **diagnostics,
@@ -302,6 +325,8 @@ class AkshareProvider(PriceProvider):
             "quote_time_raw": quote_raw or "",
             "quote_time_utc": quote_time.astimezone(timezone.utc).isoformat() if quote_time else "",
             "fetch_time_utc": fetch_time.isoformat(),
+            "mapped_base_quote_fields": mapped_base_fields,
+            "base_quote_missing_raw_fields": missing_base_fields,
         }
 
         return RawPrice(
@@ -316,6 +341,26 @@ class AkshareProvider(PriceProvider):
             market_status=_market_status_for_symbol(symbol, quote_time or fetch_time),
             quality_issues=issues,
             provider_diagnostics=row_diagnostics,
+            last_price=base_fields["last_price"],
+            prev_close=base_fields["prev_close"],
+            open_price=base_fields["open_price"],
+            high_price=base_fields["high_price"],
+            low_price=base_fields["low_price"],
+            volume=base_fields["volume"],
+            amount=base_fields["amount"],
+            price_change=base_fields["price_change"],
+            price_change_pct=base_fields["price_change_pct"],
+            amplitude_pct=base_fields["amplitude_pct"],
+            last_price_source="akshare" if base_fields["last_price"] is not None else "",
+            prev_close_source="akshare" if base_fields["prev_close"] is not None else "",
+            open_price_source="akshare" if base_fields["open_price"] is not None else "",
+            high_price_source="akshare" if base_fields["high_price"] is not None else "",
+            low_price_source="akshare" if base_fields["low_price"] is not None else "",
+            volume_source="akshare_provider_raw_unit" if base_fields["volume"] is not None else "",
+            amount_source="akshare_amount_unit_unknown" if base_fields["amount"] is not None else "",
+            price_change_source="akshare" if base_fields["price_change"] is not None else "",
+            price_change_pct_source="akshare" if base_fields["price_change_pct"] is not None else "",
+            amplitude_pct_source="akshare" if base_fields["amplitude_pct"] is not None else "",
         )
 
     def _call_akshare_cached(
@@ -434,6 +479,31 @@ def _extract_positive_price(row: pd.Series) -> float | None:
             return price
         return None
     return None
+
+
+def _extract_positive_optional(row: pd.Series, columns: list[str]) -> float | None:
+    for _column, value in _candidate_row_values(row, columns):
+        parsed = _to_float(value)
+        if parsed is not None and parsed > 0:
+            return parsed
+    return None
+
+
+def _extract_float_optional(row: pd.Series, columns: list[str]) -> float | None:
+    for _column, value in _candidate_row_values(row, columns):
+        parsed = _to_float(value)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _to_float(value: Any) -> float | None:
+    if pd.isna(value) or value in (None, "", "-"):
+        return None
+    try:
+        return float(str(value).replace("%", ""))
+    except (TypeError, ValueError):
+        return None
 
 
 def _extract_text(row: pd.Series, columns: list[str]) -> str | None:

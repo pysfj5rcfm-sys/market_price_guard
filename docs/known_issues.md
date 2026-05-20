@@ -6,7 +6,7 @@ The default operation paths currently keep A-share and A-share ETF records as `m
 
 Reason: freshness uses the existing `market == "CN"` plus `.SH` / `.SZ` symbol suffix logic to apply the China market trading calendar approximation. Changing `market` directly to `SH` or `SZ` would risk bypassing the current freshness logic.
 
-Future cleanup should add an explicit exchange-level field, for example `exchange=SH/SZ` or `country_market=CN`, then migrate reports without changing freshness semantics.
+v0.7.1.4 adds explicit `exchange`, `country_market`, and `trading_calendar` fields (`exchange/country_market/trading_calendar`) while retaining the legacy `market=CN` field to avoid freshness risk. Future cleanup can gradually migrate consumers to the new fields.
 
 Recommended future split:
 
@@ -28,4 +28,4 @@ The QDII premium module is not developed. `159632.SZ` and `513300.SH` still lack
 
 ## Scan Universe Base Fields
 
-Scan Universe is currently a basic registry/universe framework. Candidate quote coverage depends on existing provider support, and base quote field normalization is still needed before reliable ranking or opportunity scoring.
+Scan Universe is currently a basic registry/universe framework. v0.7.1.4 standardizes base quote fields when providers supply them, but candidate quote coverage still depends on existing provider support. Ranking and opportunity scoring remain future work.

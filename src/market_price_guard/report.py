@@ -16,6 +16,16 @@ OUTPUT_COLUMNS = [
     "name",
     "market",
     "price",
+    "last_price",
+    "prev_close",
+    "open_price",
+    "high_price",
+    "low_price",
+    "volume",
+    "amount",
+    "price_change",
+    "price_change_pct",
+    "amplitude_pct",
     "currency",
     "source",
     "selected_provider",
@@ -52,6 +62,24 @@ OUTPUT_COLUMNS = [
     "notes",
     "registry_found",
     "unsupported_reason",
+    "last_price_source",
+    "prev_close_source",
+    "open_price_source",
+    "high_price_source",
+    "low_price_source",
+    "volume_source",
+    "amount_source",
+    "price_change_source",
+    "price_change_pct_source",
+    "amplitude_pct_source",
+    "base_quote_completeness",
+    "base_quote_fields_available_count",
+    "base_quote_fields_missing_count",
+    "base_quote_missing_fields",
+    "base_quote_field_errors",
+    "exchange",
+    "country_market",
+    "trading_calendar",
 ]
 
 GOLD_NOTE = (
@@ -363,6 +391,8 @@ def build_upload_bundle(
     lines.extend(_blocking_record_lines(summary.strict_blockers))
     lines.extend(["", "## Quote Trust Tier 摘要"])
     lines.extend(_quote_trust_bundle_lines(records))
+    lines.extend(["", "## Base Quote Summary"])
+    lines.extend(_base_quote_summary_lines(records))
     lines.extend(["", "## Reconciliation Summary"])
     lines.extend(_reconciliation_summary_lines(records))
     lines.extend(["", "## 项目核心内容"])
@@ -421,6 +451,8 @@ def build_debug_bundle(
     lines.extend(build_runtime_diagnostics_report(records, runtime).splitlines()[2:])
     lines.extend(["", "## Price Reconciliation 摘要"])
     lines.extend(_reconciliation_detail_lines(records))
+    lines.extend(["", "## Base Quote Fields Summary"])
+    lines.extend(_base_quote_detail_table(records))
     lines.extend(["", "## prices_snapshot 关键明细摘要"])
     lines.extend(_debug_snapshot_table(records))
     lines.extend(["", "## Blocking / Error 摘要"])
@@ -483,6 +515,8 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(_quote_trust_diagnostic_lines(records))
     lines.extend(["", "## Source agreement diagnostics"])
     lines.extend(_reconciliation_detail_lines(records))
+    lines.extend(["", "## Base quote completeness summary"])
+    lines.extend(_base_quote_completeness_lines(records))
     lines.append("- See price_reconciliation_report.md for full multi-source comparison details.")
     lines.extend(["", "## Runtime freshness diagnostics"])
     lines.extend(_runtime_freshness_lines(runtime))
@@ -662,6 +696,8 @@ def build_candidate_watchlist_report(records: list[PriceRecord], runtime: dict[s
         "",
     ]
     lines.extend(_watchlist_table(candidates or records))
+    lines.extend(["", "## Base Quote Summary"])
+    lines.extend(_base_quote_completeness_lines(candidates or records))
     return "\n".join(lines) + "\n"
 
 
@@ -678,6 +714,8 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
         "",
     ]
     lines.extend(_watchlist_table(scan_records or records))
+    lines.extend(["", "## Base Quote Summary"])
+    lines.extend(_base_quote_completeness_lines(scan_records or records))
     return "\n".join(lines) + "\n"
 
 
@@ -1735,6 +1773,90 @@ def _watchlist_table(records: list[PriceRecord]) -> list[str]:
     if not records:
         lines.append("|  |  |  |  |  |  |  |  |  |  |  |  | none |  |")
     return lines
+
+
+def _base_quote_summary_lines(records: list[PriceRecord]) -> list[str]:
+    if not records:
+        return ["- base_quote_completeness: none"]
+    counts: dict[str, int] = {}
+    for record in records:
+        key = record.base_quote_completeness or "missing"
+        counts[key] = counts.get(key, 0) + 1
+    lines = ["- base_quote_completeness counts:"]
+    lines.extend([f"- {key}: {value}" for key, value in sorted(counts.items())])
+    lines.append(f"- missing fields top: {_base_quote_missing_top(records)}")
+    lines.append("- base quote fields are auxiliary diagnostics; missing fields do not change existing strict in this version.")
+    return lines
+
+
+def _base_quote_completeness_lines(records: list[PriceRecord]) -> list[str]:
+    lines = _base_quote_summary_lines(records)
+    lines.extend(["", "| symbol | base_quote_completeness | available | missing | missing_fields |", "|---|---|---:|---:|---|"])
+    for record in records:
+        lines.append(
+            f"| {record.symbol} | {record.base_quote_completeness} | {record.base_quote_fields_available_count} | {record.base_quote_fields_missing_count} | {record.base_quote_missing_fields} |"
+        )
+    if not records:
+        lines.append("|  | none | 0 | 0 |  |")
+    return lines
+
+
+def _base_quote_detail_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | last | prev_close | open | high | low | volume | amount | change | change_pct | amplitude_pct | completeness | missing_fields | field_sources | exchange | country_market | trading_calendar |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|---|---|---|",
+    ]
+    for record in records:
+        sources = ",".join(
+            item
+            for item in [
+                f"last={record.last_price_source}",
+                f"prev={record.prev_close_source}",
+                f"open={record.open_price_source}",
+                f"high={record.high_price_source}",
+                f"low={record.low_price_source}",
+                f"volume={record.volume_source}",
+                f"amount={record.amount_source}",
+                f"change_pct={record.price_change_pct_source}",
+            ]
+            if not item.endswith("=")
+        )
+        lines.append(
+            "| {symbol} | {last} | {prev} | {open} | {high} | {low} | {volume} | {amount} | {change} | {change_pct} | {amplitude} | {complete} | {missing} | {sources} | {exchange} | {country} | {calendar} |".format(
+                symbol=record.symbol,
+                last="" if record.last_price is None else record.last_price,
+                prev="" if record.prev_close is None else record.prev_close,
+                open="" if record.open_price is None else record.open_price,
+                high="" if record.high_price is None else record.high_price,
+                low="" if record.low_price is None else record.low_price,
+                volume="" if record.volume is None else record.volume,
+                amount="" if record.amount is None else record.amount,
+                change="" if record.price_change is None else record.price_change,
+                change_pct="" if record.price_change_pct is None else record.price_change_pct,
+                amplitude="" if record.amplitude_pct is None else record.amplitude_pct,
+                complete=record.base_quote_completeness,
+                missing=record.base_quote_missing_fields,
+                sources=sources,
+                exchange=record.exchange,
+                country=record.country_market,
+                calendar=record.trading_calendar,
+            )
+        )
+    if not records:
+        lines.append("|  |  |  |  |  |  |  |  |  |  |  | none |  |  |  |  |  |")
+    return lines
+
+
+def _base_quote_missing_top(records: list[PriceRecord]) -> str:
+    counts: dict[str, int] = {}
+    for record in records:
+        for field in (record.base_quote_missing_fields or "").split(","):
+            if not field:
+                continue
+            counts[field] = counts.get(field, 0) + 1
+    if not counts:
+        return "none"
+    return ", ".join(f"{field}:{count}" for field, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:8])
 
 
 def _universe_isolation_lines(runtime: dict[str, Any]) -> list[str]:
