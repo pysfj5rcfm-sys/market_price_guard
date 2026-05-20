@@ -62,3 +62,15 @@ AKShare `fund_etf_hist_min_em` may be slow, environment-dependent, or limited to
 YFinance A-share ETF minute bars remain not implemented in guard in this version. Eastmoney Direct minute bars remain not validated.
 
 Some scan symbols may still fail provider coverage and remain not rankable. Such failures should be reported as provider error, symbol not found, empty response, or unsupported coverage rather than treated as a system failure.
+
+## v0.7.2a.2 Eastmoney Minute Probe Caveats
+
+Eastmoney Direct minute probe has been added as a diagnostic fallback after AKShare minute probe failures. The endpoint can still be unstable or provider-dependent, especially around after-close sessions.
+
+Eastmoney Direct minute bars are not operation-grade, do not change strict, and do not calculate VWAP or intraday derived fields.
+
+## v0.7.2a.2a Minute Probe Diagnostics
+
+AKShare minute probe may fail outside CN continuous trading hours, including after the A-share close. The `after_close_possible` flag is diagnostic only and is not a confirmed root cause.
+
+Before declaring AKShare minute bars unusable, rerun `run_tech_minute_probe.ps1` during CN continuous trading hours when practical. This retry suggestion does not change strict, operation readiness, quote trust tier, or usable_for_operation.

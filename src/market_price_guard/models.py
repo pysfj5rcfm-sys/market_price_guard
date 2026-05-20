@@ -214,6 +214,10 @@ class PriceRecord(BaseModel):
     minute_bar_validation_status: str = ""
     minute_bar_missing_reason: str = ""
     minute_bar_notes: str = ""
+    minute_bar_market_session: str = ""
+    minute_bar_after_close_possible: bool = False
+    minute_bar_retry_suggested: str = ""
+    minute_bar_retry_reason: str = ""
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

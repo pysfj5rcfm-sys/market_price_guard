@@ -618,3 +618,25 @@ Scan records must remain:
 `debug_bundle.md` Minute Bars Probe Detail should include provider attempted, provider success, normalized symbol, status, interval, count, latest time, fetch time, validation status, missing reason, and notes.
 
 AKShare ETF minute bars use `fund_etf_hist_min_em` in the optional minute probe path only. Minute-bar availability must not upgrade trust tier, change strict, or change operation readiness.
+
+### 13.19 Eastmoney Direct Minute Probe Contract
+
+v0.7.2a.2 adds Eastmoney Direct as a fallback provider for the optional minute-bars probe.
+
+Minute probe details should include:
+
+- `provider_attempted`
+- `provider_success`
+- `normalized_symbol`
+- `eastmoney_secid`
+- `minute_bar_status`
+- `minute_bar_interval`
+- `minute_bar_count`
+- `minute_bar_latest_time`
+- `minute_bar_validation_status`
+- `minute_bar_missing_reason`
+- `minute_bar_notes`
+
+Eastmoney Direct successful bars use `minute_bar_provider=eastmoney_direct` and `minute_bar_validation_status=provider_dependent` or equivalent. `minute_bars_snapshot.csv` may contain rows with `provider=eastmoney_direct`.
+
+Eastmoney Direct minute bars are diagnostic/reference only. They must not upgrade trust tier, change strict, change freshness, or change operation readiness.

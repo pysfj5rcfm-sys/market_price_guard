@@ -289,3 +289,9 @@ Provider capability remains separate from operation trust tier. Minute-bar avail
 `tech_scan_ai` reference/scan quote coverage now attempts AKShare spot data for ETF / QDII ETF scan candidates and A-share stock scan candidates. This improves base quote coverage, but scan candidates remain reference/diagnostic and do not become operation holdings.
 
 `intraday_vwap`, `distance_to_vwap_pct`, `day_position`, `chase_risk`, and `buy_zone` remain planned for v0.7.2b or later.
+
+## v0.7.2a.2 Eastmoney Minute Probe Update
+
+Eastmoney Direct `minute_bars` moves from not validated to attempted / provider-dependent in the optional minute probe path. It is used only as a diagnostic fallback after AKShare minute probe failures.
+
+Eastmoney minute bars do not change operation trust tier, strict, freshness, or usable_for_operation. `intraday_vwap`, `distance_to_vwap_pct`, and `day_position` remain planned for v0.7.2b.

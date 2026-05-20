@@ -253,3 +253,6 @@ Additional v0.7.2a.1 checks:
 - `run_tech_minute_probe.ps1` attempts AKShare ETF minute bars through `fund_etf_hist_min_em`.
 - If minute bars are available, `minute_bars_snapshot.csv` is generated and listed in `index.md`.
 - Minute-bar availability does not change strict or operation readiness.
+- v0.7.2a.2: if AKShare minute probe fails, Eastmoney Direct minute probe is attempted.
+- Debug output includes `eastmoney_secid`, `provider_attempted`, and `provider_success`.
+- Eastmoney minute bars remain diagnostic/reference only.

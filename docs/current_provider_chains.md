@@ -104,3 +104,11 @@ When the probe is enabled, reports show minute-bar availability, interval, count
 `tech_scan_ai` reference/scan runs may attempt AKShare spot quotes for ETF / QDII ETF scan candidates and A-share stock scan candidates. These records remain scan/reference records and do not become operation holdings.
 
 The optional minute probe may call AKShare `fund_etf_hist_min_em` for ETF / QDII ETF symbols. This does not alter `run_tech_fast_strict.ps1`, default provider chains, strict, or operation readiness.
+
+v0.7.2a.2 minute probe order:
+
+1. AKShare ETF minute probe.
+2. Eastmoney Direct minute probe fallback.
+3. Optional YFinance remains not implemented in guard.
+
+Eastmoney Direct minute bars do not alter the default fast strict provider chain and do not upgrade operation readiness.

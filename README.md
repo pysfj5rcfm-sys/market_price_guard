@@ -461,3 +461,9 @@ v0.7.2a.1 expands AKShare real-data coverage in two diagnostic/reference paths:
 Scan records remain `required_for_operation=false` and `usable_for_operation=false`. Minute bars remain diagnostic and do not change strict, freshness, quote trust tier, operation readiness, or operation/reference semantics.
 
 YFinance minute fallback is not implemented in this version; it remains reference-only/not implemented in guard capability reporting. Eastmoney Direct minute bars remain not validated.
+
+## Eastmoney Direct Minute Probe
+
+v0.7.2a.2 adds Eastmoney Direct as a diagnostic minute-bars fallback in the optional minute probe path. The probe order is AKShare first, then Eastmoney Direct when AKShare returns provider error, empty response, or unparseable bars.
+
+Eastmoney Direct minute bars use Eastmoney `secid` mapping such as `513300.SH -> 1.513300` and `159632.SZ -> 0.159632`. Any successful Eastmoney minute bars remain reference/diagnostic only. They do not change strict, freshness, quote trust tier, usable_for_operation, or operation readiness. VWAP and intraday derived fields are still not calculated until a future version.

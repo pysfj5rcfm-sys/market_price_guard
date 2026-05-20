@@ -68,7 +68,8 @@ eastmoney_direct:
       bid1_price: {status: not_validated, operation_fit: no, reference_fit: false}
       ask1_price: {status: not_validated, operation_fit: no, reference_fit: false}
       turnover_rate: {status: not_validated, operation_fit: no, reference_fit: false}
-      minute_bars: {status: not_validated, operation_fit: no, reference_fit: false}
+      minute_bars: {status: attempted_provider_dependent, unit: raw_provider_unit, unit_confidence: low, comparable_across_providers: false, operation_fit: no, reference_fit: true}
+      minute_bar_interval: {status: supported_if_endpoint_succeeds, operation_fit: no, reference_fit: true}
       intraday_vwap: {status: not_implemented, operation_fit: no, reference_fit: false}
       iopv: {status: missing, operation_fit: no, reference_fit: false}
       premium_pct: {status: missing, operation_fit: no, reference_fit: false}
