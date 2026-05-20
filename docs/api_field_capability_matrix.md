@@ -274,3 +274,10 @@ v0.7.1.7 introduces basic scan/watchlist review ranking based on existing base q
 - `reconciliation_score`
 
 This ranking is a data quality and review-priority aid only. It does not implement `minute_bars`, VWAP, QDII premium, `allowed_advice_level`, `action_hint`, or `preferred_action`. It does not change operation/reference semantics or strict.
+## v0.7.2a Minute Bars Probe Update
+
+`minute_bars` is now marked as v0.7.2a probe introduced. The probe records availability, provider, interval, bar count, latest bar time, fetch time, status, validation status, missing reason, and notes.
+
+This is an ingestion probe only. `intraday_vwap`, `distance_to_vwap_pct`, `day_position`, `chase_risk`, `buy_zone`, and related intraday derived fields remain planned for v0.7.2b or later. QDII premium, action hints, preferred actions, and allowed advice level remain future modules.
+
+Provider capability remains separate from operation trust tier. Minute-bar availability does not upgrade a quote to operation-grade and does not change strict.

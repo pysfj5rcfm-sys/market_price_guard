@@ -225,3 +225,21 @@ Check:
 - 如果仍为 `single_source_only`，报告必须说明失败或跳过原因；
 - Eastmoney Direct 仍不得显示为 operation-grade；
 - 日常上传优先 `0_upload_bundle.md`，异常再补 `debug_bundle.md`。
+## Minute Bars Probe UAT
+
+Run:
+
+```powershell
+.\scripts\run_tech_minute_probe.ps1
+```
+
+Check:
+
+- `outputs_tech_minute_probe_latest/0_upload_bundle.md` exists.
+- `outputs_tech_minute_probe_latest/debug_bundle.md` exists.
+- `prices_snapshot.csv` contains `minute_bars_available`, `minute_bar_provider`, `minute_bar_interval`, `minute_bar_count`, `minute_bar_latest_time`, `minute_bar_status`, `minute_bar_validation_status`, and `minute_bar_missing_reason`.
+- `0_upload_bundle.md` contains `Minute Bars Probe Summary`.
+- `debug_bundle.md` contains `Minute Bars Probe Detail`.
+- `data_completeness_report.md` contains `Minute Bars Completeness`.
+- Minute bars are diagnostic only and do not change strict or operation readiness.
+- VWAP and intraday derived fields are not calculated in v0.7.2a.

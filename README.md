@@ -431,3 +431,22 @@ v0.7.1.1 新增科技多源对账脚本：
 当前链路说明见：`docs/current_provider_chains.md`。
 
 日常上传优先使用 `0_upload_bundle.md`。如果出现 strict 阻断、provider_error、stale、quote_time_missing、major_diff、运行超时或报告冲突，再补充 `debug_bundle.md`。
+## Minute Bars Ingestion Probe
+
+v0.7.2a adds an optional minute-bars ingestion probe. It is diagnostic only and does not change strict, freshness, provider chain, quote trust tier, usable_for_operation, or operation/reference semantics.
+
+Run the tech minute probe:
+
+```powershell
+.\scripts\run_tech_minute_probe.ps1
+```
+
+Output directory:
+
+```text
+outputs_tech_minute_probe_latest
+```
+
+The probe writes minute-bar availability fields into `prices_snapshot.csv` and adds Minute Bars Probe sections to `0_upload_bundle.md`, `debug_bundle.md`, `data_completeness_report.md`, and `provider_capability_report.md`. When mock mode is used, mock minute bars may be generated for tests only. Live providers that do not have a guarded minute-bars implementation are reported as `not_supported`, `not_validated`, or `not_implemented_for_provider`.
+
+v0.7.2a does not calculate VWAP, intraday position fields, QDII premium, action hints, preferred actions, or allowed advice levels. Future v0.7.2b may build VWAP and basic intraday derived fields on top of this probe.

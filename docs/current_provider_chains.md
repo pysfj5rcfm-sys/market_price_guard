@@ -91,3 +91,10 @@ Provider chains can vary by `quote_purpose` and universe metadata, but candidate
 `docs/api_field_capability_matrix.md` tracks provider field support separately from provider chain selection.
 
 A provider being selected for price does not mean it supports minute bars, IOPV, bid/ask, or every scan field. Likewise, a field being supported does not make a record operation-grade; operation use still depends on `quote_trust_tier`, `usable_for_operation`, strict, freshness, and provider health.
+## Optional Minute Bars Probe
+
+v0.7.2a adds `--include-minute-bars` and `scripts/run_tech_minute_probe.ps1`.
+
+The minute-bars probe is optional. It does not alter the default fast strict provider chain, does not upgrade reference providers, and does not change strict, freshness, quote trust tier, or usable_for_operation.
+
+When the probe is enabled, reports show minute-bar availability, interval, count, latest time, provider, status, validation status, and missing reason. VWAP and intraday derived fields are not calculated in v0.7.2a.

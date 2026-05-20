@@ -47,3 +47,10 @@ Provider Capability Expansion / Field Validation delivered the basic report/conf
 ## Scan Ranking Limits
 
 v0.7.1.7 adds basic scan/watchlist review ranking. It is intentionally conservative and must not be treated as a trade signal. It does not include sector strength, minute bars, VWAP, QDII premium, bid/ask validation, turnover validation, or advice-level gating. `volume` and `amount` limitations still apply.
+## Minute Bars Probe Limits
+
+Minute bars probe introduced in v0.7.2a. It records minute-bar availability and status, but VWAP and intraday derived fields remain not implemented until a later version such as v0.7.2b.
+
+Minute bars availability may vary by provider and symbol. Missing minute bars do not affect operation-grade status, strict, freshness, quote trust tier, or usable_for_operation in v0.7.2a.
+
+The probe does not fix Eastmoney Direct stability, does not add QDII premium, and does not add any advice layer.

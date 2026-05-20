@@ -58,7 +58,7 @@ eastmoney_direct:
       bid1_price: {status: not_validated, operation_fit: no, reference_fit: false}
       ask1_price: {status: not_validated, operation_fit: no, reference_fit: false}
       turnover_rate: {status: not_validated, operation_fit: no, reference_fit: false}
-      minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_validated, operation_fit: no, reference_fit: false}
       intraday_vwap: {status: not_implemented, operation_fit: no, reference_fit: false}
       iopv: {status: missing, operation_fit: no, reference_fit: false}
       premium_pct: {status: missing, operation_fit: no, reference_fit: false}
@@ -99,7 +99,7 @@ manual:
       low_price: {status: missing, operation_fit: no, reference_fit: false}
       volume: {status: missing, operation_fit: no, reference_fit: false}
       amount: {status: missing, operation_fit: no, reference_fit: false}
-      minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}
+      minute_bars: {status: not_supported, operation_fit: no, reference_fit: false}
 mock:
   mock_quote:
     provider: mock
@@ -114,4 +114,4 @@ mock:
       bid1_price: {status: not_applicable, operation_fit: no, reference_fit: false}
       ask1_price: {status: not_applicable, operation_fit: no, reference_fit: false}
       turnover_rate: {status: not_applicable, operation_fit: no, reference_fit: false}
-      minute_bars: {status: not_implemented, operation_fit: no, reference_fit: false}
+      minute_bars: {status: supported_for_tests, unit: test_unit, unit_confidence: test_unit, comparable_across_providers: false, operation_fit: no, reference_fit: no}

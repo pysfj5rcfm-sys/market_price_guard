@@ -10,6 +10,7 @@ from .normalize import load_watchlist, load_yaml, normalize_records
 from .price_reconciliation import apply_reconciliation
 from .provider_router import RouterConfig, collect_routed_prices
 from .models import WatchProject, Watchlist
+from .minute_bars import apply_minute_bars_probe
 from .providers.akshare_provider import AkshareProvider
 from .providers.eastmoney_direct_provider import EastmoneyDirectProvider
 from .providers.manual_provider import ManualProvider
@@ -53,6 +54,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--provider-policy", choices=["fast", "conservative", "diagnostic"], default="fast")
     parser.add_argument("--quote-purpose", choices=["operation", "reference"], default="operation")
     parser.add_argument("--reconcile-mode", choices=["default", "full"], default="default")
+    parser.add_argument("--include-minute-bars", "--minute-bars-probe", dest="include_minute_bars", action="store_true")
     parser.add_argument("--universe")
     parser.add_argument("--symbols")
     parser.add_argument("--symbol-file", type=Path)
@@ -146,6 +148,7 @@ def run_pipeline(
     universe_type: str | None = None,
     max_run_seconds: float = 30.0,
     max_data_lag_seconds: float = 300.0,
+    include_minute_bars: bool = False,
 ) -> PipelineResult:
     perf_start = time.perf_counter()
     run_start = _utc_now_iso()
@@ -168,6 +171,11 @@ def run_pipeline(
     )
     rules = load_yaml(stale_rules_path)
     records = apply_scan_ranking(apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules)))
+    records, minute_bars_snapshot = apply_minute_bars_probe(
+        records,
+        include_minute_bars=include_minute_bars,
+        provider_mode=provider_mode,
+    )
     elapsed = time.perf_counter() - perf_start
     runtime = _runtime_diagnostics(
         records=records,
@@ -181,10 +189,12 @@ def run_pipeline(
         strict=strict,
         max_run_seconds=max_run_seconds,
         max_data_lag_seconds=max_data_lag_seconds,
+        include_minute_bars=include_minute_bars,
     )
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
     runtime["exit_code"] = exit_code
+    runtime["minute_bars_snapshot"] = minute_bars_snapshot
     runtime.update(collected.get("universe_metadata", {}))
     write_outputs(records, output_dir, provider_mode=provider_mode, runtime=runtime)
     return PipelineResult(
@@ -221,6 +231,7 @@ def main(argv: list[str] | None = None) -> int:
             timeout_seconds=args.timeout_seconds,
             max_run_seconds=args.max_run_seconds,
             max_data_lag_seconds=args.max_data_lag_seconds,
+            include_minute_bars=args.include_minute_bars,
         )
     except Exception as exc:
         print(f"market_price_guard failed: {exc}", file=sys.stderr)
@@ -260,6 +271,7 @@ def _runtime_diagnostics(
     strict: bool,
     max_run_seconds: float,
     max_data_lag_seconds: float,
+    include_minute_bars: bool,
 ) -> dict:
     from datetime import datetime, timezone
 
@@ -277,6 +289,7 @@ def _runtime_diagnostics(
         "strict": strict,
         "quote_purpose": quote_purpose,
         "reconcile_mode": reconcile_mode,
+        "include_minute_bars": include_minute_bars,
         "max_run_seconds": max_run_seconds,
         "max_data_lag_seconds": max_data_lag_seconds,
         "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,

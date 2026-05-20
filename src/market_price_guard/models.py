@@ -204,6 +204,16 @@ class PriceRecord(BaseModel):
     liquidity_score_basic: float | None = None
     reconciliation_score: float | None = None
     scan_score_notes: str = ""
+    minute_bars_available: bool = False
+    minute_bar_provider: str = ""
+    minute_bar_interval: str = ""
+    minute_bar_count: int = 0
+    minute_bar_latest_time: str = ""
+    minute_bar_fetch_time: str = ""
+    minute_bar_status: str = ""
+    minute_bar_validation_status: str = ""
+    minute_bar_missing_reason: str = ""
+    minute_bar_notes: str = ""
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

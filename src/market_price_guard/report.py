@@ -107,6 +107,16 @@ OUTPUT_COLUMNS = [
     "liquidity_score_basic",
     "reconciliation_score",
     "scan_score_notes",
+    "minute_bars_available",
+    "minute_bar_provider",
+    "minute_bar_interval",
+    "minute_bar_count",
+    "minute_bar_latest_time",
+    "minute_bar_fetch_time",
+    "minute_bar_status",
+    "minute_bar_validation_status",
+    "minute_bar_missing_reason",
+    "minute_bar_notes",
 ]
 
 GOLD_NOTE = (
@@ -219,6 +229,12 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
     _remove_unscoped_outputs(output_dir, emit_files)
     df = records_to_dataframe(records)
     df.to_csv(output_dir / "prices_snapshot.csv", index=False, encoding="utf-8-sig")
+    if runtime.get("include_minute_bars") and runtime.get("minute_bars_snapshot"):
+        pd.DataFrame(runtime.get("minute_bars_snapshot", [])).to_csv(
+            output_dir / "minute_bars_snapshot.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
     (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records, runtime=runtime), encoding="utf-8")
     (output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics_report(records, runtime), encoding="utf-8")
     (output_dir / "price_reconciliation_report.md").write_text(build_price_reconciliation_report(records, runtime), encoding="utf-8")
@@ -349,6 +365,8 @@ def build_index_report(
         ]
     )
     lines.extend([f"- {filename}" for filename in recommended_files])
+    if runtime.get("include_minute_bars") and runtime.get("minute_bars_snapshot"):
+        lines.append("- minute_bars_snapshot.csv")
     lines.extend(
         [
             "",
@@ -424,6 +442,10 @@ def build_upload_bundle(
     lines.extend(_base_quote_snapshot_lines(records, profile, str(runtime.get("universe_type", ""))))
     lines.extend(["", "## 字段质量提示 / Field Quality Notes"])
     lines.extend(_field_quality_note_lines())
+    if _minute_probe_visible(records, runtime):
+        lines.extend(["", "## 分钟线探测摘要 / Minute Bars Probe Summary"])
+        lines.extend(_minute_bars_summary_table(records))
+        lines.extend(_minute_bars_probe_note_lines())
     if str(runtime.get("universe_type", "")) in {"candidate_watchlist", "scan_universe"}:
         lines.extend(["", "## 扫描优先级摘要 / Scan Priority Summary"])
         lines.extend(_scan_priority_summary_table(records))
@@ -498,6 +520,9 @@ def build_debug_bundle(
     lines.extend(_field_quality_risk_lines(records))
     lines.extend(["", "## Provider Capability Notes"])
     lines.extend(_provider_capability_note_lines())
+    if _minute_probe_visible(records, runtime):
+        lines.extend(["", "## Minute Bars Probe Detail"])
+        lines.extend(_minute_bars_detail_table(records))
     lines.extend(["", "## Scan Ranking Trace"])
     lines.extend(_scan_ranking_trace_table(records))
     lines.extend(["", "## prices_snapshot 关键明细摘要"])
@@ -567,6 +592,8 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(_base_quote_caveat_lines())
     lines.extend(["", "## Field Quality / Provider Capability"])
     lines.extend(_field_quality_capability_lines(records))
+    lines.extend(["", "## Minute Bars Completeness"])
+    lines.extend(_minute_bars_completeness_lines(records, runtime))
     lines.extend(["", "## Scan Ranking Summary"])
     lines.extend(_scan_ranking_summary_lines(records))
     lines.append("- See price_reconciliation_report.md for full multi-source comparison details.")
@@ -680,6 +707,8 @@ def build_provider_capability_report(records: list[PriceRecord], runtime: dict[s
     lines.extend(_field_capability_matrix_by_provider())
     lines.extend(["", "## Symbol Field Quality"])
     lines.extend(_symbol_field_quality_table(records))
+    lines.extend(["", "## Minute Bars Capability"])
+    lines.extend(_minute_bars_capability_lines(records, runtime))
     lines.extend(["", "## Safe Usage Notes"])
     lines.extend(_provider_capability_safe_usage_lines())
     return "\n".join(lines) + "\n"
@@ -702,6 +731,7 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- strict: {runtime.get('strict', '')}",
         f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
         f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
+        f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', '')}",
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
@@ -1260,6 +1290,7 @@ def _remove_unscoped_outputs(output_dir: Path, emit_files: set[str]) -> None:
         "candidate_watchlist_report.md",
         "scan_universe_report.md",
         "unsupported_symbols_report.md",
+        "minute_bars_snapshot.csv",
     }
     for filename in managed - emit_files:
         path = output_dir / filename
@@ -2238,27 +2269,30 @@ def _provider_capability_note_lines() -> list[str]:
         "- amount: raw provider unit or unit_unknown.",
         "- bid/ask: not validated.",
         "- turnover_rate: not validated.",
-        "- minute_bars: not implemented in current guard.",
+        "- minute_bars: not implemented in current guard provider path; probe status is diagnostic.",
         "",
         "Eastmoney Direct:",
         "- base quote fields: available only when endpoint succeeds.",
         "- trust tier: reference / operation-candidate only.",
         "- stability: unstable in current environment.",
         "- bid/ask: not validated.",
-        "- minute_bars: not implemented.",
+        "- minute_bars: not validated / not implemented.",
         "",
         "yfinance:",
         "- base quote fields: reference-only for current ETF/watchlist usage.",
         "- volume: raw provider unit.",
         "- not operation-grade for A-share ETF operation path.",
         "- timestamp/precision may differ from local exchange feeds.",
+        "- minute_bars: not implemented in guard probe path in v0.7.2a.",
         "",
         "manual:",
         "- GOLD_CNY price only.",
         "- base_quote_completeness usually price_only.",
+        "- minute_bars: not supported.",
         "",
         "mock:",
         "- development/testing only.",
+        "- mock minute bars can be generated for tests when minute probe is enabled.",
         "- not valid for real market decisions.",
     ]
 
@@ -2388,10 +2422,131 @@ def _provider_capability_safe_usage_lines() -> list[str]:
         "- Field capability does not upgrade trust tier.",
         "- Field completeness does not imply operation-grade.",
         "- volume/amount must not be compared across providers until unit validation is high.",
-        "- bid/ask and turnover are not validated in v0.7.1.6.",
-        "- minute bars / VWAP / QDII premium remain not implemented.",
+        "- bid/ask and turnover are not validated in v0.7.2a.",
+        "- minute bars are probe-only in v0.7.2a; VWAP and QDII premium remain not implemented.",
         "- This report is not trading advice.",
     ]
+
+
+def _minute_probe_visible(records: list[PriceRecord], runtime: dict[str, Any]) -> bool:
+    return bool(runtime.get("include_minute_bars")) or any(
+        record.minute_bar_status and record.minute_bar_status != "not_attempted" for record in records
+    )
+
+
+def _minute_bars_summary_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | name | available | provider | interval | count | latest_time | status | validation | note |",
+        "|---|---|---|---|---|---:|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {name} | {available} | {provider} | {interval} | {count} | {latest} | {status} | {validation} | {note} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                available=record.minute_bars_available,
+                provider=_fmt(record.minute_bar_provider),
+                interval=_fmt(record.minute_bar_interval),
+                count=record.minute_bar_count,
+                latest=_fmt(record.minute_bar_latest_time),
+                status=_fmt(record.minute_bar_status),
+                validation=_fmt(record.minute_bar_validation_status),
+                note=_fmt(record.minute_bar_notes),
+            )
+        )
+    if not records:
+        lines.append("| none | none | false | missing | not_available | 0 | - | missing | missing | no records |")
+    return lines
+
+
+def _minute_bars_probe_note_lines() -> list[str]:
+    return [
+        "- Minute bars are diagnostic in v0.7.2a.",
+        "- Minute bars do not change strict or operation readiness in this version.",
+        "- VWAP and intraday derived fields are not calculated in v0.7.2a.",
+        "- Operation decisions still depend on quote_trust_tier / usable_for_operation / strict / freshness.",
+        "- This section does not provide execution instructions.",
+    ]
+
+
+def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | provider_attempted | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | notes |",
+        "|---|---|---|---|---:|---|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {provider} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {notes} |".format(
+                symbol=record.symbol,
+                provider=_fmt(record.minute_bar_provider),
+                status=_fmt(record.minute_bar_status),
+                interval=_fmt(record.minute_bar_interval),
+                count=record.minute_bar_count,
+                latest=_fmt(record.minute_bar_latest_time),
+                fetch=_fmt(record.minute_bar_fetch_time),
+                validation=_fmt(record.minute_bar_validation_status),
+                reason=_fmt(record.minute_bar_missing_reason),
+                notes=_fmt(record.minute_bar_notes),
+            )
+        )
+    if not records:
+        lines.append("| none | missing | missing | not_available | 0 | - | - | missing | no_records | no records |")
+    return lines
+
+
+def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[str, Any]) -> list[str]:
+    statuses = _minute_bar_status_counts(records)
+    providers = _minute_bar_provider_counts(records)
+    lines = [
+        f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
+        f"- minute_bars_available count: {sum(1 for record in records if record.minute_bars_available)}",
+        f"- unavailable count: {statuses.get('unavailable', 0)}",
+        f"- not_supported count: {statuses.get('not_supported', 0)}",
+        f"- provider_error count: {statuses.get('provider_error', 0)}",
+        f"- symbol_not_found count: {statuses.get('symbol_not_found', 0)}",
+        f"- stale count: {statuses.get('stale', 0)}",
+        "- status counts:",
+    ]
+    lines.extend([f"  - {status}: {count}" for status, count in sorted(statuses.items())] or ["  - none: 0"])
+    lines.append("- by provider:")
+    lines.extend([f"  - {provider}: {count}" for provider, count in sorted(providers.items())] or ["  - none: 0"])
+    lines.extend(
+        [
+            "- minute bars missing does not change existing strict in v0.7.2a.",
+            "- VWAP / intraday position fields are not implemented.",
+            "- minute bars are diagnostic only.",
+        ]
+    )
+    return lines
+
+
+def _minute_bars_capability_lines(records: list[PriceRecord], runtime: dict[str, Any]) -> list[str]:
+    lines = [
+        f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
+        "- akshare: not_implemented in guard minute probe path.",
+        "- eastmoney_direct: not_validated / not_implemented; endpoint stability is unchanged.",
+        "- yfinance: not_implemented_in_guard for minute probe in this version; reference-only if added later.",
+        "- manual: not_supported.",
+        "- mock: supported_for_tests when --include-minute-bars is used with provider-mode=mock.",
+    ]
+    lines.extend(_minute_bars_completeness_lines(records, runtime))
+    return lines
+
+
+def _minute_bar_status_counts(records: list[PriceRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        status = record.minute_bar_status or "missing"
+        counts[status] = counts.get(status, 0) + 1
+    return counts
+
+
+def _minute_bar_provider_counts(records: list[PriceRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        provider = record.minute_bar_provider or "missing"
+        counts[provider] = counts.get(provider, 0) + 1
+    return counts
 
 
 def _field_quality_note_lines() -> list[str]:

@@ -555,3 +555,31 @@ Ranking is only a review-priority queue. It must not emit execution instructions
 - 不生成 `controller_price_summary.md`
 
 最小上传口径：日常只上传 `0_upload_bundle.md`；当出现 strict 阻断、provider_error、stale、quote_time_missing、major_diff、run_time_budget_exceeded 或报告冲突时，再补充 `debug_bundle.md`。原始报告用于人工核查，不是日常首选上传文件。
+### 13.17 Minute Bars Probe Contract
+
+v0.7.2a adds an optional Minute Bars Ingestion Probe. The probe is diagnostic only and must not change strict, freshness, provider chain, quote trust tier, usable_for_operation, or operation/reference semantics.
+
+`prices_snapshot.csv` appends these stable fields:
+
+- `minute_bars_available`
+- `minute_bar_provider`
+- `minute_bar_interval`
+- `minute_bar_count`
+- `minute_bar_latest_time`
+- `minute_bar_fetch_time`
+- `minute_bar_status`
+- `minute_bar_validation_status`
+- `minute_bar_missing_reason`
+- `minute_bar_notes`
+
+`0_upload_bundle.md` includes `Minute Bars Probe Summary` when minute probing is enabled or probe fields are present. The summary must state that minute bars are diagnostic in v0.7.2a, do not change strict or operation readiness, and do not calculate VWAP or intraday derived fields.
+
+`debug_bundle.md` includes `Minute Bars Probe Detail` with provider attempted, status, interval, count, latest time, fetch time, validation status, missing reason, and notes.
+
+`data_completeness_report.md` includes `Minute Bars Completeness` with available, unavailable, not supported, provider error, symbol not found, stale, and provider summaries. Missing minute bars must not become an operation blocking condition in v0.7.2a.
+
+`provider_capability_report.md` includes `Minute Bars Capability`. `mock` may be `supported_for_tests`; `manual` is `not_supported`; live providers without a guarded implementation should be reported as `not_implemented`, `not_validated`, or equivalent.
+
+Optional `minute_bars_snapshot.csv` may be generated when actual bars are available. It is a debug/probe artifact, not the daily minimal upload file.
+
+v0.7.2a does not compute VWAP, day position, chase risk, buy zones, QDII premium, action hints, preferred actions, or allowed advice levels.
