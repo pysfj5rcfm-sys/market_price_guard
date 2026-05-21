@@ -42,10 +42,12 @@ A cache hit may still produce stale data if the cached provider payload contains
 
 - `use_run_cache`
 - `run_cache_dir`
-- `cache_hit_count`
-- `cache_miss_count`
-- `cache_bypass_count`
-- `cache_error_count`
+- `run_cache_hit_count`
+- `run_cache_miss_count`
+- `run_cache_bypass_count`
+- `run_cache_error_count`
 - `estimated_cache_saved_calls`
 
-Provider attempts in generated reports include `cache_enabled`, `cache_scope`, `cache_status`, and `cache_file` when the UAT run cache is involved.
+Per-item cache stats are not collected in this version. Item sections use `item_cache_status: not_collected` and point back to the run-level cache summary. Provider attempts in generated reports include `cache_enabled`, `cache_scope`, `cache_status`, and `cache_file` when the UAT run cache is involved.
+
+The same cache implementation may be reused by `run_tech_research_pipeline.ps1 -UseRunCache` with a separate directory, `outputs_tech_pipeline_cache_latest`.

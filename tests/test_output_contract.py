@@ -181,7 +181,8 @@ def test_run_uat_script_contract():
     assert "[switch]$UseRunCache" in script
     assert "MARKET_GUARD_USE_UAT_RUN_CACHE" in script
     assert "use_run_cache" in script
-    assert "cache_hit_count" in script
+    assert "run_cache_hit_count" in script
+    assert "item_cache_status" in script
     assert "akshare.fund_etf_spot_em" in script
     assert "price_reconciliation_report.md" in script
     assert "outputs_uat_summary.md" in script

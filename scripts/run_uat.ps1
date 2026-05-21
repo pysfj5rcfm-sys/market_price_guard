@@ -394,12 +394,12 @@ if ($UseRunCache -and (Test-Path $CacheManifestPath)) {
         $CacheManifest = $null
     }
 }
-$CacheHitCount = if ($CacheManifest) { [int]$CacheManifest.hit_count } else { 0 }
-$CacheMissCount = if ($CacheManifest) { [int]$CacheManifest.miss_count } else { 0 }
-$CacheBypassCount = if ($CacheManifest) { [int]$CacheManifest.bypass_count } else { 0 }
-$CacheErrorCount = if ($CacheManifest) { [int]$CacheManifest.cache_error_count } else { 0 }
-$EstimatedSavedCalls = $CacheHitCount
-$EstimatedSavedSeconds = if ($CacheHitCount -gt 0) { 'provider-dependent' } else { 0 }
+$RunCacheHitCount = if ($CacheManifest) { [int]$CacheManifest.hit_count } else { 0 }
+$RunCacheMissCount = if ($CacheManifest) { [int]$CacheManifest.miss_count } else { 0 }
+$RunCacheBypassCount = if ($CacheManifest) { [int]$CacheManifest.bypass_count } else { 0 }
+$RunCacheErrorCount = if ($CacheManifest) { [int]$CacheManifest.cache_error_count } else { 0 }
+$EstimatedSavedCalls = $RunCacheHitCount
+$EstimatedSavedSeconds = if ($RunCacheHitCount -gt 0) { 'provider-dependent' } else { 0 }
 
 $Lines = @()
 $Lines += '# market_price_guard UAT Summary'
@@ -411,10 +411,10 @@ $Lines += ('- use_run_cache: ' + $UseRunCache.IsPresent.ToString().ToLowerInvari
 $Lines += ('- run_cache_dir: ' + ($(if ($UseRunCache) { $RunCacheDir } else { '' })))
 $Lines += '- cache_scope: uat_run'
 $Lines += '- cache_enabled_functions: akshare.fund_etf_spot_em'
-$Lines += ('- cache_hit_count: ' + $CacheHitCount)
-$Lines += ('- cache_miss_count: ' + $CacheMissCount)
-$Lines += ('- cache_bypass_count: ' + $CacheBypassCount)
-$Lines += ('- cache_error_count: ' + $CacheErrorCount)
+$Lines += ('- run_cache_hit_count: ' + $RunCacheHitCount)
+$Lines += ('- run_cache_miss_count: ' + $RunCacheMissCount)
+$Lines += ('- run_cache_bypass_count: ' + $RunCacheBypassCount)
+$Lines += ('- run_cache_error_count: ' + $RunCacheErrorCount)
 $Lines += ('- estimated_cache_saved_calls: ' + $EstimatedSavedCalls)
 $Lines += ('- estimated_cache_saved_seconds: ' + $EstimatedSavedSeconds)
 $Lines += ('- total_defined: ' + $Results.Count)
@@ -450,10 +450,8 @@ foreach ($Result in $Results) {
     $Lines += ('- status: ' + $Result.Status)
     $Lines += ('- mode: ' + $Result.Mode)
     $Lines += ('- elapsed_seconds: ' + $Result.ElapsedSeconds)
-    $Lines += ('- cache_hits: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { $CacheHitCount } else { '' })))
-    $Lines += ('- cache_misses: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { $CacheMissCount } else { '' })))
-    $Lines += ('- cache_bypass: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { $CacheBypassCount } else { '' })))
-    $Lines += ('- cache_note: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { 'UAT run cache summary is run-level; provider attempts show per-script hit/miss where available.' } else { '' })))
+    $Lines += ('- item_cache_status: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { 'not_collected' } else { '' })))
+    $Lines += ('- item_cache_note: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { 'see run-level cache summary' } else { '' })))
     if ($Result.Status -eq 'skipped_by_profile') {
         $Lines += ('- skip_reason: ' + $Result.SkipReason)
     }

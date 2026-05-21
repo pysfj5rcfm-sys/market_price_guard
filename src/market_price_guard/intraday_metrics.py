@@ -31,6 +31,10 @@ INTRADAY_COLUMNS = [
     "core_holding",
     "asset_type",
     "report_group",
+    "intraday_supported",
+    "reference_vwap_supported",
+    "reference_vwap_support_status",
+    "reference_vwap_missing_reason",
     "reference_vwap",
     "reference_vwap_source",
     "reference_vwap_validation_status",
@@ -182,6 +186,9 @@ def _calculate_symbol_row(
                 "manual_price_only",
                 validation_status="not_supported",
                 source_quality="not_supported",
+                intraday_supported=False,
+                reference_vwap_support_status="manual_not_supported",
+                reference_vwap_missing_reason="manual_price_only",
             ),
         }
     if minute_rows.empty:
@@ -192,6 +199,8 @@ def _calculate_symbol_row(
                 _minute_missing_note(minute_summary),
                 validation_status="not_calculable",
                 source_quality="missing",
+                reference_vwap_support_status="no_minute_bars",
+                reference_vwap_missing_reason="no_minute_bars",
             ),
         }
 
@@ -208,6 +217,8 @@ def _calculate_symbol_row(
                 provider=_first_value(minute_rows, "provider"),
                 interval=_first_value(minute_rows, "interval"),
                 invalid_row_count=len(cleaned),
+                reference_vwap_support_status="zero_volume",
+                reference_vwap_missing_reason="zero_volume_or_missing_close",
             ),
         }
 
@@ -238,6 +249,10 @@ def _calculate_symbol_row(
 
     return {
         **base,
+        "intraday_supported": True,
+        "reference_vwap_supported": True,
+        "reference_vwap_support_status": "available",
+        "reference_vwap_missing_reason": "",
         "reference_vwap": _round(reference_vwap),
         "reference_vwap_source": provider,
         "reference_vwap_validation_status": validation,
@@ -296,6 +311,10 @@ def _base_row(
         "core_holding": core_holding,
         "asset_type": str(spot.get("asset_type") or entry.get("asset_type") or ""),
         "report_group": str(spot.get("report_group") or entry.get("report_group") or ""),
+        "intraday_supported": True,
+        "reference_vwap_supported": False,
+        "reference_vwap_support_status": "not_calculated",
+        "reference_vwap_missing_reason": "",
         "spot_last_price": _float_or_none(spot.get("last_price")) or _float_or_none(spot.get("price")),
         "spot_quote_time": str(spot.get("quote_time") or ""),
         "spot_selected_provider": str(spot.get("selected_provider") or spot.get("source") or ""),
@@ -315,8 +334,15 @@ def _not_calculable_fields(
     provider: str = "",
     interval: str = "",
     invalid_row_count: int = 0,
+    intraday_supported: bool = True,
+    reference_vwap_support_status: str | None = None,
+    reference_vwap_missing_reason: str | None = None,
 ) -> dict[str, Any]:
     return {
+        "intraday_supported": intraday_supported,
+        "reference_vwap_supported": False,
+        "reference_vwap_support_status": reference_vwap_support_status or status,
+        "reference_vwap_missing_reason": reference_vwap_missing_reason or note,
         "reference_vwap": None,
         "reference_vwap_source": provider,
         "reference_vwap_validation_status": validation_status,
@@ -393,12 +419,12 @@ def build_upload_bundle(df: pd.DataFrame, runtime: dict[str, Any]) -> str:
         "- No trading advice is generated.",
         "",
         "## Reference Intraday Summary",
-        "| symbol | name | universe | provider | validation | bars | latest_time | ref_vwap | last | dist_vwap_pct | pos_pct | spot_align | note |",
-        "|---|---|---|---|---|---:|---|---:|---:|---:|---:|---|---|",
+        "| symbol | name | universe | provider | validation | bars | latest_time | ref_vwap | last | dist_vwap_pct | pos_pct | spot_align | support | note |",
+        "|---|---|---|---|---|---:|---|---:|---:|---:|---:|---|---|---|",
     ]
     for _, row in df.iterrows():
         lines.append(
-            "| {symbol} | {name} | {universe} | {provider} | {validation} | {bars} | {latest} | {vwap} | {last} | {dist} | {pos} | {align} | {note} |".format(
+            "| {symbol} | {name} | {universe} | {provider} | {validation} | {bars} | {latest} | {vwap} | {last} | {dist} | {pos} | {align} | {support} | {note} |".format(
                 symbol=row.get("symbol", ""),
                 name=row.get("name", ""),
                 universe=row.get("source_universe", ""),
@@ -411,6 +437,7 @@ def build_upload_bundle(df: pd.DataFrame, runtime: dict[str, Any]) -> str:
                 dist=_fmt(row.get("distance_to_reference_vwap_pct")),
                 pos=_fmt(row.get("intraday_position_pct")),
                 align=row.get("spot_minute_time_alignment_status", ""),
+                support=row.get("reference_vwap_support_status", ""),
                 note=_upload_note(row),
             )
         )
@@ -430,6 +457,7 @@ def build_reference_vwap_report(df: pd.DataFrame, runtime: dict[str, Any]) -> st
         "- It does not upgrade operation readiness.",
         "- It does not replace QDII premium or IOPV checks.",
         "- For QDII ETFs, the premium module is still required before operation-level evaluation.",
+        "- usable_for_operation belongs to core price/operation context, not intraday VWAP availability.",
         "",
         "## Source Priority",
         "1. AKShare",
@@ -578,9 +606,11 @@ def _report_table(df: pd.DataFrame) -> list[str]:
 
 def _not_calculable_table(df: pd.DataFrame) -> list[str]:
     scoped = df[df["reference_intraday_status"] != "available"] if not df.empty else df
-    lines = ["| symbol | name | status | note |", "|---|---|---|---|"]
+    lines = ["| symbol | name | status | support_status | missing_reason | note |", "|---|---|---|---|---|---|"]
     for _, row in scoped.iterrows():
-        lines.append(f"| {row.get('symbol', '')} | {row.get('name', '')} | {row.get('reference_intraday_status', '')} | {row.get('reference_intraday_note', '')} |")
+        lines.append(
+            f"| {row.get('symbol', '')} | {row.get('name', '')} | {row.get('reference_intraday_status', '')} | {row.get('reference_vwap_support_status', '')} | {row.get('reference_vwap_missing_reason', '')} | {row.get('reference_intraday_note', '')} |"
+        )
     if scoped.empty:
         lines.append("|  |  | none | all calculable |")
     return lines
@@ -758,7 +788,7 @@ def _upload_note(row: pd.Series) -> str:
         if provider == "eastmoney_direct":
             return f"eastmoney_ref_provider_dependent; {alignment}".strip("; ")
     if status == "not_supported":
-        return "manual_not_supported"
+        return "manual_price_only; intraday_not_supported"
     if status == "zero_volume":
         return "zero_volume; not_calculable"
     if status == "no_minute_bars":

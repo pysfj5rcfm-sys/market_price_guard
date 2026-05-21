@@ -223,6 +223,16 @@ UAT runtime profiles:
 
 `-UseRunCache` 默认关闭，只在当前 UAT run 内生效。v0.7.2c.1 第一版只缓存 `akshare.fund_etf_spot_em`，目录为 `outputs_uat_run_cache_latest`；不缓存 minute bars、YFinance、Eastmoney Direct、operation readiness、VWAP 或任何 advice 输出。cache hit 不改变 freshness、strict、quote_trust_tier、usable_for_operation 或 operation/reference 语义。详见 `docs/uat_run_cache.md`。
 
+科技研究流水线：
+
+```powershell
+.\scripts\run_tech_research_pipeline.ps1
+.\scripts\run_tech_research_pipeline.ps1 -UseRunCache
+.\scripts\run_tech_research_pipeline.ps1 -UseRunCache -SkipScan -SkipWatchlist
+```
+
+该脚本按 scan_ai、watchlist、operation_candidates、tech_fast_strict、minute_probe、intraday_metrics 的顺序生成科技研究链路输出，并写入 `outputs_tech_pipeline_latest/pipeline_summary.md` 与 `pipeline_manifest.json`。它只做 orchestration，不修改 config，不自动晋级标的，不改变 provider / strict / usable_for_operation，也不输出交易建议。
+
 ## 输出契约与 UAT
 
 输出契约文档：

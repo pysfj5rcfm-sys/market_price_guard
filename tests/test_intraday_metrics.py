@@ -100,6 +100,10 @@ def test_zero_volume_and_manual_are_not_calculable(tmp_path):
     assert ai["reference_vwap"] is None
     assert gold["reference_intraday_status"] == "not_supported"
     assert gold["reference_vwap_note"] == "manual_price_only"
+    assert gold["intraday_supported"] is False
+    assert gold["reference_vwap_supported"] is False
+    assert gold["reference_vwap_support_status"] == "manual_not_supported"
+    assert gold["reference_vwap_missing_reason"] == "manual_price_only"
 
 
 @pytest.mark.unit
@@ -169,8 +173,12 @@ def test_intraday_outputs_are_generated_and_reference_only(tmp_path):
     assert (inputs.output_dir / "intraday_metrics_snapshot.csv").exists()
     assert (inputs.output_dir / "reference_vwap_report.md").exists()
     assert "Reference VWAP is not operation-grade" in (inputs.output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
-    assert "Reference VWAP Report" in (inputs.output_dir / "reference_vwap_report.md").read_text(encoding="utf-8")
-    assert "buy" not in (inputs.output_dir / "reference_vwap_report.md").read_text(encoding="utf-8").lower()
+    upload = (inputs.output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
+    report_text = (inputs.output_dir / "reference_vwap_report.md").read_text(encoding="utf-8")
+    assert "manual_price_only; intraday_not_supported" in upload
+    assert "Reference VWAP Report" in report_text
+    assert "manual_not_supported" in report_text
+    assert "buy" not in report_text.lower()
     ai = df[df["symbol"] == "159819.SZ"].iloc[0]
     assert ai["reference_vwap"] == 11.5
 
@@ -181,3 +189,24 @@ def test_intraday_metrics_script_contract():
     assert "market_price_guard.intraday_metrics" in script
     assert "outputs_tech_intraday_latest" in script
     assert "--strict" not in script
+
+
+@pytest.mark.script
+def test_tech_research_pipeline_script_contract():
+    script = Path("scripts/run_tech_research_pipeline.ps1").read_text(encoding="utf-8")
+
+    for expected in [
+        "run_tech_scan_ai.ps1",
+        "run_tech_watchlist.ps1",
+        "run_tech_operation_candidates.ps1",
+        "run_tech_fast_strict.ps1",
+        "run_tech_minute_probe.ps1",
+        "run_tech_intraday_metrics.ps1",
+        "UseRunCache",
+        "StopOnFailure",
+        "outputs_tech_pipeline_latest",
+        "pipeline_summary.md",
+        "pipeline_manifest.json",
+    ]:
+        assert expected in script
+    assert "Set-Content config" not in script
