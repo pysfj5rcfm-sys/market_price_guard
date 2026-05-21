@@ -1,0 +1,18 @@
+name: tech_operation_candidates
+profile: tech
+universe_type: operation_candidate
+quote_purpose: reference
+required_for_operation: false
+affect_core_strict: false
+description: >
+  Technology operation-candidate universe for symbols selected from scan_ai or watchlist
+  for pre-trade verification. These symbols are not core holdings and do not affect
+  tech_fast_strict.
+rules:
+  required_for_operation: false
+  default_quote_purpose: reference
+  affect_core_strict: false
+  allow_operation_upgrade: false
+  ranking_is_trading_advice: false
+  output_is_trading_advice: false
+symbols: []

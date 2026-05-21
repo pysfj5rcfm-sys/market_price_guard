@@ -404,6 +404,20 @@ The score is a data-quality-first review priority:
 
 `watch_priority=high/medium/low/not_rankable` is a review queue label only. It is not a trading instruction and does not change `strict`, `quote_trust_tier`, or `usable_for_operation`. `volume` and `amount` are not used to lift a candidate when comparability flags are false. Operation decisions still require operation-grade guard output.
 
+## Tech Operation Candidates
+
+v0.7.2a.2d adds an independent `tech_operation_candidates` universe for pre-trade verification candidates selected from scan or watchlist outputs.
+
+Run it with:
+
+```powershell
+.\scripts\run_tech_operation_candidates.ps1
+```
+
+Output: `outputs_tech_operation_candidates_latest/`.
+
+This layer is reference-only. It is not core holdings, is not operation-grade, does not affect `run_tech_fast_strict.ps1`, and does not affect `outputs_tech_latest`. The initial universe is intentionally empty; add symbols to `config/universes/tech_operation_candidates.yaml` only after manual selection. Candidate records keep `required_for_operation=false`, `usable_for_operation=false`, and `affect_core_strict=false`.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。

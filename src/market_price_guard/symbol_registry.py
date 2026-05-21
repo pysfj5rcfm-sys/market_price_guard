@@ -13,6 +13,7 @@ CORE_HOLDINGS = "core_holdings"
 CANDIDATE_WATCHLIST = "candidate_watchlist"
 SCAN_UNIVERSE = "scan_universe"
 CONTROLLER_SUMMARY = "controller_summary"
+OPERATION_CANDIDATE = "operation_candidate"
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,7 @@ def build_watchlist_from_registry(
         "core_count": sum(1 for project in projects.values() for item in project.instruments if item.universe_type == CORE_HOLDINGS),
         "watchlist_count": sum(1 for project in projects.values() for item in project.instruments if item.universe_type == CANDIDATE_WATCHLIST),
         "scan_count": sum(1 for project in projects.values() for item in project.instruments if item.universe_type == SCAN_UNIVERSE),
+        "operation_candidate_count": sum(1 for project in projects.values() for item in project.instruments if item.universe_type == OPERATION_CANDIDATE),
         "unsupported_count": len(unsupported),
     }
     return Watchlist(projects=projects), metadata
@@ -220,7 +222,7 @@ def _registry_entry(symbol: str, registry: dict[str, dict[str, Any]], spec: Univ
         "notes": "",
         "registry_found": False,
         "unsupported_reason": "not_registered" if market else "invalid_symbol_format",
-        "universe_type": SCAN_UNIVERSE,
+        "universe_type": spec.universe_type,
     }
 
 
@@ -248,6 +250,10 @@ def _instrument_from_entry(entry: dict[str, Any], spec: UniverseSpec, quote_purp
     provider = provider_priority[0] if provider_priority else "mock"
     universe_type = str(entry.get("universe_type") or spec.universe_type)
     required = bool(entry.get("required_for_operation", False)) and universe_type == CORE_HOLDINGS
+    operation_candidate = universe_type == OPERATION_CANDIDATE or bool(entry.get("operation_candidate", False))
+    affect_core_strict = bool(entry.get("affect_core_strict", universe_type == CORE_HOLDINGS))
+    if operation_candidate:
+        affect_core_strict = False
     return Instrument(
         symbol=str(entry.get("symbol")),
         name=str(entry.get("name") or entry.get("symbol")),
@@ -262,11 +268,15 @@ def _instrument_from_entry(entry: dict[str, Any], spec: UniverseSpec, quote_purp
         role=str(entry.get("role") or ""),
         universe_tags=[str(tag) for tag in entry.get("universe_tags", [])],
         universe_type=universe_type,
-        default_quote_purpose=spec.quote_purpose if universe_type in {CANDIDATE_WATCHLIST, SCAN_UNIVERSE} else str(entry.get("default_quote_purpose") or spec.quote_purpose),
+        default_quote_purpose=spec.quote_purpose
+        if universe_type in {CANDIDATE_WATCHLIST, SCAN_UNIVERSE, OPERATION_CANDIDATE}
+        else str(entry.get("default_quote_purpose") or spec.quote_purpose),
         report_group=str(entry.get("report_group") or ""),
         notes=str(entry.get("notes") or ""),
         registry_found=bool(entry.get("registry_found", True)),
         unsupported_reason=str(entry.get("unsupported_reason") or ""),
+        affect_core_strict=affect_core_strict,
+        operation_candidate=operation_candidate,
     )
 
 

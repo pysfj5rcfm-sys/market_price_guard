@@ -53,7 +53,7 @@ def normalize_records(
                 else instrument.required_for_operation
             )
             trust = _quote_trust_fields(raw, is_stale, required_for_operation)
-            if instrument.universe_type in {"candidate_watchlist", "scan_universe"}:
+            if instrument.universe_type in {"candidate_watchlist", "scan_universe", "operation_candidate"}:
                 trust = {
                     **trust,
                     "quote_trust_tier": "development" if trust["quote_trust_tier"] == "development" else "reference",
@@ -73,6 +73,7 @@ def normalize_records(
             )
             base_quote = _base_quote_fields(raw, instrument.market)
             field_quality = _field_quality_fields(raw, base_quote)
+            candidate_fields = _operation_candidate_fields(raw, instrument, trust, is_stale)
             provider_diagnostics.update(
                 {
                     "base_quote_completeness": base_quote["base_quote_completeness"],
@@ -132,11 +133,69 @@ def normalize_records(
                     notes=instrument.notes or "",
                     registry_found=instrument.registry_found,
                     unsupported_reason=instrument.unsupported_reason,
+                    affect_core_strict=instrument.affect_core_strict,
+                    operation_candidate=instrument.operation_candidate or instrument.universe_type == "operation_candidate",
+                    **candidate_fields,
                     **base_quote,
                     **field_quality,
                 )
             )
     return records
+
+
+def _operation_candidate_fields(
+    raw: RawPrice,
+    instrument: Any,
+    trust: dict[str, object],
+    is_stale: bool,
+) -> dict[str, object]:
+    is_candidate = instrument.universe_type == "operation_candidate" or bool(getattr(instrument, "operation_candidate", False))
+    if not is_candidate:
+        return {
+            "candidate_quote_ready": False,
+            "candidate_data_status": "",
+            "candidate_blocking_reason": "",
+            "candidate_next_step": "",
+        }
+    issues = set(raw.quality_issues)
+    if not instrument.registry_found or instrument.unsupported_reason:
+        status = "registry_missing"
+        reason = instrument.unsupported_reason or "registry_missing"
+        next_step = "add_to_registry"
+    elif "symbol_not_found" in issues:
+        status = "symbol_not_found"
+        reason = "symbol_not_found"
+        next_step = "fix_provider"
+    elif "provider_error" in issues:
+        status = "provider_error"
+        reason = "provider_error"
+        next_step = "fix_provider"
+    elif raw.price is None or "invalid_price" in issues or "missing_price" in issues:
+        status = "data_incomplete"
+        reason = "no_valid_price"
+        next_step = "no_action_data_incomplete"
+    elif raw.quote_time is None or "quote_time_missing" in issues:
+        status = "data_incomplete"
+        reason = "quote_time_missing"
+        next_step = "run_reconcile"
+    elif is_stale:
+        status = "data_incomplete"
+        reason = "stale"
+        next_step = "run_reconcile"
+    elif trust.get("usable_for_reference"):
+        status = "ready_for_review"
+        reason = "none"
+        next_step = "review_with_gpt"
+    else:
+        status = "data_incomplete"
+        reason = "not_supported"
+        next_step = "keep_watchlist"
+    return {
+        "candidate_quote_ready": status == "ready_for_review",
+        "candidate_data_status": status,
+        "candidate_blocking_reason": reason,
+        "candidate_next_step": next_step,
+    }
 
 
 def _base_quote_fields(raw: RawPrice, market: str) -> dict[str, object]:

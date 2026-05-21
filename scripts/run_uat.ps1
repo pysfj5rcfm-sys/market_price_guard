@@ -39,6 +39,13 @@ $Items = @(
         UniverseType = 'scan_universe'
     },
     @{
+        Name = 'tech_operation_candidates'
+        Script = 'run_tech_operation_candidates.ps1'
+        OutputDir = 'outputs_tech_operation_candidates_latest'
+        PriceBlock = 'operation_candidate_report.md'
+        UniverseType = 'operation_candidate'
+    },
+    @{
         Name = 'energy_fast_strict'
         Script = 'run_energy_fast_strict.ps1'
         OutputDir = 'outputs_energy_latest'
@@ -144,7 +151,7 @@ foreach ($Item in $Items) {
         $Status = 'failed'
         $AnyFailed = $true
     }
-    if ($Item.Name -in @('tech_watchlist', 'tech_scan_ai')) {
+    if ($Item.Name -in @('tech_watchlist', 'tech_scan_ai', 'tech_operation_candidates')) {
         $Status = 'passed'
         $WatchlistScanFailed = $false
         $Notes = @()
@@ -253,8 +260,8 @@ foreach ($Result in $Results) {
     $Lines += ('- price_reconciliation_report.md exists: ' + $Result.ReconciliationExists)
     $Lines += ('- unsupported_symbols_report.md exists: ' + $Result.UnsupportedSymbolsExists)
     $Lines += ('- price_block exists: ' + $Result.PriceBlockExists)
-    if ($Result.Name -in @('tech_watchlist', 'tech_scan_ai')) {
-        $Lines += '- strict_pollution_isolation: candidate/scan universes are non-strict reference outputs.'
+    if ($Result.Name -in @('tech_watchlist', 'tech_scan_ai', 'tech_operation_candidates')) {
+        $Lines += '- strict_pollution_isolation: candidate/scan/operation-candidate universes are non-strict reference outputs.'
     }
     if ($Result.MissingFiles.Count -gt 0) {
         $Lines += ('- missing_files: ' + ($Result.MissingFiles -join ', '))

@@ -62,7 +62,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--include-candidates", action="store_true")
     parser.add_argument(
         "--universe-type",
-        choices=["core_holdings", "candidate_watchlist", "scan_universe", "controller_summary"],
+        choices=["core_holdings", "candidate_watchlist", "scan_universe", "operation_candidate", "controller_summary"],
     )
     parser.add_argument("--profile", choices=["all", "energy", "tech", "controller"], default="all")
     parser.add_argument("--timeout-seconds", type=float, default=8.0)

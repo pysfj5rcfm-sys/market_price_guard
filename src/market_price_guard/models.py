@@ -32,6 +32,8 @@ class Instrument(BaseModel):
     notes: str | None = None
     registry_found: bool = True
     unsupported_reason: str = ""
+    affect_core_strict: bool = True
+    operation_candidate: bool = False
 
 
 class WatchProject(BaseModel):
@@ -153,6 +155,12 @@ class PriceRecord(BaseModel):
     notes: str = ""
     registry_found: bool = True
     unsupported_reason: str = ""
+    affect_core_strict: bool = True
+    operation_candidate: bool = False
+    candidate_quote_ready: bool = False
+    candidate_data_status: str = ""
+    candidate_blocking_reason: str = ""
+    candidate_next_step: str = ""
     last_price: float | None = None
     prev_close: float | None = None
     open_price: float | None = None

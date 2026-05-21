@@ -244,6 +244,26 @@ Check:
 - Minute bars are diagnostic only and do not change strict or operation readiness.
 - VWAP and intraday derived fields are not calculated in v0.7.2a.
 
+## Tech Operation Candidates UAT
+
+Run:
+
+```powershell
+.\scripts\run_tech_operation_candidates.ps1
+```
+
+Check:
+
+- `outputs_tech_operation_candidates_latest/0_upload_bundle.md` exists.
+- `outputs_tech_operation_candidates_latest/debug_bundle.md` exists.
+- `outputs_tech_operation_candidates_latest/operation_candidate_report.md` exists.
+- Empty `tech_operation_candidates` universe exits successfully with `empty_universe`.
+- Operation-candidate records keep `required_for_operation=false`.
+- Operation-candidate records keep `usable_for_operation=false`.
+- Operation-candidate records keep `affect_core_strict=false`.
+- Operation-candidate failures do not affect `run_tech_fast_strict.ps1`.
+- The output states it is not usable for concrete operation recommendations.
+
 Additional v0.7.2a.1 checks:
 
 - `run_tech_scan_ai.ps1` keeps 26 scan symbols in `prices_snapshot.csv`.

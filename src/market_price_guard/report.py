@@ -66,6 +66,12 @@ OUTPUT_COLUMNS = [
     "notes",
     "registry_found",
     "unsupported_reason",
+    "affect_core_strict",
+    "operation_candidate",
+    "candidate_quote_ready",
+    "candidate_data_status",
+    "candidate_blocking_reason",
+    "candidate_next_step",
     "last_price_source",
     "prev_close_source",
     "open_price_source",
@@ -260,6 +266,8 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
         (output_dir / "candidate_watchlist_report.md").write_text(build_candidate_watchlist_report(records, runtime), encoding="utf-8")
     if "scan_universe_report.md" in emit_files:
         (output_dir / "scan_universe_report.md").write_text(build_scan_universe_report(records, runtime), encoding="utf-8")
+    if "operation_candidate_report.md" in emit_files:
+        (output_dir / "operation_candidate_report.md").write_text(build_operation_candidate_report(records, runtime), encoding="utf-8")
     if runtime.get("unsupported_count"):
         (output_dir / "unsupported_symbols_report.md").write_text(build_unsupported_symbols_report(runtime), encoding="utf-8")
     (output_dir / "index.md").write_text(
@@ -454,6 +462,9 @@ def build_upload_bundle(
         lines.append("Minute note is compact. Full provider failure details are in debug_bundle.md.")
         lines.extend(_minute_bars_summary_table(records))
         lines.extend(_minute_bars_probe_note_lines())
+    if str(runtime.get("universe_type", "")) == "operation_candidate":
+        lines.extend(["", "## Operation Candidate Summary"])
+        lines.extend(_operation_candidate_summary_lines(records, runtime))
     if str(runtime.get("universe_type", "")) in {"candidate_watchlist", "scan_universe"}:
         lines.extend(["", "## 扫描优先级摘要 / Scan Priority Summary"])
         lines.extend(_scan_priority_summary_table(records))
@@ -884,6 +895,41 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
     lines.extend(_watchlist_scan_failure_reason_table(scan_records or records))
     lines.extend(["", "## Safety Notes"])
     lines.extend(_scan_ranking_safety_lines())
+    return "\n".join(lines) + "\n"
+
+
+def build_operation_candidate_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
+    candidates = [record for record in records if record.universe_type == "operation_candidate"]
+    scoped = candidates or records
+    lines = [
+        "# Tech Operation Candidate Report",
+        "",
+        "These are pre-trade verification candidates, not core holdings and not operation-grade.",
+        "They do not affect tech_fast_strict or outputs_tech_latest.",
+        "This output is not trading advice.",
+        "",
+        f"- universe_name: {runtime.get('universe_name', 'tech_operation_candidates')}",
+        f"- universe_type: {runtime.get('universe_type', 'operation_candidate')}",
+        "- quote_purpose: reference",
+        "- required_for_operation: false",
+        "- usable_for_operation: false",
+        "- affect_core_strict: false",
+        "- not usable for concrete operation recommendations",
+        "",
+        "## Operation Candidate Summary",
+    ]
+    lines.extend(_operation_candidate_summary_lines(scoped, runtime))
+    lines.extend(["", "## Candidate Data Status"])
+    lines.extend(_operation_candidate_table(scoped))
+    lines.extend(["", "## Safety Notes"])
+    lines.extend(
+        [
+            "- Operation candidates are reference-only pre-check records.",
+            "- A candidate must be explicitly promoted to core holdings before it can be part of the tech fast strict path.",
+            "- Candidate provider failures do not block core operation.",
+            "- No trading advice is generated.",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -1334,6 +1380,8 @@ def _files_for_profile(runtime: dict[str, Any]) -> set[str]:
         return {*common, "candidate_watchlist_report.md"}
     if universe_type == "scan_universe":
         return {*common, "scan_universe_report.md"}
+    if universe_type == "operation_candidate":
+        return {*common, "operation_candidate_report.md"}
     profile = str(runtime.get("profile", "all"))
     if profile == "tech" and str(runtime.get("reconcile_mode", "")) == "full":
         return {*common, "tech_price_block.md"}
@@ -1355,6 +1403,7 @@ def _remove_unscoped_outputs(output_dir: Path, emit_files: set[str]) -> None:
         "controller_price_summary.md",
         "candidate_watchlist_report.md",
         "scan_universe_report.md",
+        "operation_candidate_report.md",
         "unsupported_symbols_report.md",
         "minute_bars_snapshot.csv",
     }
@@ -1586,6 +1635,8 @@ def _bundle_project_lines(records: list[PriceRecord], profile: str, provider_pol
         return ["### Candidate watchlist", "", *build_candidate_watchlist_report(records, {}).splitlines()[2:]]
     if universe_type == "scan_universe":
         return ["### Scan universe", "", *build_scan_universe_report(records, {}).splitlines()[2:]]
+    if universe_type == "operation_candidate":
+        return ["### Operation candidates", "", *build_operation_candidate_report(records, {}).splitlines()[2:]]
     if provider_policy == "diagnostic":
         return [
             "- 当前用途级别：diagnostic-only",
@@ -2127,6 +2178,70 @@ def _watchlist_base_quote_table(records: list[PriceRecord], scan: bool) -> list[
         )
     if not records:
         lines.append("| — | — | — | — | — | — | — | missing | missing | — | false |")
+    return lines
+
+
+def _operation_candidate_summary_lines(records: list[PriceRecord], runtime: dict[str, Any]) -> list[str]:
+    if not records:
+        return [
+            f"- universe_name: {runtime.get('universe_name', 'tech_operation_candidates')}",
+            f"- universe_type: {runtime.get('universe_type', 'operation_candidate')}",
+            "- total_candidates: 0",
+            "- candidate_data_status: empty_universe",
+            "- required_for_operation: false",
+            "- usable_for_operation: false",
+            "- affect_core_strict: false",
+            "- These are pre-trade verification candidates, not core holdings.",
+            "- They do not affect tech_fast_strict or outputs_tech_latest.",
+            "- Failure in this universe does not block core operation.",
+            "- not usable for concrete operation recommendations.",
+        ]
+    statuses: dict[str, int] = {}
+    for record in records:
+        status = record.candidate_data_status or "data_incomplete"
+        statuses[status] = statuses.get(status, 0) + 1
+    return [
+        f"- universe_name: {runtime.get('universe_name', 'tech_operation_candidates')}",
+        f"- universe_type: {runtime.get('universe_type', 'operation_candidate')}",
+        f"- total_candidates: {len(records)}",
+        f"- ready_for_review: {statuses.get('ready_for_review', 0)}",
+        f"- data_incomplete: {statuses.get('data_incomplete', 0)}",
+        f"- provider_error: {statuses.get('provider_error', 0)}",
+        f"- symbol_not_found: {statuses.get('symbol_not_found', 0)}",
+        f"- registry_missing: {statuses.get('registry_missing', 0)}",
+        "- required_for_operation: false",
+        "- usable_for_operation: false",
+        "- affect_core_strict: false",
+        "- not usable for concrete operation recommendations.",
+    ]
+
+
+def _operation_candidate_table(records: list[PriceRecord]) -> list[str]:
+    lines = [
+        "| symbol | name | operation_candidate | candidate_quote_ready | candidate_data_status | candidate_blocking_reason | candidate_next_step | required_for_operation | affect_core_strict | usable_for_operation | usable_for_reference | provider | rankable | rank_exclusion_reason |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for record in records:
+        lines.append(
+            "| {symbol} | {name} | {candidate} | {ready} | {status} | {reason} | {next_step} | {required} | {affect} | {operation} | {reference} | {provider} | {rankable} | {rank_reason} |".format(
+                symbol=record.symbol,
+                name=record.name,
+                candidate=record.operation_candidate or record.universe_type == "operation_candidate",
+                ready=record.candidate_quote_ready,
+                status=record.candidate_data_status or "data_incomplete",
+                reason=record.candidate_blocking_reason or "none",
+                next_step=record.candidate_next_step or "no_action_data_incomplete",
+                required=record.required_for_operation,
+                affect=record.affect_core_strict,
+                operation=record.usable_for_operation,
+                reference=record.usable_for_reference,
+                provider=record.selected_provider or record.source,
+                rankable=record.rankable,
+                rank_reason=record.rank_exclusion_reason,
+            )
+        )
+    if not records:
+        lines.append("|  |  | true | false | empty_universe | empty_universe | keep_watchlist | false | false | false | false |  | false | empty_universe |")
     return lines
 
 
@@ -3126,7 +3241,7 @@ def _base_quote_missing_top(records: list[PriceRecord]) -> str:
 
 def _universe_isolation_lines(runtime: dict[str, Any]) -> list[str]:
     universe_type = str(runtime.get("universe_type", ""))
-    if universe_type in {"candidate_watchlist", "scan_universe"}:
+    if universe_type in {"candidate_watchlist", "scan_universe", "operation_candidate"}:
         return [
             f"- universe_name: {runtime.get('universe_name', '')}",
             f"- universe_type: {universe_type}",
@@ -3154,6 +3269,7 @@ def _registry_resolution_lines(runtime: dict[str, Any]) -> list[str]:
         f"- core_count: {runtime.get('core_count', '')}",
         f"- watchlist_count: {runtime.get('watchlist_count', '')}",
         f"- scan_count: {runtime.get('scan_count', '')}",
+        f"- operation_candidate_count: {runtime.get('operation_candidate_count', '')}",
         f"- unsupported_count: {runtime.get('unsupported_count', '')}",
     ]
     unsupported = runtime.get("unsupported_symbols", []) or []

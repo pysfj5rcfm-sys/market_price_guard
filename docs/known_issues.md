@@ -80,3 +80,9 @@ Before declaring AKShare minute bars unusable, rerun `run_tech_minute_probe.ps1`
 YFinance minute bars are attempted only as a reference fallback after AKShare and Eastmoney Direct fail in the optional minute probe path. Intraday ranges are limited, provider-dependent, and not operation-grade.
 
 YFinance fallback success does not change strict, operation readiness, quote trust tier, or usable_for_operation. VWAP and intraday derived fields remain not implemented.
+
+## v0.7.2a.2d Operation Candidate Layer
+
+`tech_operation_candidates` is a reference-only pre-trade verification layer. It is not core holdings and does not make a symbol operation-grade.
+
+A symbol should affect the tech fast strict path only after it is explicitly promoted to `core_holdings`. Operation-candidate provider failures or missing data do not block `run_tech_fast_strict.ps1` or `outputs_tech_latest`.

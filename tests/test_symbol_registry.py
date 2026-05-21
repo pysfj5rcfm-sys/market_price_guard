@@ -26,12 +26,16 @@ def test_symbol_registry_contains_core_and_candidate_metadata():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("name", ["tech_core", "tech_watchlist", "tech_scan_ai", "energy_core", "controller_core"])
+@pytest.mark.parametrize("name", ["tech_core", "tech_watchlist", "tech_scan_ai", "tech_operation_candidates", "energy_core", "controller_core"])
 def test_universe_files_load(name):
     spec = load_universe(name, UNIVERSES_DIR)
 
     assert spec.name == name
-    assert spec.symbols
+    if name == "tech_operation_candidates":
+        assert spec.universe_type == "operation_candidate"
+        assert spec.symbols == []
+    else:
+        assert spec.symbols
 
 
 @pytest.mark.unit
@@ -64,6 +68,40 @@ def test_scan_universe_symbols_are_reference_and_not_required_for_operation():
     assert metadata["universe_type"] == "scan_universe"
     assert all(item.required_for_operation is False for item in instruments)
     assert all(item.default_quote_purpose == "reference" for item in instruments)
+
+
+@pytest.mark.unit
+def test_operation_candidate_universe_empty_and_non_strict():
+    watchlist, metadata = build_watchlist_from_registry(
+        REGISTRY_PATH,
+        UNIVERSES_DIR,
+        profile="tech",
+        quote_purpose="reference",
+        universe="tech_operation_candidates",
+    )
+
+    assert metadata["universe_type"] == "operation_candidate"
+    assert metadata["operation_candidate_count"] == 0
+    assert watchlist.projects == {}
+
+
+@pytest.mark.unit
+def test_operation_candidate_cli_symbols_are_reference_only():
+    watchlist, metadata = build_watchlist_from_registry(
+        REGISTRY_PATH,
+        UNIVERSES_DIR,
+        profile="tech",
+        quote_purpose="reference",
+        symbols="159819.SZ",
+        universe_type="operation_candidate",
+    )
+
+    instrument = watchlist.projects["tech"].instruments[0]
+    assert metadata["universe_type"] == "operation_candidate"
+    assert instrument.operation_candidate is True
+    assert instrument.required_for_operation is False
+    assert instrument.affect_core_strict is False
+    assert instrument.default_quote_purpose == "reference"
 
 
 @pytest.mark.unit
@@ -145,11 +183,64 @@ def test_unsupported_symbols_report_generated_for_unknown_symbol(tmp_path):
     assert "suggested_fix" in report
 
 
+@pytest.mark.contract
+def test_operation_candidates_empty_universe_outputs(tmp_path):
+    output_dir = tmp_path / "operation_candidates_empty"
+
+    result = run_pipeline(
+        output_dir=output_dir,
+        provider_mode="mock",
+        profile="tech",
+        quote_purpose="reference",
+        universe="tech_operation_candidates",
+    )
+
+    assert result.exit_code == 0
+    assert result.records_count == 0
+    assert (output_dir / "operation_candidate_report.md").exists()
+    assert not (output_dir / "tech_price_block.md").exists()
+    upload = (output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
+    debug = (output_dir / "debug_bundle.md").read_text(encoding="utf-8")
+    report = (output_dir / "operation_candidate_report.md").read_text(encoding="utf-8")
+    assert "Operation Candidate Summary" in upload
+    assert "candidate_data_status: empty_universe" in upload
+    assert "not usable for concrete operation recommendations" in upload
+    assert "operation_candidate_count: 0" in debug
+    assert "not core holdings" in report
+
+
+@pytest.mark.contract
+def test_operation_candidate_symbols_do_not_become_operation(tmp_path):
+    output_dir = tmp_path / "operation_candidates_symbol"
+
+    result = run_pipeline(
+        output_dir=output_dir,
+        provider_mode="mock",
+        profile="tech",
+        quote_purpose="reference",
+        symbols="159819.SZ",
+        universe_type="operation_candidate",
+    )
+
+    assert result.exit_code == 0
+    import pandas as pd
+
+    df = pd.read_csv(output_dir / "prices_snapshot.csv", encoding="utf-8-sig")
+    row = df[df["symbol"] == "159819.SZ"].iloc[0]
+    assert row["operation_candidate"] == True
+    assert row["required_for_operation"] == False
+    assert row["affect_core_strict"] == False
+    assert row["usable_for_operation"] == False
+    assert row["universe_type"] == "operation_candidate"
+    assert row["candidate_data_status"] in {"ready_for_review", "data_incomplete"}
+
+
 @pytest.mark.script
 def test_watchlist_and_scan_scripts_are_reference_only():
     scripts = {
         "run_tech_watchlist.ps1": ("--universe tech_watchlist", "outputs_tech_watchlist_latest"),
         "run_tech_scan_ai.ps1": ("--universe tech_scan_ai", "outputs_tech_scan_ai_latest"),
+        "run_tech_operation_candidates.ps1": ("--universe tech_operation_candidates", "outputs_tech_operation_candidates_latest"),
     }
     for script, (universe_arg, output_dir) in scripts.items():
         content = (Path("scripts") / script).read_text(encoding="utf-8")

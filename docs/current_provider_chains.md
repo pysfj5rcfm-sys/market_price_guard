@@ -39,6 +39,19 @@ Output: `outputs_tech_reconcile_latest/`
 - Not usable for concrete operation advice.
 - Does not change operation strict.
 
+## Tech Operation Candidates
+
+Script: `.\scripts\run_tech_operation_candidates.ps1`
+
+Output: `outputs_tech_operation_candidates_latest/`
+
+- `quote_purpose=reference`
+- Universe: `tech_operation_candidates`
+- This is a pre-trade verification layer for symbols manually selected from scan or watchlist outputs.
+- It is not core holdings and is not operation-grade.
+- Candidate records keep `required_for_operation=false`, `usable_for_operation=false`, and `affect_core_strict=false`.
+- Failures in this universe do not affect `run_tech_fast_strict.ps1` or `outputs_tech_latest`.
+
 ## Energy Fast Strict
 
 Script: `.\scripts\run_energy_fast_strict.ps1`
@@ -83,8 +96,9 @@ Add `debug_bundle.md` only when the upload bundle shows strict blocking, provide
 - `core_holdings`: may contain `required_for_operation=true` records and may affect strict.
 - `candidate_watchlist`: reference/conditional candidates; does not affect core strict.
 - `scan_universe`: reference scan pool; does not affect core strict.
+- `operation_candidate`: reference-only pre-trade verification candidates; does not affect core strict.
 
-Provider chains can vary by `quote_purpose` and universe metadata, but candidate and scan records remain non-strict until promoted to `core_holdings`.
+Provider chains can vary by `quote_purpose` and universe metadata, but candidate, operation-candidate, and scan records remain non-strict until explicitly promoted to `core_holdings`.
 
 ## Field Capability Matrix
 
