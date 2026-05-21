@@ -9,6 +9,7 @@ import pandas as pd
 from market_price_guard.freshness import now_utc
 from market_price_guard.models import RawPrice
 from market_price_guard.providers.base import PriceProvider
+from market_price_guard.uat_run_cache import is_uat_run_cache_enabled, read_cached_dataframe, write_cached_dataframe
 
 
 HK_STOCK_SYMBOLS = {"00883.HK"}
@@ -373,16 +374,48 @@ class AkshareProvider(PriceProvider):
             attempt = dict(cached_attempt)
             attempt["from_cache"] = True
             attempt["cache_hits"] = int(attempt.get("cache_hits", 0)) + 1
+            attempt["cache_status"] = attempt.get("cache_status", "local_memory_hit")
             attempt["fetch_time_utc"] = fetch_time.isoformat()
             if "_exception" in cached_attempt:
                 attempt["_exception"] = cached_attempt["_exception"]
             return df, attempt
+
+        if is_uat_run_cache_enabled(function_name):
+            cached_df, cache_attempt = read_cached_dataframe(function_name)
+            if cached_df is not None:
+                self._call_seq += 1
+                attempt = {
+                    "provider": "akshare",
+                    "function_name": function_name,
+                    "category": category,
+                    "fetch_time_utc": fetch_time.isoformat(),
+                    "call_id": self._call_seq,
+                    "status": "success",
+                    "provider_status": "success",
+                    "returned_rows": len(cached_df),
+                    "matched_symbols": [],
+                    "elapsed_seconds_first_call": 0,
+                    "from_cache": True,
+                    "cache_hits": 1,
+                    **cache_attempt,
+                }
+                self._call_cache[function_name] = (cached_df, dict(attempt))
+                return cached_df, attempt
 
         self._call_seq += 1
         df, attempt = _call_akshare(ak, function_name, category, fetch_time, call_id=self._call_seq)
         attempt["from_cache"] = False
         attempt["cache_hits"] = 0
         attempt["call_count"] = 1
+        if is_uat_run_cache_enabled(function_name):
+            attempt["cache_enabled"] = True
+            attempt["cache_scope"] = "uat_run"
+            attempt["cache_status"] = "miss"
+            attempt["cache_provider"] = "akshare"
+            attempt["cache_function"] = function_name
+            write_attempt = write_cached_dataframe(function_name, df)
+            attempt["cache_file"] = write_attempt.get("cache_file", "")
+            attempt["cache_note"] = write_attempt.get("reason", "")
         self._call_cache[function_name] = (df, dict(attempt))
         return df, attempt
 

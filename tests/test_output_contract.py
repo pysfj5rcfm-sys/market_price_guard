@@ -178,18 +178,28 @@ def test_run_uat_script_contract():
     assert "total_defined" in script
     assert "run_count" in script
     assert "tech_minute_probe" in script
+    assert "[switch]$UseRunCache" in script
+    assert "MARKET_GUARD_USE_UAT_RUN_CACHE" in script
+    assert "use_run_cache" in script
+    assert "cache_hit_count" in script
+    assert "akshare.fund_etf_spot_em" in script
     assert "price_reconciliation_report.md" in script
     assert "outputs_uat_summary.md" in script
 
 
 def test_uat_profiles_doc_contract():
     doc = (PROJECT_ROOT / "docs" / "uat_profiles.md").read_text(encoding="utf-8")
+    cache_doc = (PROJECT_ROOT / "docs" / "uat_run_cache.md").read_text(encoding="utf-8")
     readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
 
-    for phrase in ["quick", "intraday", "full", "skipped_by_profile", "shared provider cache"]:
+    for phrase in ["quick", "intraday", "full", "skipped_by_profile", "UseRunCache"]:
         assert phrase in doc
+    for phrase in ["opt-in", "akshare", "fund_etf_spot_em", "minute bars", "strict"]:
+        assert phrase in cache_doc
     assert "docs/uat_profiles.md" in readme
+    assert "docs/uat_run_cache.md" in readme
     assert ".\\scripts\\run_uat.ps1 -Mode full" in readme
+    assert ".\\scripts\\run_uat.ps1 -Mode full -UseRunCache" in readme
 
 
 def _section(report: str, start: str, end: str) -> str:

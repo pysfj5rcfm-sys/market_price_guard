@@ -1326,7 +1326,7 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
                 and str(attempt.get("provider", "")) == str(diagnostic.get("selected_provider", record.source))
             )
             lines.append(
-                "  - provider={provider}, function_name={function_name}, status={status}, secid={secid}, endpoint={endpoint}, request_status={request_status}, retry_count={retry_count}, final_status={final_status}, from_cache={from_cache}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, quote_trust_tier={quote_trust_tier}, usable_for_reference={usable_for_reference}, confirmation_required={confirmation_required}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
+                "  - provider={provider}, function_name={function_name}, status={status}, secid={secid}, endpoint={endpoint}, request_status={request_status}, retry_count={retry_count}, final_status={final_status}, from_cache={from_cache}, cache_enabled={cache_enabled}, cache_scope={cache_scope}, cache_status={cache_status}, cache_file={cache_file}, price={price}, quote_time={quote_time}, usable_for_operation={usable_for_operation}, quote_trust_tier={quote_trust_tier}, usable_for_reference={usable_for_reference}, confirmation_required={confirmation_required}, elapsed_seconds={elapsed_seconds}, slow_provider_attempt={slow_provider_attempt}, reason={reason}, exception_type={exception_type}, exception_message={exception_message}".format(
                     provider=attempt.get("provider", ""),
                     function_name=attempt.get("function_name", ""),
                     status=attempt.get("status", ""),
@@ -1336,6 +1336,10 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
                     retry_count=attempt.get("retry_count", ""),
                     final_status=attempt.get("final_status", ""),
                     from_cache=attempt.get("from_cache", ""),
+                    cache_enabled=attempt.get("cache_enabled", ""),
+                    cache_scope=attempt.get("cache_scope", ""),
+                    cache_status=attempt.get("cache_status", ""),
+                    cache_file=attempt.get("cache_file", ""),
                     price=attempt.get("price", ""),
                     quote_time=attempt.get("quote_time", ""),
                     usable_for_operation=attempt.get("usable_for_operation", ""),
@@ -1441,10 +1445,12 @@ def _provider_call_summary_lines(records: list[PriceRecord]) -> list[str]:
             sorted({str(attempt.get("symbol", "")) for attempt in function_attempts if attempt.get("status") == "success"})
         )
         lines.append(
-            "- function_name={function_name}, call_count={call_count}, cache_hits={cache_hits}, returned_rows={returned_rows}, matched_symbols={matched_symbols}, elapsed_seconds_first_call={elapsed}, failed={failed}, exception_type={exception_type}, exception_message={exception_message}".format(
+            "- function_name={function_name}, call_count={call_count}, cache_hits={cache_hits}, uat_run_cache_hits={uat_hits}, cache_statuses={cache_statuses}, returned_rows={returned_rows}, matched_symbols={matched_symbols}, elapsed_seconds_first_call={elapsed}, failed={failed}, exception_type={exception_type}, exception_message={exception_message}".format(
                 function_name=function_name,
                 call_count=len(call_ids),
                 cache_hits=sum(1 for attempt in function_attempts if attempt.get("from_cache")),
+                uat_hits=sum(1 for attempt in function_attempts if attempt.get("cache_scope") == "uat_run" and attempt.get("cache_status") == "hit"),
+                cache_statuses=_format_symbols(sorted({str(attempt.get("cache_status", "")) for attempt in function_attempts if attempt.get("cache_status", "")})),
                 returned_rows=first.get("returned_rows", ""),
                 matched_symbols=matched_symbols,
                 elapsed=first.get("elapsed_seconds_first_call", ""),

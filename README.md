@@ -213,6 +213,16 @@ UAT runtime profiles:
 
 `quick` 是默认模式，跳过 diagnostic / reconcile / scan_ai / energy / all 等重型 live provider 项；`intraday` 用于 minute probe / reference VWAP 开发验收；`full` 用于完整回归。详见 `docs/uat_profiles.md`。
 
+可选 UAT run cache：
+
+```powershell
+.\scripts\run_uat.ps1 -Mode quick -UseRunCache
+.\scripts\run_uat.ps1 -Mode intraday -UseRunCache
+.\scripts\run_uat.ps1 -Mode full -UseRunCache
+```
+
+`-UseRunCache` 默认关闭，只在当前 UAT run 内生效。v0.7.2c.1 第一版只缓存 `akshare.fund_etf_spot_em`，目录为 `outputs_uat_run_cache_latest`；不缓存 minute bars、YFinance、Eastmoney Direct、operation readiness、VWAP 或任何 advice 输出。cache hit 不改变 freshness、strict、quote_trust_tier、usable_for_operation 或 operation/reference 语义。详见 `docs/uat_run_cache.md`。
+
 ## 输出契约与 UAT
 
 输出契约文档：

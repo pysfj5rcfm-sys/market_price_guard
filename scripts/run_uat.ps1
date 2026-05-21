@@ -1,5 +1,6 @@
 param(
-    [string]$Mode = 'quick'
+    [string]$Mode = 'quick',
+    [switch]$UseRunCache
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -8,6 +9,7 @@ $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $SummaryPath = Join-Path $ProjectRoot 'outputs_uat_summary.md'
+$RunCacheDir = Join-Path $ProjectRoot 'outputs_uat_run_cache_latest'
 
 $AllowedModes = @('quick', 'intraday', 'full')
 $Mode = $Mode.ToLowerInvariant()
@@ -138,6 +140,37 @@ if (Test-Path $MockScript) {
 $Results = @()
 $AnyFailed = $false
 $GeneratedAt = (Get-Date).ToUniversalTime().ToString('o')
+$PreviousUseRunCache = $env:MARKET_GUARD_USE_UAT_RUN_CACHE
+$PreviousRunCacheDir = $env:MARKET_GUARD_UAT_RUN_CACHE_DIR
+if ($UseRunCache) {
+    if (Test-Path $RunCacheDir) {
+        Remove-Item -Recurse -Force -LiteralPath $RunCacheDir -ErrorAction SilentlyContinue
+    }
+    New-Item -ItemType Directory -Force -Path $RunCacheDir | Out-Null
+    $InitialManifest = [ordered]@{
+        cache_run_id = [guid]::NewGuid().ToString()
+        generated_at = $GeneratedAt
+        provider = 'akshare'
+        function_name = 'fund_etf_spot_em'
+        cache_key = 'akshare.fund_etf_spot_em'
+        ttl_seconds = 0
+        row_count = 0
+        source_mode = 'uat_run_cache'
+        hit_count = 0
+        miss_count = 0
+        bypass_count = 0
+        expired_count = 0
+        cache_error_count = 0
+        cache_file = (Join-Path $RunCacheDir 'akshare_fund_etf_spot_em.csv')
+        notes = 'initialized by run_uat.ps1'
+    }
+    $InitialManifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $RunCacheDir 'cache_manifest.json') -Encoding UTF8
+    $env:MARKET_GUARD_USE_UAT_RUN_CACHE = '1'
+    $env:MARKET_GUARD_UAT_RUN_CACHE_DIR = $RunCacheDir
+} else {
+    Remove-Item Env:\MARKET_GUARD_USE_UAT_RUN_CACHE -ErrorAction SilentlyContinue
+    Remove-Item Env:\MARKET_GUARD_UAT_RUN_CACHE_DIR -ErrorAction SilentlyContinue
+}
 $AdviceTerms = @(
     (-join ([char[]](0x5efa, 0x8bae, 0x4e70))),
     (-join ([char[]](0x5efa, 0x8bae, 0x5356))),
@@ -352,6 +385,21 @@ $Failed = @($Results | Where-Object { $_.Status -eq 'failed' }).Count
 $SkippedByProfile = @($Results | Where-Object { $_.Status -eq 'skipped_by_profile' }).Count
 $RunCount = @($Results | Where-Object { $_.Status -ne 'skipped_by_profile' }).Count
 $AnyFailed = $Failed -gt 0
+$CacheManifestPath = Join-Path $RunCacheDir 'cache_manifest.json'
+$CacheManifest = $null
+if ($UseRunCache -and (Test-Path $CacheManifestPath)) {
+    try {
+        $CacheManifest = Get-Content $CacheManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        $CacheManifest = $null
+    }
+}
+$CacheHitCount = if ($CacheManifest) { [int]$CacheManifest.hit_count } else { 0 }
+$CacheMissCount = if ($CacheManifest) { [int]$CacheManifest.miss_count } else { 0 }
+$CacheBypassCount = if ($CacheManifest) { [int]$CacheManifest.bypass_count } else { 0 }
+$CacheErrorCount = if ($CacheManifest) { [int]$CacheManifest.cache_error_count } else { 0 }
+$EstimatedSavedCalls = $CacheHitCount
+$EstimatedSavedSeconds = if ($CacheHitCount -gt 0) { 'provider-dependent' } else { 0 }
 
 $Lines = @()
 $Lines += '# market_price_guard UAT Summary'
@@ -359,6 +407,16 @@ $Lines += ''
 $Lines += ('- generated_at: ' + $GeneratedAt)
 $Lines += ('- mode: ' + $Mode)
 $Lines += ('- profile_explanation: ' + $ModeExplanation[$Mode])
+$Lines += ('- use_run_cache: ' + $UseRunCache.IsPresent.ToString().ToLowerInvariant())
+$Lines += ('- run_cache_dir: ' + ($(if ($UseRunCache) { $RunCacheDir } else { '' })))
+$Lines += '- cache_scope: uat_run'
+$Lines += '- cache_enabled_functions: akshare.fund_etf_spot_em'
+$Lines += ('- cache_hit_count: ' + $CacheHitCount)
+$Lines += ('- cache_miss_count: ' + $CacheMissCount)
+$Lines += ('- cache_bypass_count: ' + $CacheBypassCount)
+$Lines += ('- cache_error_count: ' + $CacheErrorCount)
+$Lines += ('- estimated_cache_saved_calls: ' + $EstimatedSavedCalls)
+$Lines += ('- estimated_cache_saved_seconds: ' + $EstimatedSavedSeconds)
 $Lines += ('- total_defined: ' + $Results.Count)
 $Lines += ('- run_count: ' + $RunCount)
 $Lines += ('- passed: ' + $Passed)
@@ -392,6 +450,10 @@ foreach ($Result in $Results) {
     $Lines += ('- status: ' + $Result.Status)
     $Lines += ('- mode: ' + $Result.Mode)
     $Lines += ('- elapsed_seconds: ' + $Result.ElapsedSeconds)
+    $Lines += ('- cache_hits: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { $CacheHitCount } else { '' })))
+    $Lines += ('- cache_misses: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { $CacheMissCount } else { '' })))
+    $Lines += ('- cache_bypass: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { $CacheBypassCount } else { '' })))
+    $Lines += ('- cache_note: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { 'UAT run cache summary is run-level; provider attempts show per-script hit/miss where available.' } else { '' })))
     if ($Result.Status -eq 'skipped_by_profile') {
         $Lines += ('- skip_reason: ' + $Result.SkipReason)
     }
@@ -425,6 +487,17 @@ foreach ($Result in $Results) {
 }
 
 $Lines | Set-Content $SummaryPath -Encoding UTF8
+
+if ($null -ne $PreviousUseRunCache) {
+    $env:MARKET_GUARD_USE_UAT_RUN_CACHE = $PreviousUseRunCache
+} else {
+    Remove-Item Env:\MARKET_GUARD_USE_UAT_RUN_CACHE -ErrorAction SilentlyContinue
+}
+if ($null -ne $PreviousRunCacheDir) {
+    $env:MARKET_GUARD_UAT_RUN_CACHE_DIR = $PreviousRunCacheDir
+} else {
+    Remove-Item Env:\MARKET_GUARD_UAT_RUN_CACHE_DIR -ErrorAction SilentlyContinue
+}
 
 Write-Host ('UAT summary: ' + $SummaryPath)
 if ($AnyFailed) {

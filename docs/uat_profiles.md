@@ -50,3 +50,19 @@ Default mode is `quick`.
 Heavy live provider items such as diagnostic, reconcile, scan_ai, energy, and all/controller are no longer part of the default quick run.
 
 This profile split does not add shared provider cache, cross-script cache, provider cache, provider timeout hard kill, or provider behavior changes. A shared provider cache can be handled by a separate future version such as `v0.7.2c.1`.
+
+## Optional UAT Run Cache
+
+`v0.7.2c.1` adds an opt-in UAT run cache:
+
+```powershell
+.\scripts\run_uat.ps1 -Mode quick -UseRunCache
+.\scripts\run_uat.ps1 -Mode intraday -UseRunCache
+.\scripts\run_uat.ps1 -Mode full -UseRunCache
+```
+
+The cache remains off by default. The first probe only caches `akshare.fund_etf_spot_em` inside the current UAT run directory `outputs_uat_run_cache_latest`.
+
+It does not cache minute bars, YFinance, Eastmoney Direct, AKShare stock helpers, AKShare HK helpers, diagnostic exhaustive calls, operation readiness, VWAP, or advice/action outputs. Cache hits do not change freshness, strict, quote trust tier, usable_for_operation, or operation/reference semantics.
+
+See [uat_run_cache.md](uat_run_cache.md) for details.
