@@ -19,6 +19,7 @@ from market_price_guard.report import build_completeness_report, build_debug_bun
 
 
 ETF_SYMBOLS = ["159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"]
+TECH_CORE_SYMBOLS = [*ETF_SYMBOLS, "159516.SZ"]
 
 
 def test_eastmoney_secid_mapping():
@@ -118,7 +119,7 @@ def test_reference_tech_chain_uses_eastmoney_before_yfinance_and_akshare(monkeyp
 
     def akshare_fetch(self, symbols):
         calls["akshare"] += 1
-        raise AssertionError(f"akshare should be skipped after Eastmoney reference success: {symbols}")
+        return {symbol: _raw(symbol, "akshare", 2.0 + index / 100) for index, symbol in enumerate(symbols) if symbol in TECH_CORE_SYMBOLS}
 
     monkeypatch.setattr(EastmoneyDirectProvider, "fetch", eastmoney_fetch)
     monkeypatch.setattr(YFinanceProvider, "fetch", yfinance_fetch)
@@ -140,7 +141,7 @@ def test_reference_tech_chain_uses_eastmoney_before_yfinance_and_akshare(monkeyp
 
     assert result.exit_code == EXIT_OK
     assert calls["yfinance"] == len(ETF_SYMBOLS)
-    assert calls["akshare"] == 0
+    assert calls["akshare"] == 1
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["selected_provider"]) == {"eastmoney_direct"}
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["quote_trust_tier"]) == {"reference"}
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["usable_for_operation"].astype(str)) == {"False"}

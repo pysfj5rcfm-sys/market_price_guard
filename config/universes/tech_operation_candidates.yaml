@@ -15,4 +15,8 @@ rules:
   allow_operation_upgrade: false
   ranking_is_trading_advice: false
   output_is_trading_advice: false
-symbols: []
+symbols:
+  - 159995.SZ
+  - 588200.SH
+  - 588170.SH
+  - 159558.SZ

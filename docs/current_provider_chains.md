@@ -126,3 +126,16 @@ v0.7.2a.2b minute probe order:
 3. YFinance reference minute fallback.
 
 Eastmoney Direct and YFinance minute bars do not alter the default fast strict provider chain and do not upgrade operation readiness.
+
+## Reference Intraday Metrics
+
+Script: `.\scripts\run_tech_intraday_metrics.ps1`
+
+Output: `outputs_tech_intraday_latest/`
+
+- Reads existing minute probe and spot CSV artifacts.
+- Covers `tech_core` and `tech_operation_candidates` from universe config.
+- Computes reference VWAP and basic intraday position metrics only.
+- Uses minute source priority metadata: AKShare, Eastmoney Direct, then YFinance fallback.
+- Does not call providers and does not alter the default fast strict provider chain.
+- Does not change strict, quote trust tier, freshness, usable_for_operation, or operation/reference semantics.

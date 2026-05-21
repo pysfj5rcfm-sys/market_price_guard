@@ -239,6 +239,7 @@ def _snapshot_rows(record: PriceRecord, snapshot: MinuteBarsSnapshot) -> list[di
             {
                 "symbol": record.symbol,
                 "name": record.name,
+                "source_universe": record.source_universe,
                 "provider": snapshot.provider,
                 "interval": snapshot.interval,
                 "timestamp": bar.timestamp.isoformat(),

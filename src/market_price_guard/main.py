@@ -88,10 +88,13 @@ def collect_prices(
     include_watchlist: bool = False,
     include_candidates: bool = False,
     universe_type: str | None = None,
+    include_minute_bars: bool = False,
 ) -> dict:
     registry_enabled = bool(universe or symbols or symbol_file or include_watchlist or include_candidates or universe_type)
     universe_metadata: dict = {}
-    if registry_enabled:
+    if include_minute_bars and profile == "tech" and not registry_enabled:
+        watchlist, universe_metadata = _build_tech_minute_probe_watchlist(quote_purpose)
+    elif registry_enabled:
         watchlist, universe_metadata = build_watchlist_from_registry(
             registry_path=SYMBOL_REGISTRY_PATH,
             universes_dir=UNIVERSES_DIR,
@@ -168,6 +171,7 @@ def run_pipeline(
         include_watchlist,
         include_candidates,
         universe_type,
+        include_minute_bars,
     )
     rules = load_yaml(stale_rules_path)
     records = apply_scan_ranking(apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules)))
@@ -205,6 +209,60 @@ def run_pipeline(
         exit_code=exit_code,
         runtime=runtime,
     )
+
+
+def _build_tech_minute_probe_watchlist(quote_purpose: str) -> tuple[Watchlist, dict]:
+    core_watchlist, core_metadata = build_watchlist_from_registry(
+        registry_path=SYMBOL_REGISTRY_PATH,
+        universes_dir=UNIVERSES_DIR,
+        profile="tech",
+        quote_purpose=quote_purpose,
+        universe="tech_core",
+    )
+    candidate_watchlist, candidate_metadata = build_watchlist_from_registry(
+        registry_path=SYMBOL_REGISTRY_PATH,
+        universes_dir=UNIVERSES_DIR,
+        profile="tech",
+        quote_purpose="reference",
+        universe="tech_operation_candidates",
+    )
+    merged = _merge_watchlists_core_first(core_watchlist, candidate_watchlist)
+    instruments = [instrument for project in merged.projects.values() for instrument in project.instruments]
+    metadata = {
+        "registry_enabled": True,
+        "registry_path": str(SYMBOL_REGISTRY_PATH),
+        "universe_name": "tech_minute_probe",
+        "universe_type": "minute_probe",
+        "universe_quote_purpose": "reference",
+        "universe_symbols": [instrument.symbol for instrument in instruments],
+        "unsupported_symbols": [
+            *core_metadata.get("unsupported_symbols", []),
+            *candidate_metadata.get("unsupported_symbols", []),
+        ],
+        "core_count": sum(1 for instrument in instruments if instrument.source_universe == "tech_core"),
+        "watchlist_count": 0,
+        "scan_count": 0,
+        "operation_candidate_count": sum(1 for instrument in instruments if instrument.source_universe == "tech_operation_candidates"),
+        "unsupported_count": len(core_metadata.get("unsupported_symbols", [])) + len(candidate_metadata.get("unsupported_symbols", [])),
+    }
+    return merged, metadata
+
+
+def _merge_watchlists_core_first(core_watchlist: Watchlist, candidate_watchlist: Watchlist) -> Watchlist:
+    projects: dict[str, WatchProject] = {}
+    seen: set[str] = set()
+    for watchlist in (core_watchlist, candidate_watchlist):
+        for project_key, project in watchlist.projects.items():
+            merged_project = projects.setdefault(
+                project_key,
+                WatchProject(display_name=project.display_name, allow_full_detail=project.allow_full_detail, instruments=[]),
+            )
+            for instrument in project.instruments:
+                if instrument.symbol in seen:
+                    continue
+                seen.add(instrument.symbol)
+                merged_project.instruments.append(instrument)
+    return Watchlist(projects=projects)
 
 
 def main(argv: list[str] | None = None) -> int:

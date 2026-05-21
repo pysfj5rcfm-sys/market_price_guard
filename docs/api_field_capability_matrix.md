@@ -301,3 +301,18 @@ YFinance `minute_bars` is now attempted as a reference fallback after AKShare an
 `intraday_vwap`, `distance_to_vwap_pct`, `day_position`, and other VWAP-derived fields remain planned for a later version.
 
 Eastmoney minute bars do not change operation trust tier, strict, freshness, or usable_for_operation. `intraday_vwap`, `distance_to_vwap_pct`, and `day_position` remain planned for v0.7.2b.
+
+## v0.7.2b Reference Intraday Metrics Update
+
+v0.7.2b introduces reference-only intraday metrics from minute probe artifacts:
+
+- `reference_vwap`
+- `reference_intraday_last`
+- `distance_to_reference_vwap_pct`
+- `intraday_position_pct`
+- `drawdown_from_intraday_high_pct`
+- `rebound_from_intraday_low_pct`
+- `spot_vs_minute_time_gap_seconds`
+- `spot_minute_time_alignment_status`
+
+These are derived from `minute_bars_snapshot.csv` and spot snapshot CSV files. They are reference indicators only, not operation-grade fields. `operation_vwap`, QDII premium, action hints, preferred actions, and allowed advice level remain future modules. This update does not change strict, freshness, quote trust tier, or usable_for_operation.

@@ -458,17 +458,17 @@ IXIC:
   market: SZ
   asset_type: ETF
   project_scope: tech
-  role: candidate_tech_etf
+  role: semiconductor_equipment_core_etf
   universe_tags:
   - tech
   - semiconductor
   - semiconductor_equipment
   - equipment
-  - candidate
+  - core
   - etf
   - layer1
-  required_for_operation: false
-  default_quote_purpose: reference
+  required_for_operation: true
+  default_quote_purpose: operation
   provider_preference:
     operation:
     - akshare
@@ -484,7 +484,7 @@ IXIC:
     - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
-  notes: scan candidate; fund name should be validated by provider
+  notes: 科技账户核心半导体设备 ETF；已从 operation_candidate 升入 core
 159558.SZ:
   symbol: 159558.SZ
   name: 半导体设备ETF

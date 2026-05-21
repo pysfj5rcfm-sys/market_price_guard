@@ -34,6 +34,7 @@ class Instrument(BaseModel):
     unsupported_reason: str = ""
     affect_core_strict: bool = True
     operation_candidate: bool = False
+    source_universe: str = ""
 
 
 class WatchProject(BaseModel):
@@ -157,6 +158,7 @@ class PriceRecord(BaseModel):
     unsupported_reason: str = ""
     affect_core_strict: bool = True
     operation_candidate: bool = False
+    source_universe: str = ""
     candidate_quote_ready: bool = False
     candidate_data_status: str = ""
     candidate_blocking_reason: str = ""

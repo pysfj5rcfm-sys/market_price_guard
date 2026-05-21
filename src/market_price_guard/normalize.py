@@ -135,6 +135,7 @@ def normalize_records(
                     unsupported_reason=instrument.unsupported_reason,
                     affect_core_strict=instrument.affect_core_strict,
                     operation_candidate=instrument.operation_candidate or instrument.universe_type == "operation_candidate",
+                    source_universe=instrument.source_universe or instrument.universe_type,
                     **candidate_fields,
                     **base_quote,
                     **field_quality,

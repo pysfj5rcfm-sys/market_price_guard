@@ -656,3 +656,48 @@ Minute probe details may include:
 YFinance successful bars use `minute_bar_provider=yfinance` and `minute_bar_validation_status=provider_dependent`. `minute_bars_snapshot.csv` may contain rows with `provider=yfinance`.
 
 YFinance minute bars are diagnostic/reference only. They must not upgrade trust tier, change strict, change freshness, change usable_for_operation, or calculate VWAP.
+
+### 13.21 Reference Intraday Metrics Contract
+
+v0.7.2b adds `outputs_tech_intraday_latest/` and `scripts/run_tech_intraday_metrics.ps1`.
+
+The intraday metrics job reads existing CSV artifacts only:
+
+- `outputs_tech_minute_probe_latest/minute_bars_snapshot.csv`
+- `outputs_tech_minute_probe_latest/prices_snapshot.csv`
+- `outputs_tech_latest/prices_snapshot.csv`
+- `outputs_tech_operation_candidates_latest/prices_snapshot.csv`
+- `config/universes/tech_core.yaml`
+- `config/universes/tech_operation_candidates.yaml`
+
+It must generate:
+
+- `index.md`
+- `0_upload_bundle.md`
+- `intraday_metrics_snapshot.csv`
+- `reference_vwap_report.md`
+- `debug_bundle.md`
+- `data_completeness_report.md`
+- `provider_capability_report.md`
+- `runtime_diagnostics.md`
+
+`intraday_metrics_snapshot.csv` includes reference-only fields such as:
+
+- `reference_vwap`
+- `reference_vwap_source`
+- `reference_vwap_validation_status`
+- `reference_vwap_method`
+- `reference_intraday_open`
+- `reference_intraday_high`
+- `reference_intraday_low`
+- `reference_intraday_last`
+- `distance_to_reference_vwap_pct`
+- `intraday_position_pct`
+- `spot_vs_minute_time_gap_seconds`
+- `spot_minute_time_alignment_status`
+- `minute_source_priority_rank`
+- `minute_source_quality`
+- `minute_data_provider_dependent`
+- `minute_data_provider_raw`
+
+Reference intraday metrics are not operation-grade. They must not change strict, quote trust tier, freshness, usable_for_operation, provider chain, or operation/reference semantics. They must not output execution instructions, action hints, preferred actions, or target/entry/stop labels.

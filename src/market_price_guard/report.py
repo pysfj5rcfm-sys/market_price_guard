@@ -68,6 +68,7 @@ OUTPUT_COLUMNS = [
     "unsupported_reason",
     "affect_core_strict",
     "operation_candidate",
+    "source_universe",
     "candidate_quote_ready",
     "candidate_data_status",
     "candidate_blocking_reason",
@@ -2665,13 +2666,14 @@ def _minute_bars_probe_note_lines() -> list[str]:
 
 def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
     lines = [
-        "| symbol | provider_attempted | provider_success | normalized_symbol | eastmoney_secid | akshare_status | akshare_reason | akshare_error_type | akshare_error_message | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | yfinance_ticker | yfinance_status | yfinance_reason | yfinance_error_type | yfinance_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | after_close_applies_to | retry_suggested | retry_reason | notes |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|---|",
+        "| symbol | source_universe | provider_attempted | provider_success | normalized_symbol | eastmoney_secid | akshare_status | akshare_reason | akshare_error_type | akshare_error_message | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | yfinance_ticker | yfinance_status | yfinance_reason | yfinance_error_type | yfinance_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | after_close_applies_to | retry_suggested | retry_reason | notes |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|---|",
     ]
     for record in records:
         lines.append(
-            "| {symbol} | {provider} | {success} | {normalized} | {secid} | {ak_status} | {ak_reason} | {ak_type} | {ak_message} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {yf_ticker} | {yf_status} | {yf_reason} | {yf_type} | {yf_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {applies_to} | {retry} | {retry_reason} | {notes} |".format(
+            "| {symbol} | {source_universe} | {provider} | {success} | {normalized} | {secid} | {ak_status} | {ak_reason} | {ak_type} | {ak_message} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {yf_ticker} | {yf_status} | {yf_reason} | {yf_type} | {yf_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {applies_to} | {retry} | {retry_reason} | {notes} |".format(
                 symbol=record.symbol,
+                source_universe=_fmt(record.source_universe),
                 provider=_fmt(_minute_bar_provider_attempted(record)),
                 success=_fmt(record.minute_bar_provider if record.minute_bars_available else "none"),
                 normalized=_fmt(_minute_bar_normalized_symbol(record)),
@@ -2706,7 +2708,7 @@ def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
             )
         )
     if not records:
-        lines.append("| none | missing | none | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | missing | not_available | 0 | - | - | missing | no_records | - | false | - | - | - | no records |")
+        lines.append("| none | - | missing | none | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | missing | not_available | 0 | - | - | missing | no_records | - | false | - | - | - | no records |")
     return lines
 
 
@@ -2716,6 +2718,11 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
     akshare_attempted = [record for record in records if "akshare" in _minute_bar_attempted_set(record)]
     eastmoney_attempted = [record for record in records if "eastmoney_direct" in _minute_bar_attempted_set(record)]
     yfinance_attempted = [record for record in records if "yfinance" in _minute_bar_attempted_set(record)]
+    operation_candidates = [
+        record
+        for record in records
+        if record.source_universe == "tech_operation_candidates" or record.universe_type == "operation_candidate"
+    ]
     session_counts: dict[str, int] = {}
     for record in records:
         session = record.minute_bar_market_session or "missing"
@@ -2723,6 +2730,9 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
     lines = [
         f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
         f"- minute_bars_available count: {sum(1 for record in records if record.minute_bars_available)}",
+        f"- operation_candidate_symbols_count: {len(operation_candidates)}",
+        f"- operation_candidate_minute_available_count: {sum(1 for record in operation_candidates if record.minute_bars_available)}",
+        f"- operation_candidate_minute_missing_count: {sum(1 for record in operation_candidates if not record.minute_bars_available)}",
         f"- unavailable count: {statuses.get('unavailable', 0)}",
         f"- not_supported count: {statuses.get('not_supported', 0)}",
         f"- provider_error count: {statuses.get('provider_error', 0)}",

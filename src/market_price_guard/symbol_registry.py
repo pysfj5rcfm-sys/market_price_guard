@@ -277,6 +277,7 @@ def _instrument_from_entry(entry: dict[str, Any], spec: UniverseSpec, quote_purp
         unsupported_reason=str(entry.get("unsupported_reason") or ""),
         affect_core_strict=affect_core_strict,
         operation_candidate=operation_candidate,
+        source_universe=spec.name,
     )
 
 
@@ -293,6 +294,7 @@ def _merge_instrument_metadata(instrument: Instrument, entry: dict[str, Any], pr
     data["notes"] = data.get("notes") or str(entry.get("notes") or "")
     data["registry_found"] = True
     data["unsupported_reason"] = data.get("unsupported_reason") or ""
+    data["source_universe"] = data.get("source_universe") or _default_source_universe_for_project(project_key, data.get("universe_type") or "")
     return Instrument(**data)
 
 
@@ -300,6 +302,18 @@ def _default_universe_type_for_project(project_key: str) -> str:
     if project_key == "controller":
         return CONTROLLER_SUMMARY
     return CORE_HOLDINGS
+
+
+def _default_source_universe_for_project(project_key: str, universe_type: str) -> str:
+    if universe_type == OPERATION_CANDIDATE:
+        return f"{project_key}_operation_candidates"
+    if universe_type == CANDIDATE_WATCHLIST:
+        return f"{project_key}_watchlist"
+    if universe_type == SCAN_UNIVERSE:
+        return f"{project_key}_scan"
+    if universe_type == CONTROLLER_SUMMARY:
+        return "controller_core"
+    return f"{project_key}_core"
 
 
 def _provider_priority(entry: dict[str, Any], spec: UniverseSpec, quote_purpose: str) -> list[str]:

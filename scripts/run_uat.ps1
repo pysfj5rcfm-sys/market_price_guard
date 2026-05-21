@@ -46,6 +46,12 @@ $Items = @(
         UniverseType = 'operation_candidate'
     },
     @{
+        Name = 'tech_intraday_metrics'
+        Script = 'run_tech_intraday_metrics.ps1'
+        OutputDir = 'outputs_tech_intraday_latest'
+        PriceBlock = 'reference_vwap_report.md'
+    },
+    @{
         Name = 'energy_fast_strict'
         Script = 'run_energy_fast_strict.ps1'
         OutputDir = 'outputs_energy_latest'

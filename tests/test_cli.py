@@ -265,7 +265,7 @@ def test_profile_tech_only_contains_tech_symbols(tmp_path):
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
-    assert set(df["symbol"]) == {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH", "GOLD_CNY"}
+    assert set(df["symbol"]) == {"159632.SZ", "513300.SH", "159819.SZ", "159516.SZ", "515880.SH", "510300.SH", "GOLD_CNY"}
 
 
 def test_profile_energy_only_contains_energy_symbols(tmp_path):
@@ -281,7 +281,7 @@ def test_profile_all_keeps_full_watchlist(tmp_path):
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
-    assert len(df) == 13
+    assert len(df) == 14
 
 
 def test_runtime_diagnostics_contains_core_fields(tmp_path):

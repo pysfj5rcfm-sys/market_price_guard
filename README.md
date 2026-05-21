@@ -418,6 +418,20 @@ Output: `outputs_tech_operation_candidates_latest/`.
 
 This layer is reference-only. It is not core holdings, is not operation-grade, does not affect `run_tech_fast_strict.ps1`, and does not affect `outputs_tech_latest`. The initial universe is intentionally empty; add symbols to `config/universes/tech_operation_candidates.yaml` only after manual selection. Candidate records keep `required_for_operation=false`, `usable_for_operation=false`, and `affect_core_strict=false`.
 
+## Reference Intraday Metrics
+
+v0.7.2b adds `run_tech_intraday_metrics.ps1` for reference VWAP and basic intraday position metrics based on the latest minute probe artifacts.
+
+```powershell
+.\scripts\run_tech_intraday_metrics.ps1
+```
+
+Output: `outputs_tech_intraday_latest/`.
+
+The script reads `outputs_tech_minute_probe_latest/minute_bars_snapshot.csv`, tech core spot output, and tech operation-candidate spot output. It writes `intraday_metrics_snapshot.csv`, `reference_vwap_report.md`, `0_upload_bundle.md`, `debug_bundle.md`, and completeness diagnostics.
+
+These metrics are reference-only. They do not change `strict`, `quote_trust_tier`, `usable_for_operation`, or operation/reference semantics. `reference_vwap` is not operation-grade and does not replace QDII premium / IOPV checks.
+
 ## Eastmoney Direct Provider
 
 v0.7.0 新增 `eastmoney_direct`，用于 A股 ETF / A股股票的快速指定标的报价获取。它当前只作为 `reference` / `operation-candidate`：`quote_trust_tier=reference`、`usable_for_operation=false`、`confirmation_required=true`。

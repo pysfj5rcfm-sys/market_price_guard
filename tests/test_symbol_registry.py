@@ -33,7 +33,6 @@ def test_universe_files_load(name):
     assert spec.name == name
     if name == "tech_operation_candidates":
         assert spec.universe_type == "operation_candidate"
-        assert spec.symbols == []
     else:
         assert spec.symbols
 
@@ -71,7 +70,7 @@ def test_scan_universe_symbols_are_reference_and_not_required_for_operation():
 
 
 @pytest.mark.unit
-def test_operation_candidate_universe_empty_and_non_strict():
+def test_operation_candidate_universe_is_non_strict():
     watchlist, metadata = build_watchlist_from_registry(
         REGISTRY_PATH,
         UNIVERSES_DIR,
@@ -81,8 +80,11 @@ def test_operation_candidate_universe_empty_and_non_strict():
     )
 
     assert metadata["universe_type"] == "operation_candidate"
-    assert metadata["operation_candidate_count"] == 0
-    assert watchlist.projects == {}
+    instruments = watchlist.projects.get("tech").instruments if "tech" in watchlist.projects else []
+    assert metadata["operation_candidate_count"] == len(instruments)
+    assert all(item.required_for_operation is False for item in instruments)
+    assert all(item.affect_core_strict is False for item in instruments)
+    assert all(item.operation_candidate is True for item in instruments)
 
 
 @pytest.mark.unit
@@ -184,8 +186,8 @@ def test_unsupported_symbols_report_generated_for_unknown_symbol(tmp_path):
 
 
 @pytest.mark.contract
-def test_operation_candidates_empty_universe_outputs(tmp_path):
-    output_dir = tmp_path / "operation_candidates_empty"
+def test_operation_candidates_universe_outputs(tmp_path):
+    output_dir = tmp_path / "operation_candidates"
 
     result = run_pipeline(
         output_dir=output_dir,
@@ -196,16 +198,14 @@ def test_operation_candidates_empty_universe_outputs(tmp_path):
     )
 
     assert result.exit_code == 0
-    assert result.records_count == 0
     assert (output_dir / "operation_candidate_report.md").exists()
     assert not (output_dir / "tech_price_block.md").exists()
     upload = (output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
     debug = (output_dir / "debug_bundle.md").read_text(encoding="utf-8")
     report = (output_dir / "operation_candidate_report.md").read_text(encoding="utf-8")
     assert "Operation Candidate Summary" in upload
-    assert "candidate_data_status: empty_universe" in upload
     assert "not usable for concrete operation recommendations" in upload
-    assert "operation_candidate_count: 0" in debug
+    assert "operation_candidate_count:" in debug
     assert "not core holdings" in report
 
 

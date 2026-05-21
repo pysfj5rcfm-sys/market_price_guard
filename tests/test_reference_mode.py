@@ -13,6 +13,7 @@ from market_price_guard.report import get_blocking_records
 
 
 ETF_SYMBOLS = ["159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"]
+TECH_CORE_SYMBOLS = [*ETF_SYMBOLS, "159516.SZ"]
 
 
 def test_quote_purpose_cli_defaults_to_operation_and_accepts_reference():
@@ -58,7 +59,7 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
 
     def akshare_fetch(self, symbols):
         calls["akshare"] += 1
-        raise AssertionError(f"AKShare should be skipped when Eastmoney reference succeeds: {symbols}")
+        return {symbol: _raw(symbol, source="akshare", price=2.0 + index / 100) for index, symbol in enumerate(symbols) if symbol in TECH_CORE_SYMBOLS}
 
     monkeypatch.setattr(EastmoneyDirectProvider, "fetch", eastmoney_fetch)
     monkeypatch.setattr(YFinanceProvider, "fetch", yfinance_fetch)
@@ -81,7 +82,7 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
     assert result.exit_code == EXIT_OK
     assert calls["eastmoney"] == len(ETF_SYMBOLS)
     assert calls["yfinance"] == len(ETF_SYMBOLS)
-    assert calls["akshare"] == 0
+    assert calls["akshare"] == 1
     assert set(etf_rows["selected_provider"]) == {"eastmoney_direct"}
     assert set(etf_rows["quote_purpose"]) == {"reference"}
     assert set(etf_rows["quote_trust_tier"]) == {"reference"}
@@ -110,7 +111,7 @@ def test_operation_tech_path_keeps_akshare_first(monkeypatch, tmp_path):
 
     def akshare_fetch(self, symbols):
         calls["akshare"] += 1
-        return {symbol: _raw(symbol, source="akshare", price=2.0 + index / 100) for index, symbol in enumerate(symbols) if symbol in ETF_SYMBOLS}
+        return {symbol: _raw(symbol, source="akshare", price=2.0 + index / 100) for index, symbol in enumerate(symbols) if symbol in TECH_CORE_SYMBOLS}
 
     monkeypatch.setattr(YFinanceProvider, "fetch", yfinance_fetch)
     monkeypatch.setattr(AkshareProvider, "fetch", akshare_fetch)

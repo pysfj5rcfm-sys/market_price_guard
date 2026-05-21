@@ -48,6 +48,13 @@ prices:
     quote_time: "2026-05-20T12:45:00+08:00"
     fetch_time: "2026-05-20T12:50:00+08:00"
     market_status: "closed"
+  - symbol: "159516.SZ"
+    price: 0.756
+    currency: "CNY"
+    source: "mock"
+    quote_time: "2026-05-20T12:45:00+08:00"
+    fetch_time: "2026-05-20T12:50:00+08:00"
+    market_status: "closed"
   - symbol: "515880.SH"
     price: 1.084
     currency: "CNY"

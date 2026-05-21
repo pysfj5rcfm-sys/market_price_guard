@@ -6,8 +6,8 @@ from pathlib import Path
 import pandas as pd
 
 import market_price_guard.minute_bars as minute_bars
-from market_price_guard.main import parse_args, run_pipeline
-from market_price_guard.models import PriceRecord
+from market_price_guard.main import _merge_watchlists_core_first, parse_args, run_pipeline
+from market_price_guard.models import Instrument, PriceRecord, WatchProject, Watchlist
 from market_price_guard.minute_bars import apply_minute_bars_probe
 from market_price_guard.report import (
     build_upload_bundle,
@@ -90,6 +90,104 @@ def test_minute_probe_outputs_reports_and_csv_columns(tmp_path):
     assert "Minute Bars Probe Detail" in (output_dir / "debug_bundle.md").read_text(encoding="utf-8")
     assert "Minute Bars Completeness" in (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
     assert "Minute Bars Capability" in (output_dir / "provider_capability_report.md").read_text(encoding="utf-8")
+
+
+def test_tech_minute_probe_includes_operation_candidates_from_registry(tmp_path):
+    mock_path = tmp_path / "mock_prices.yaml"
+    symbols = [
+        "159632.SZ",
+        "513300.SH",
+        "159819.SZ",
+        "159516.SZ",
+        "515880.SH",
+        "510300.SH",
+        "GOLD_CNY",
+        "159995.SZ",
+        "588200.SH",
+        "588170.SH",
+        "159558.SZ",
+    ]
+    mock_path.write_text(
+        "prices:\n"
+        + "\n".join(
+            f'  - symbol: "{symbol}"\n'
+            f"    price: {1 + index / 100:.3f}\n"
+            '    currency: "CNY"\n'
+            '    source: "mock"\n'
+            '    quote_time: "2026-05-20T12:45:00+08:00"\n'
+            '    fetch_time: "2026-05-20T12:50:00+08:00"\n'
+            '    market_status: "closed"'
+            for index, symbol in enumerate(symbols)
+        ),
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "minute_probe"
+    result = run_pipeline(
+        output_dir=output_dir,
+        provider_mode="mock",
+        profile="tech",
+        quote_purpose="reference",
+        mock_prices_path=mock_path,
+        include_minute_bars=True,
+    )
+    prices = pd.read_csv(output_dir / "prices_snapshot.csv", encoding="utf-8-sig")
+    bars = pd.read_csv(output_dir / "minute_bars_snapshot.csv", encoding="utf-8-sig")
+    candidates = prices[prices["source_universe"] == "tech_operation_candidates"]
+
+    assert result.exit_code == 0
+    assert set(candidates["symbol"]) == {"159995.SZ", "588200.SH", "588170.SH", "159558.SZ"}
+    assert set(candidates["required_for_operation"].astype(str)) == {"False"}
+    assert set(candidates["usable_for_operation"].astype(str)) == {"False"}
+    assert set(candidates["minute_bars_available"].astype(str)) == {"True"}
+    assert set(bars[bars["symbol"].isin(candidates["symbol"])]["source_universe"]) == {"tech_operation_candidates"}
+
+
+def test_minute_probe_merge_deduplicates_with_core_priority():
+    core = Watchlist(
+        projects={
+            "tech": WatchProject(
+                display_name="tech",
+                allow_full_detail=True,
+                instruments=[
+                    Instrument(
+                        symbol="159819.SZ",
+                        name="Core ETF",
+                        market="CN",
+                        universe_type="core_holdings",
+                        required_for_operation=True,
+                        source_universe="tech_core",
+                    )
+                ],
+            )
+        }
+    )
+    candidates = Watchlist(
+        projects={
+            "tech": WatchProject(
+                display_name="tech",
+                allow_full_detail=True,
+                instruments=[
+                    Instrument(
+                        symbol="159819.SZ",
+                        name="Candidate Duplicate",
+                        market="CN",
+                        universe_type="operation_candidate",
+                        required_for_operation=False,
+                        operation_candidate=True,
+                        source_universe="tech_operation_candidates",
+                    )
+                ],
+            )
+        }
+    )
+
+    merged = _merge_watchlists_core_first(core, candidates)
+    instruments = merged.projects["tech"].instruments
+
+    assert len(instruments) == 1
+    assert instruments[0].source_universe == "tech_core"
+    assert instruments[0].required_for_operation is True
 
 
 def test_akshare_minute_probe_maps_etf_minute_dataframe(monkeypatch):

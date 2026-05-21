@@ -272,6 +272,25 @@ Additional v0.7.2a.1 checks:
 - Scan records remain `required_for_operation=false` and `usable_for_operation=false`.
 - `run_tech_minute_probe.ps1` attempts AKShare ETF minute bars through `fund_etf_hist_min_em`.
 - If minute bars are available, `minute_bars_snapshot.csv` is generated and listed in `index.md`.
+
+## Reference Intraday Metrics UAT
+
+Run:
+
+```powershell
+.\scripts\run_tech_intraday_metrics.ps1
+```
+
+Check:
+
+- `outputs_tech_intraday_latest/0_upload_bundle.md` exists.
+- `outputs_tech_intraday_latest/intraday_metrics_snapshot.csv` exists.
+- `outputs_tech_intraday_latest/reference_vwap_report.md` exists.
+- Missing `minute_bars_snapshot.csv` is reported as not calculable rather than a script failure.
+- `GOLD_CNY` is marked not supported for intraday metrics.
+- Operation candidates remain `usable_for_operation=false`.
+- Reference VWAP does not change strict or operation readiness.
+- No execution instructions are generated.
 - Minute-bar availability does not change strict or operation readiness.
 - v0.7.2a.2: if AKShare minute probe fails, Eastmoney Direct minute probe is attempted.
 - Debug output includes `eastmoney_secid`, `provider_attempted`, and `provider_success`.

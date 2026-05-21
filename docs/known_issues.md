@@ -18,9 +18,13 @@ Recommended future split:
 
 Eastmoney Direct remains unstable in the current environment. It is still `reference` / `operation-candidate`, not operation-grade, and it must not pass operation strict by itself.
 
-## Minute Bars And VWAP
+## Minute Bars And Reference VWAP
 
-`minute_bars`, `intraday_vwap`, recent 5m/15m volume windows, and VWAP-derived intraday position fields are not developed yet. Intraday position and chase-risk diagnostics remain insufficient until a minute-bar module exists.
+Minute bars probe exists, and v0.7.2b adds reference VWAP plus basic intraday position metrics from minute probe artifacts.
+
+The `minute_bars` field remains a probe-derived diagnostic input rather than an operation-grade requirement.
+
+`operation_vwap`, `intraday_vwap`, recent 5m/15m volume windows, and advice-level intraday checks are still not developed. Reference intraday metrics remain diagnostic/reference-only and do not change strict, freshness, quote trust tier, or usable_for_operation.
 
 ## QDII Premium
 
@@ -86,3 +90,9 @@ YFinance fallback success does not change strict, operation readiness, quote tru
 `tech_operation_candidates` is a reference-only pre-trade verification layer. It is not core holdings and does not make a symbol operation-grade.
 
 A symbol should affect the tech fast strict path only after it is explicitly promoted to `core_holdings`. Operation-candidate provider failures or missing data do not block `run_tech_fast_strict.ps1` or `outputs_tech_latest`.
+
+## v0.7.2b Reference Intraday Metrics Limits
+
+Reference VWAP uses minute-bar close and volume when native amount/volume confidence is not explicit. It is not operation-grade and does not replace QDII premium / IOPV checks.
+
+Spot quotes are used only for alignment diagnostics. Distance to reference VWAP uses the latest minute-bar close, not stale spot last price.
