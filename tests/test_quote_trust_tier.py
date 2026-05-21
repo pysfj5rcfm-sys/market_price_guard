@@ -14,7 +14,7 @@ from market_price_guard.report import build_completeness_report, build_provider_
 def test_prices_snapshot_keeps_old_columns_and_adds_quote_trust_columns(tmp_path):
     output_dir = tmp_path / "tech"
 
-    run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True)
+    run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
     df = pd.read_csv(output_dir / "prices_snapshot.csv", encoding="utf-8-sig")
 
     old_columns = [
@@ -89,7 +89,7 @@ def test_yfinance_etf_is_reference_only_if_ever_called():
 def test_reports_include_quote_trust_sections(tmp_path):
     output_dir = tmp_path / "tech"
 
-    run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True)
+    run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
 
     index = (output_dir / "index.md").read_text(encoding="utf-8")
     completeness = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
@@ -108,7 +108,7 @@ def test_reports_include_quote_trust_sections(tmp_path):
 def test_tech_flow_and_scoped_outputs_remain_backward_compatible(tmp_path):
     output_dir = tmp_path / "tech"
 
-    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True)
+    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
 
     assert result.exit_code == EXIT_OK
     assert (output_dir / "tech_price_block.md").exists()
@@ -128,6 +128,13 @@ def _normalize(raw_prices: dict[str, RawPrice]):
     watchlist = load_watchlist(Path("config/watchlist.yaml"))
     rules = load_yaml(Path("config/stale_rules.yaml"))
     return normalize_records(watchlist, raw_prices, rules, now=datetime(2026, 5, 18, 16, 10, tzinfo=timezone.utc))
+
+
+def _fresh_mock_prices(tmp_path):
+    path = tmp_path / "fresh_mock_prices.yaml"
+    content = Path("config/mock_prices.yaml").read_text(encoding="utf-8")
+    path.write_text(content.replace("2026-05-20T12:", "2026-05-21T12:"), encoding="utf-8")
+    return path
 
 
 def _raw(

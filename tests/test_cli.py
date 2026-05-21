@@ -261,7 +261,7 @@ def test_provider_health_report_does_not_change_strict_exit_code(tmp_path):
 
 
 def test_profile_tech_only_contains_tech_symbols(tmp_path):
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True)
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
@@ -269,7 +269,7 @@ def test_profile_tech_only_contains_tech_symbols(tmp_path):
 
 
 def test_profile_energy_only_contains_energy_symbols(tmp_path):
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy", strict=True)
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
@@ -344,13 +344,13 @@ def test_profile_tech_ignores_energy_strict_failures(monkeypatch, tmp_path):
 
     monkeypatch.setattr(AkshareProvider, "fetch", fail_fetch)
 
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True)
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
 
     assert result.exit_code == EXIT_OK
 
 
 def test_profile_energy_ignores_tech_strict_failures(tmp_path):
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy", strict=True)
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
@@ -374,6 +374,13 @@ markets: {{}}
         encoding="utf-8",
     )
     return stale_rules
+
+
+def _fresh_mock_prices(tmp_path):
+    path = tmp_path / "fresh_mock_prices.yaml"
+    content = (PROJECT_ROOT / "config" / "mock_prices.yaml").read_text(encoding="utf-8")
+    path.write_text(content.replace("2026-05-20T12:", "2026-05-21T12:"), encoding="utf-8")
+    return path
 
 
 def _manual_gold_yaml(price: str = "1040.0", quote_time_line: str = '    quote_time: "2026-05-18T09:30:00+08:00"'):

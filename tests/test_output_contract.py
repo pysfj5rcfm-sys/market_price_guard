@@ -172,8 +172,24 @@ def test_run_uat_script_contract():
     ]:
         assert script_name in script
     assert "strict_blocked_but_reported" in script
+    assert "-Mode quick" not in script
+    assert "$Mode = 'quick'" in script
+    assert "skipped_by_profile" in script
+    assert "total_defined" in script
+    assert "run_count" in script
+    assert "tech_minute_probe" in script
     assert "price_reconciliation_report.md" in script
     assert "outputs_uat_summary.md" in script
+
+
+def test_uat_profiles_doc_contract():
+    doc = (PROJECT_ROOT / "docs" / "uat_profiles.md").read_text(encoding="utf-8")
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+
+    for phrase in ["quick", "intraday", "full", "skipped_by_profile", "shared provider cache"]:
+        assert phrase in doc
+    assert "docs/uat_profiles.md" in readme
+    assert ".\\scripts\\run_uat.ps1 -Mode full" in readme
 
 
 def _section(report: str, start: str, end: str) -> str:

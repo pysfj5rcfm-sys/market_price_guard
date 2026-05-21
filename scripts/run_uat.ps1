@@ -1,9 +1,57 @@
+param(
+    [string]$Mode = 'quick'
+)
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Continue'
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $SummaryPath = Join-Path $ProjectRoot 'outputs_uat_summary.md'
+
+$AllowedModes = @('quick', 'intraday', 'full')
+$Mode = $Mode.ToLowerInvariant()
+if ($Mode -notin $AllowedModes) {
+    Write-Host ('Invalid UAT mode: ' + $Mode)
+    Write-Host 'Valid modes: quick, intraday, full'
+    exit 1
+}
+
+$ModeItems = @{
+    quick = @(
+        'tech_fast_strict',
+        'tech_operation_candidates',
+        'tech_intraday_metrics',
+        'mock_strict'
+    )
+    intraday = @(
+        'tech_fast_strict',
+        'tech_operation_candidates',
+        'tech_minute_probe',
+        'tech_intraday_metrics',
+        'mock_strict'
+    )
+    full = @(
+        'tech_fast_strict',
+        'tech_fast_reference',
+        'tech_reconcile',
+        'tech_watchlist',
+        'tech_scan_ai',
+        'tech_operation_candidates',
+        'tech_minute_probe',
+        'tech_intraday_metrics',
+        'energy_fast_strict',
+        'all_fast_strict',
+        'diagnostic',
+        'mock_strict'
+    )
+}
+
+$ModeExplanation = @{
+    quick = 'quick mode skips heavy live provider diagnostics. Use -Mode full for complete regression.'
+    intraday = 'intraday mode runs minute probe and reference intraday metrics without heavy reconcile/scan/diagnostic live sweeps.'
+    full = 'full mode runs the complete live provider regression and can be slow.'
+}
 
 $Items = @(
     @{
@@ -44,6 +92,12 @@ $Items = @(
         OutputDir = 'outputs_tech_operation_candidates_latest'
         PriceBlock = 'operation_candidate_report.md'
         UniverseType = 'operation_candidate'
+    },
+    @{
+        Name = 'tech_minute_probe'
+        Script = 'run_tech_minute_probe.ps1'
+        OutputDir = 'outputs_tech_minute_probe_latest'
+        PriceBlock = 'provider_capability_report.md'
     },
     @{
         Name = 'tech_intraday_metrics'
@@ -97,8 +151,68 @@ $AdviceTerms = @(
 Push-Location $ProjectRoot
 foreach ($Item in $Items) {
     $ScriptPath = Join-Path $ScriptDir $Item.Script
+    if ($Item.Name -notin $ModeItems[$Mode]) {
+        $Results += [PSCustomObject]@{
+            Name = $Item.Name
+            Script = $Item.Script
+            ExitCode = ''
+            Status = 'skipped_by_profile'
+            OutputDir = $Item.OutputDir
+            IndexExists = $false
+            UploadBundleExists = $false
+            DebugBundleExists = $false
+            CompletenessExists = $false
+            HealthExists = $false
+            RuntimeExists = $false
+            ReconciliationExists = $false
+            UnsupportedSymbolsExists = $false
+            UnsupportedCount = 0
+            UniverseType = ''
+            PriceBlockExists = $false
+            QuotePurpose = ''
+            MissingFiles = @()
+            AdviceHits = @()
+            ElapsedSeconds = ''
+            Mode = $Mode
+            SkipReason = ('skipped in ' + $Mode + ' mode')
+        }
+        continue
+    }
+
+    if (-not (Test-Path $ScriptPath)) {
+        $Results += [PSCustomObject]@{
+            Name = $Item.Name
+            Script = $Item.Script
+            ExitCode = 1
+            Status = 'failed'
+            OutputDir = $Item.OutputDir
+            IndexExists = $false
+            UploadBundleExists = $false
+            DebugBundleExists = $false
+            CompletenessExists = $false
+            HealthExists = $false
+            RuntimeExists = $false
+            ReconciliationExists = $false
+            UnsupportedSymbolsExists = $false
+            UnsupportedCount = 0
+            UniverseType = ''
+            PriceBlockExists = $false
+            QuotePurpose = ''
+            MissingFiles = @('script_missing:' + $Item.Script)
+            AdviceHits = @()
+            ElapsedSeconds = 0
+            Mode = $Mode
+            SkipReason = ''
+        }
+        $AnyFailed = $true
+        continue
+    }
+
+    $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     & $ScriptPath
     $ExitCode = $LASTEXITCODE
+    $Stopwatch.Stop()
+    $ElapsedSeconds = [Math]::Round($Stopwatch.Elapsed.TotalSeconds, 3)
     $OutputPath = Join-Path $ProjectRoot $Item.OutputDir
     $RequiredFiles = @(
         '0_upload_bundle.md',
@@ -225,25 +339,48 @@ foreach ($Item in $Items) {
         QuotePurpose = $QuotePurpose
         MissingFiles = $MissingFiles
         AdviceHits = $AdviceHits
+        ElapsedSeconds = $ElapsedSeconds
+        Mode = $Mode
+        SkipReason = ''
     }
 }
 Pop-Location
 
-$Passed = ($Results | Where-Object { $_.Status -eq 'passed' }).Count
-$StrictBlocked = ($Results | Where-Object { $_.Status -eq 'strict_blocked_but_reported' }).Count
-$Failed = ($Results | Where-Object { $_.Status -eq 'failed' }).Count
+$Passed = @($Results | Where-Object { $_.Status -eq 'passed' }).Count
+$StrictBlocked = @($Results | Where-Object { $_.Status -eq 'strict_blocked_but_reported' }).Count
+$Failed = @($Results | Where-Object { $_.Status -eq 'failed' }).Count
+$SkippedByProfile = @($Results | Where-Object { $_.Status -eq 'skipped_by_profile' }).Count
+$RunCount = @($Results | Where-Object { $_.Status -ne 'skipped_by_profile' }).Count
 $AnyFailed = $Failed -gt 0
 
 $Lines = @()
 $Lines += '# market_price_guard UAT Summary'
 $Lines += ''
 $Lines += ('- generated_at: ' + $GeneratedAt)
-$Lines += ('- total: ' + $Results.Count)
+$Lines += ('- mode: ' + $Mode)
+$Lines += ('- profile_explanation: ' + $ModeExplanation[$Mode])
+$Lines += ('- total_defined: ' + $Results.Count)
+$Lines += ('- run_count: ' + $RunCount)
 $Lines += ('- passed: ' + $Passed)
 $Lines += ('- strict_blocked_but_reported: ' + $StrictBlocked)
 $Lines += ('- failed: ' + $Failed)
+$Lines += ('- skipped_by_profile: ' + $SkippedByProfile)
+$Lines += ('- total: ' + $Results.Count)
 $Lines += ''
 $Lines += 'strict=2 means the price guard blocked operation; it is not a UAT failure when reports are generated and blocking is explained.'
+$Lines += 'skipped_by_profile means the item is intentionally skipped by the selected UAT mode and is not a failure.'
+$Lines += ''
+$Lines += '## Slowest Items'
+$Lines += ''
+$Lines += '| item | elapsed_seconds | status |'
+$Lines += '|---|---:|---|'
+$Slowest = $Results | Where-Object { $_.Status -ne 'skipped_by_profile' } | Sort-Object {[double]$_.ElapsedSeconds} -Descending | Select-Object -First 5
+foreach ($Slow in $Slowest) {
+    $Lines += ('| ' + $Slow.Name + ' | ' + $Slow.ElapsedSeconds + ' | ' + $Slow.Status + ' |')
+}
+if (($Slowest | Measure-Object).Count -eq 0) {
+    $Lines += '| none | 0 | skipped |'
+}
 $Lines += ''
 $Lines += '## Items'
 
@@ -253,6 +390,11 @@ foreach ($Result in $Results) {
     $Lines += ('- command/script: ' + $Result.Script)
     $Lines += ('- exit_code: ' + $Result.ExitCode)
     $Lines += ('- status: ' + $Result.Status)
+    $Lines += ('- mode: ' + $Result.Mode)
+    $Lines += ('- elapsed_seconds: ' + $Result.ElapsedSeconds)
+    if ($Result.Status -eq 'skipped_by_profile') {
+        $Lines += ('- skip_reason: ' + $Result.SkipReason)
+    }
     $Lines += ('- output_dir: ' + $Result.OutputDir)
     $Lines += ('- index.md exists: ' + $Result.IndexExists)
     $Lines += ('- 0_upload_bundle.md exists: ' + $Result.UploadBundleExists)

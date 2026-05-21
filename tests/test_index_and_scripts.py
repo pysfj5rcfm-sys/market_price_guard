@@ -9,7 +9,7 @@ from market_price_guard.main import EXIT_OK, EXIT_STRICT_BLOCKED, PROJECT_ROOT, 
 def test_profile_generates_index_with_upload_bundle_first(tmp_path, profile):
     output_dir = tmp_path / profile
 
-    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile=profile, strict=True)
+    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile=profile, strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
     index = (output_dir / "index.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
@@ -22,7 +22,7 @@ def test_profile_generates_index_with_upload_bundle_first(tmp_path, profile):
 def test_index_contains_basic_fields_and_report_links(tmp_path):
     output_dir = tmp_path / "out"
 
-    result = run_pipeline(output_dir=output_dir, provider_mode="mock", provider_policy="fast", profile="energy", strict=True)
+    result = run_pipeline(output_dir=output_dir, provider_mode="mock", provider_policy="fast", profile="energy", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
     index = (output_dir / "index.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
@@ -97,3 +97,10 @@ def test_scripts_exist_and_use_expected_arguments():
     assert "--strict" not in reference_content
     assert "--strict" not in (scripts_dir / "run_tech_reconcile.ps1").read_text(encoding="utf-8")
     assert "--quote-purpose reference" not in (scripts_dir / "run_tech_fast_strict.ps1").read_text(encoding="utf-8")
+
+
+def _fresh_mock_prices(tmp_path):
+    path = tmp_path / "fresh_mock_prices.yaml"
+    content = (PROJECT_ROOT / "config" / "mock_prices.yaml").read_text(encoding="utf-8")
+    path.write_text(content.replace("2026-05-20T12:", "2026-05-21T12:"), encoding="utf-8")
+    return path

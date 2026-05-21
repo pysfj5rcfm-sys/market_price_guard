@@ -1,0 +1,52 @@
+# UAT Runtime Profiles
+
+`scripts/run_uat.ps1` supports three runtime profiles:
+
+| mode | purpose | typical use |
+|---|---|---|
+| quick | Fast default acceptance that skips heavy live provider diagnostics. | Small fixes and daily development checks. |
+| intraday | Minute probe and reference intraday metrics acceptance. | Minute bars / reference VWAP development. |
+| full | Complete live provider regression. | Important releases or pre-publish checks. |
+
+## Commands
+
+```powershell
+.\scripts\run_uat.ps1
+.\scripts\run_uat.ps1 -Mode quick
+.\scripts\run_uat.ps1 -Mode intraday
+.\scripts\run_uat.ps1 -Mode full
+```
+
+Default mode is `quick`.
+
+## Included Items
+
+`quick` runs:
+
+- `tech_fast_strict`
+- `tech_operation_candidates`
+- `tech_intraday_metrics`
+- `mock_strict`
+
+`intraday` runs:
+
+- `tech_fast_strict`
+- `tech_operation_candidates`
+- `tech_minute_probe`
+- `tech_intraday_metrics`
+- `mock_strict`
+
+`full` runs all defined UAT items, including diagnostic, reconcile, scan, energy, all/controller, minute probe, and reference intraday metrics.
+
+## Summary Semantics
+
+- `skipped_by_profile` means the selected mode intentionally skipped the item. It is not a failure.
+- `strict_blocked_but_reported` is not a failure when reports are generated and blocking is explained.
+- `failed=0` returns exit code `0`.
+- Invalid mode returns exit code `1`.
+
+## Notes
+
+Heavy live provider items such as diagnostic, reconcile, scan_ai, energy, and all/controller are no longer part of the default quick run.
+
+This profile split does not add shared provider cache, cross-script cache, provider cache, provider timeout hard kill, or provider behavior changes. A shared provider cache can be handled by a separate future version such as `v0.7.2c.1`.

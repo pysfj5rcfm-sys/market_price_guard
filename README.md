@@ -196,12 +196,22 @@ pytest
 pytest -m "not slow and not live"
 ```
 
-完整验收仍使用：
+快速验收默认使用 quick UAT：
 
 ```powershell
 pytest
 .\scripts\run_uat.ps1
 ```
+
+UAT runtime profiles:
+
+```powershell
+.\scripts\run_uat.ps1 -Mode quick
+.\scripts\run_uat.ps1 -Mode intraday
+.\scripts\run_uat.ps1 -Mode full
+```
+
+`quick` 是默认模式，跳过 diagnostic / reconcile / scan_ai / energy / all 等重型 live provider 项；`intraday` 用于 minute probe / reference VWAP 开发验收；`full` 用于完整回归。详见 `docs/uat_profiles.md`。
 
 ## 输出契约与 UAT
 
@@ -212,11 +222,18 @@ pytest
 UAT 检查清单：
 
 - `docs/uat_checklist.md`
+- `docs/uat_profiles.md`
+
+运行快速 UAT：
+
+```powershell
+.\scripts\run_uat.ps1
+```
 
 运行完整 UAT：
 
 ```powershell
-.\scripts\run_uat.ps1
+.\scripts\run_uat.ps1 -Mode full
 ```
 
 查看 UAT 汇总：
@@ -230,6 +247,7 @@ UAT 说明：
 - strict=0：数据完整度通过，可进一步分析。
 - strict=2：价格守门员阻断，不得用于具体操作建议。
 - strict=2 不是 UAT 失败，前提是报告正确生成并说明阻断原因。
+- skipped_by_profile 不是 UAT 失败，表示该 item 被当前 UAT mode 有意跳过。
 - exit code=1 是程序错误，需要排查。
 - UAT 主要验证输出契约、报告结构、阻断语义和项目接入稳定性。
 
