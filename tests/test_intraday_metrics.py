@@ -207,6 +207,12 @@ def test_tech_research_pipeline_script_contract():
         "outputs_tech_pipeline_latest",
         "pipeline_summary.md",
         "pipeline_manifest.json",
+        "ScanMode",
+        "MinuteMode",
+        "MinuteWorkers",
+        "$ScanMode = 'fast'",
+        "$MinuteMode = 'balanced'",
+        "$MinuteWorkers = 3",
     ]:
         assert expected in script
     assert "Set-Content config" not in script

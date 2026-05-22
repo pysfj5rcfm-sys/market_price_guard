@@ -249,6 +249,10 @@ def test_watchlist_and_scan_scripts_are_reference_only():
         assert "--provider-mode live" in content
         assert "--quote-purpose reference" in content
         assert "--strict" not in content
+    scan_script = (Path("scripts") / "run_tech_scan_ai.ps1").read_text(encoding="utf-8")
+    assert "-Mode" in scan_script
+    assert "--scan-mode" in scan_script
+    assert "$Mode = 'fast'" in scan_script
 
 
 @pytest.mark.contract

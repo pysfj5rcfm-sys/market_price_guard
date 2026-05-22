@@ -228,10 +228,21 @@ UAT runtime profiles:
 ```powershell
 .\scripts\run_tech_research_pipeline.ps1
 .\scripts\run_tech_research_pipeline.ps1 -UseRunCache
+.\scripts\run_tech_research_pipeline.ps1 -UseRunCache -ScanMode diagnostic -MinuteMode diagnostic
 .\scripts\run_tech_research_pipeline.ps1 -UseRunCache -SkipScan -SkipWatchlist
 ```
 
-该脚本按 scan_ai、watchlist、operation_candidates、tech_fast_strict、minute_probe、intraday_metrics 的顺序生成科技研究链路输出，并写入 `outputs_tech_pipeline_latest/pipeline_summary.md` 与 `pipeline_manifest.json`。它只做 orchestration，不修改 config，不自动晋级标的，不改变 provider / strict / usable_for_operation，也不输出交易建议。
+该脚本按 scan_ai、watchlist、operation_candidates、tech_fast_strict、minute_probe、intraday_metrics 的顺序生成科技研究链路输出，并写入 `outputs_tech_pipeline_latest/pipeline_summary.md` 与 `pipeline_manifest.json`。默认使用 `ScanMode=fast`、`MinuteMode=balanced`、`MinuteWorkers=3`。它只做 orchestration，不修改 config，不自动晋级标的，不改变 provider / strict / usable_for_operation，也不输出交易建议。
+
+Runtime modes:
+
+- `run_tech_scan_ai.ps1` 默认 `-Mode fast`；A股 scan 个股优先走 Eastmoney Direct spot reference path，并跳过慢速 AKShare stock exhaustive fallback。
+- `run_tech_scan_ai.ps1 -Mode diagnostic` 用于 provider coverage 排障，可能更慢。
+- `run_tech_minute_probe.ps1` 默认 `-Mode balanced`；AKShare first，AKShare 失败后跳过 Eastmoney minute fallback 并尝试 YFinance reference fallback。
+- `run_tech_minute_probe.ps1 -Mode diagnostic` 会包含 Eastmoney Direct minute fallback。
+- `MinuteWorkers` 当前会被解析和报告；本版保持串行，报告 `parallel_enabled=false`。
+
+详见 `docs/runtime_modes.md`。
 
 ## 输出契约与 UAT
 

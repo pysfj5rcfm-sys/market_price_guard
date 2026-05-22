@@ -46,6 +46,59 @@ def test_fast_policy_a_share_effective_chain_yfinance_first():
     assert any(attempt["provider"] == "akshare" and attempt["status"] == "skipped" for attempt in raw.provider_diagnostics["provider_attempts"])
 
 
+def test_scan_fast_stock_uses_eastmoney_and_skips_akshare_stock_fallback():
+    providers = {
+        "eastmoney_direct": StaticProvider(_raw("300308.SZ", "eastmoney_direct", 112.3)),
+        "akshare": StaticProvider(_raw("300308.SZ", "akshare", 111.0)),
+        "yfinance": StaticProvider(_raw("300308.SZ", "yfinance", 112.0)),
+    }
+    instrument = Instrument(
+        symbol="300308.SZ",
+        name="300308.SZ",
+        market="CN",
+        provider="eastmoney_direct",
+        provider_priority=["eastmoney_direct", "yfinance", "akshare", "mock"],
+        asset_type="stock",
+        universe_type="scan_universe",
+        required_for_operation=False,
+    )
+
+    raw = route_symbol(
+        instrument,
+        providers,
+        RouterConfig(provider_mode="live", provider_policy="fast", quote_purpose="reference", scan_mode="fast"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["eastmoney_direct", "yfinance", "mock"]
+    assert raw.provider_diagnostics["selected_provider"] == "eastmoney_direct"
+    assert providers["akshare"].called is False
+
+
+def test_scan_diagnostic_stock_keeps_full_fallback_chain():
+    instrument = Instrument(
+        symbol="300308.SZ",
+        name="300308.SZ",
+        market="CN",
+        provider="eastmoney_direct",
+        provider_priority=["eastmoney_direct", "yfinance", "akshare", "mock"],
+        asset_type="stock",
+        universe_type="scan_universe",
+        required_for_operation=False,
+    )
+
+    raw = route_symbol(
+        instrument,
+        {
+            "eastmoney_direct": StaticProvider(_raw("300308.SZ", "eastmoney_direct", 112.3)),
+            "akshare": StaticProvider(_raw("300308.SZ", "akshare", 111.0)),
+            "yfinance": StaticProvider(_raw("300308.SZ", "yfinance", 112.0)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="fast", quote_purpose="reference", scan_mode="diagnostic"),
+    )
+
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["eastmoney_direct", "yfinance", "akshare", "mock"]
+
+
 def test_fast_policy_hk_effective_chain_yfinance_first():
     raw = route_symbol(
         _instrument("00883.HK", provider_priority=["akshare", "yfinance", "mock"], market="HK"),

@@ -46,6 +46,46 @@ def test_eastmoney_provider_parses_valid_response():
     assert "assumed_currency_cny" in raw.quality_issues
 
 
+def test_eastmoney_provider_ulist_fallback_covers_scan_stock():
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append(url)
+        if "stock/get" in url:
+            raise ConnectionError("stock endpoint closed")
+        assert params["secids"] == "0.300308"
+        return {
+            "rc": 0,
+            "data": {
+                "diff": [
+                    {
+                        "f12": "300308",
+                        "f14": "中际旭创",
+                        "f2": 112.3,
+                        "f3": 1.2,
+                        "f4": 1.33,
+                        "f5": 123456,
+                        "f6": 123456789,
+                        "f15": 115.0,
+                        "f16": 110.0,
+                        "f17": 111.0,
+                        "f18": 110.97,
+                        "f124": 1779163200,
+                    }
+                ]
+            },
+        }
+
+    raw = EastmoneyDirectProvider(http_get=fake_get).fetch(["300308.SZ"])["300308.SZ"]
+
+    assert any("ulist.np/get" in url for url in calls)
+    assert raw.source == "eastmoney_direct"
+    assert raw.price == 112.3
+    assert raw.quote_trust_tier == "reference"
+    assert raw.usable_for_reference is True
+    assert raw.provider_diagnostics["function_name"] == "eastmoney_direct.ulist_np_get"
+
+
 def test_eastmoney_request_includes_secid_and_uses_headers():
     captured = {}
 

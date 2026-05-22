@@ -22,6 +22,9 @@ def test_a_share_symbols_map_to_yahoo_tickers():
     assert yahoo_ticker_for_symbol("601899.SH") == "601899.SS"
     assert yahoo_ticker_for_symbol("601985.SH") == "601985.SS"
     assert yahoo_ticker_for_symbol("003816.SZ") == "003816.SZ"
+    assert yahoo_ticker_for_symbol("300308.SZ") == "300308.SZ"
+    assert yahoo_ticker_for_symbol("300502.SZ") == "300502.SZ"
+    assert yahoo_ticker_for_symbol("688256.SH") == "688256.SS"
 
 
 def test_tech_etf_symbols_map_to_yahoo_tickers():

@@ -15,8 +15,11 @@ from market_price_guard.providers.base import PriceProvider
 SHANGHAI_TZ = timezone(timedelta(hours=8))
 BASE_URL = "https://push2.eastmoney.com/api/qt/stock/get"
 FALLBACK_URLS = ["https://push2.eastmoney.com/api/qt/stock/get", "http://push2.eastmoney.com/api/qt/stock/get"]
+ULIST_URL = "https://push2.eastmoney.com/api/qt/ulist.np/get"
 FUNCTION_NAME = "eastmoney_direct.stock_get"
+ULIST_FUNCTION_NAME = "eastmoney_direct.ulist_np_get"
 FIELDS = "f43,f57,f58,f60,f44,f45,f46,f47,f48,f86,f170,f169"
+ULIST_FIELDS = "f12,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f124"
 SUPPORTED_SYMBOLS = {
     "159632.SZ",
     "513300.SH",
@@ -26,6 +29,9 @@ SUPPORTED_SYMBOLS = {
     "601899.SH",
     "601985.SH",
     "003816.SZ",
+    "300308.SZ",
+    "300502.SZ",
+    "688256.SH",
 }
 SYMBOL_NAMES = {
     "159632.SZ": "纳指相关ETF",
@@ -36,6 +42,9 @@ SYMBOL_NAMES = {
     "601899.SH": "紫金矿业A",
     "601985.SH": "中国核电",
     "003816.SZ": "中国广核",
+    "300308.SZ": "中际旭创",
+    "300502.SZ": "新易盛",
+    "688256.SH": "寒武纪",
 }
 SOURCE_LIMIT_NOTE = (
     "Eastmoney Direct uses Eastmoney public web quote endpoint; not an official exchange real-time feed; "
@@ -109,6 +118,9 @@ class EastmoneyDirectProvider(PriceProvider):
                 break
         diagnostics["attempt_count"] = attempts_made
         if payload is None:
+            ulist = self._fetch_symbol_ulist(symbol, fetch_time, secid, diagnostics, last_exception)
+            if ulist is not None:
+                return ulist
             return _error_price(symbol, fetch_time, ["provider_error"], exception=last_exception, diagnostics=diagnostics)
 
         rc = payload.get("rc")
@@ -116,6 +128,9 @@ class EastmoneyDirectProvider(PriceProvider):
         if rc not in (0, "0", None):
             return _error_price(symbol, fetch_time, ["provider_error"], diagnostics={**diagnostics, "exception_type": "EastmoneyRcError", "exception_message": f"rc={rc}"})
         if not isinstance(data, dict) or not data:
+            ulist = self._fetch_symbol_ulist(symbol, fetch_time, secid, diagnostics, last_exception)
+            if ulist is not None:
+                return ulist
             return _error_price(symbol, fetch_time, ["provider_error"], diagnostics={**diagnostics, "exception_type": "EastmoneyEmptyData", "exception_message": "data empty"})
 
         issues: list[str] = []
@@ -191,6 +206,154 @@ class EastmoneyDirectProvider(PriceProvider):
             market="CN",
             price=price,
             currency=currency,
+            source="eastmoney_direct",
+            quote_time=quote_time,
+            fetch_time=fetch_time,
+            market_status=_market_status(quote_time or fetch_time),
+            quality_issues=list(dict.fromkeys(issues)),
+            provider_diagnostics=diagnostics,
+            quote_trust_tier="reference",
+            usable_for_reference=price is not None and quote_time is not None,
+            confirmation_required=True,
+            operation_blocking_reason="reference_tier_requires_operation_confirmation",
+            reference_note=SOURCE_LIMIT_NOTE,
+            last_price=base_fields["last_price"],
+            prev_close=base_fields["prev_close"],
+            open_price=base_fields["open_price"],
+            high_price=base_fields["high_price"],
+            low_price=base_fields["low_price"],
+            volume=base_fields["volume"],
+            amount=base_fields["amount"],
+            price_change=base_fields["price_change"],
+            price_change_pct=base_fields["price_change_pct"],
+            last_price_source="eastmoney_direct" if base_fields["last_price"] is not None else "",
+            prev_close_source="eastmoney_direct" if base_fields["prev_close"] is not None else "",
+            open_price_source="eastmoney_direct" if base_fields["open_price"] is not None else "",
+            high_price_source="eastmoney_direct" if base_fields["high_price"] is not None else "",
+            low_price_source="eastmoney_direct" if base_fields["low_price"] is not None else "",
+            volume_source="eastmoney_direct_raw_unit" if base_fields["volume"] is not None else "",
+            amount_source="eastmoney_direct_cny" if base_fields["amount"] is not None else "",
+            price_change_source="eastmoney_direct" if base_fields["price_change"] is not None else "",
+            price_change_pct_source="eastmoney_direct" if base_fields["price_change_pct"] is not None else "",
+        )
+
+    def _fetch_symbol_ulist(
+        self,
+        symbol: str,
+        fetch_time: datetime,
+        secid: str,
+        previous_diagnostics: dict[str, object],
+        previous_exception: Exception | None = None,
+    ) -> RawPrice | None:
+        params = {
+            "secids": secid,
+            "fields": ULIST_FIELDS,
+            "fltt": "2",
+            "invt": "2",
+            "ut": "fa5fd1943c7b386f172d6893dbfba10b",
+            "_": str(int(time.time() * 1000)),
+        }
+        diagnostics = {
+            **previous_diagnostics,
+            "function_name": ULIST_FUNCTION_NAME,
+            "endpoint": ULIST_URL,
+            "fallback_from": FUNCTION_NAME,
+            "fallback_exception_type": type(previous_exception).__name__ if previous_exception else "",
+            "fallback_exception_message": str(previous_exception) if previous_exception else "",
+            "request_status": "attempting",
+        }
+        try:
+            payload = _as_payload(self.http_get(ULIST_URL, params, self.timeout_seconds))
+        except TypeError:
+            try:
+                payload = _as_payload(self.http_get(ULIST_URL, params))
+            except Exception as exc:
+                diagnostics.update(
+                    {
+                        "request_status": "failed",
+                        "final_status": "failed",
+                        "exception_type": type(exc).__name__,
+                        "exception_message": str(exc),
+                    }
+                )
+                return None
+        except Exception as exc:
+            diagnostics.update(
+                {
+                    "request_status": "failed",
+                    "final_status": "failed",
+                    "exception_type": type(exc).__name__,
+                    "exception_message": str(exc),
+                }
+            )
+            return None
+
+        data = payload.get("data") if isinstance(payload, dict) else None
+        diff = data.get("diff") if isinstance(data, dict) else None
+        row = diff[0] if isinstance(diff, list) and diff else None
+        if not isinstance(row, dict):
+            diagnostics.update({"request_status": "success", "final_status": "empty", "exception_type": "EastmoneyEmptyData", "exception_message": "diff empty"})
+            return None
+
+        price = _positive_float(row.get("f2"))
+        quote_time = _parse_f86(row.get("f124"))
+        issues: list[str] = []
+        if price is None:
+            issues.append("invalid_price")
+        if quote_time is None:
+            issues.append("quote_time_missing")
+        issues.append("assumed_currency_cny")
+        name = str(row.get("f14") or SYMBOL_NAMES.get(symbol, symbol))
+        code = str(row.get("f12") or symbol.split(".")[0])
+        base_fields = {
+            "last_price": price,
+            "prev_close": _positive_float(row.get("f18")),
+            "open_price": _positive_float(row.get("f17")),
+            "high_price": _positive_float(row.get("f15")),
+            "low_price": _positive_float(row.get("f16")),
+            "volume": _positive_float(row.get("f5")),
+            "amount": _positive_float(row.get("f6")),
+            "price_change": _float_or_none(row.get("f4")),
+            "price_change_pct": _float_or_none(row.get("f3")),
+        }
+        diagnostics.update(
+            {
+                "request_status": "success",
+                "final_status": "success" if price is not None and quote_time is not None else "failed",
+                "status": "success" if price is not None and quote_time is not None else "fail",
+                "provider_status": "success" if price is not None and quote_time is not None else "failed",
+                "price": price if price is not None else "",
+                "currency": "CNY",
+                "code": code,
+                "quote_time": quote_time.isoformat() if quote_time else "",
+                "quote_time_raw": row.get("f124", ""),
+                "quote_time_utc": quote_time.astimezone(timezone.utc).isoformat() if quote_time else "",
+                "reference_note": SOURCE_LIMIT_NOTE,
+                "attempts": [
+                    {
+                        "provider": "eastmoney_direct",
+                        "function_name": ULIST_FUNCTION_NAME,
+                        "category": _category_for_symbol(symbol),
+                        "status": "success" if price is not None and quote_time is not None else "fail",
+                        "provider_status": "success" if price is not None and quote_time is not None else "failed",
+                        "matched_symbols": [symbol] if price is not None else [],
+                        "affected_symbols": [symbol],
+                        "secid": secid,
+                        "endpoint": ULIST_URL,
+                        "request_status": diagnostics.get("request_status", ""),
+                        "retry_count": 0,
+                        "final_status": diagnostics.get("final_status", ""),
+                        "fetch_time_utc": fetch_time.isoformat(),
+                    }
+                ],
+            }
+        )
+        return RawPrice(
+            symbol=symbol,
+            name=name,
+            market="CN",
+            price=price,
+            currency="CNY",
             source="eastmoney_direct",
             quote_time=quote_time,
             fetch_time=fetch_time,

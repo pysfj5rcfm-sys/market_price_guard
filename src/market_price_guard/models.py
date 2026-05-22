@@ -214,6 +214,13 @@ class PriceRecord(BaseModel):
     liquidity_score_basic: float | None = None
     reconciliation_score: float | None = None
     scan_score_notes: str = ""
+    scan_mode: str = ""
+    stock_fast_path_enabled: bool = False
+    stock_fast_provider: str = ""
+    provider_timeout: bool = False
+    fallback_skipped_fast_mode: bool = False
+    provider_attempted: str = ""
+    provider_success: bool = False
     minute_bars_available: bool = False
     minute_bar_provider: str = ""
     minute_bar_interval: str = ""
@@ -231,6 +238,10 @@ class PriceRecord(BaseModel):
     minute_bar_after_close_applies_to: str = ""
     minute_bar_upload_note: str = ""
     yfinance_ticker: str = ""
+    minute_mode: str = ""
+    minute_workers: int = 0
+    parallel_enabled: bool = False
+    per_symbol_elapsed_seconds: float | None = None
 
     def output_dict(self) -> dict[str, object]:
         data = self.model_dump()

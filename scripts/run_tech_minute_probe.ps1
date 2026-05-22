@@ -1,5 +1,20 @@
+param(
+    [string]$Mode = 'balanced',
+    [int]$MinuteWorkers = 3
+)
+
+# Usage: .\scripts\run_tech_minute_probe.ps1 -Mode balanced -MinuteWorkers 3
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Continue'
+
+if ($Mode -notin @('fast', 'balanced', 'diagnostic')) {
+    Write-Host 'Invalid Mode. Valid values: fast, balanced, diagnostic.'
+    exit 1
+}
+if ($MinuteWorkers -lt 1) {
+    Write-Host 'Invalid MinuteWorkers. Use an integer >= 1.'
+    exit 1
+}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
@@ -30,10 +45,12 @@ Write-Host 'profile: tech'
 Write-Host 'provider-policy: fast'
 Write-Host 'quote-purpose: reference'
 Write-Host 'minute-bars-probe: enabled'
+Write-Host ('minute-mode: ' + $Mode)
+Write-Host ('minute-workers: ' + $MinuteWorkers)
 Write-Host ('output-dir: ' + $OutputDir)
 
 Push-Location $ProjectRoot
-& $Python -m market_price_guard.main --profile tech --provider-mode live --provider-policy fast --quote-purpose reference --include-minute-bars --output-dir outputs_tech_minute_probe_latest
+& $Python -m market_price_guard.main --profile tech --provider-mode live --provider-policy fast --quote-purpose reference --include-minute-bars --minute-mode $Mode --minute-workers $MinuteWorkers --output-dir outputs_tech_minute_probe_latest
 $ExitCode = $LASTEXITCODE
 Pop-Location
 

@@ -6,11 +6,27 @@ param(
     [switch]$SkipOperationCandidates,
     [switch]$SkipTechFast,
     [switch]$SkipMinuteProbe,
-    [switch]$SkipIntradayMetrics
+    [switch]$SkipIntradayMetrics,
+    [string]$ScanMode = 'fast',
+    [string]$MinuteMode = 'balanced',
+    [int]$MinuteWorkers = 3
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Continue'
+
+if ($ScanMode -notin @('fast', 'diagnostic')) {
+    Write-Host 'Invalid ScanMode. Valid values: fast, diagnostic.'
+    exit 1
+}
+if ($MinuteMode -notin @('fast', 'balanced', 'diagnostic')) {
+    Write-Host 'Invalid MinuteMode. Valid values: fast, balanced, diagnostic.'
+    exit 1
+}
+if ($MinuteWorkers -lt 1) {
+    Write-Host 'Invalid MinuteWorkers. Use an integer >= 1.'
+    exit 1
+}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
@@ -58,11 +74,11 @@ if ($UseRunCache) {
 }
 
 $Steps = @(
-    @{ Name = 'tech_scan_ai'; Script = 'run_tech_scan_ai.ps1'; OutputDir = 'outputs_tech_scan_ai_latest'; Skip = $SkipScan.IsPresent },
+    @{ Name = 'tech_scan_ai'; Script = 'run_tech_scan_ai.ps1'; Args = [string[]]@('-Mode', $ScanMode); OutputDir = 'outputs_tech_scan_ai_latest'; Skip = $SkipScan.IsPresent },
     @{ Name = 'tech_watchlist'; Script = 'run_tech_watchlist.ps1'; OutputDir = 'outputs_tech_watchlist_latest'; Skip = $SkipWatchlist.IsPresent },
     @{ Name = 'tech_operation_candidates'; Script = 'run_tech_operation_candidates.ps1'; OutputDir = 'outputs_tech_operation_candidates_latest'; Skip = $SkipOperationCandidates.IsPresent },
     @{ Name = 'tech_fast_strict'; Script = 'run_tech_fast_strict.ps1'; OutputDir = 'outputs_tech_latest'; Skip = $SkipTechFast.IsPresent },
-    @{ Name = 'tech_minute_probe'; Script = 'run_tech_minute_probe.ps1'; OutputDir = 'outputs_tech_minute_probe_latest'; Skip = $SkipMinuteProbe.IsPresent },
+    @{ Name = 'tech_minute_probe'; Script = 'run_tech_minute_probe.ps1'; Args = [string[]]@('-Mode', $MinuteMode, '-MinuteWorkers', [string]$MinuteWorkers); OutputDir = 'outputs_tech_minute_probe_latest'; Skip = $SkipMinuteProbe.IsPresent },
     @{ Name = 'tech_intraday_metrics'; Script = 'run_tech_intraday_metrics.ps1'; OutputDir = 'outputs_tech_intraday_latest'; Skip = $SkipIntradayMetrics.IsPresent }
 )
 
@@ -71,13 +87,13 @@ $Stopped = $false
 
 Push-Location $ProjectRoot
 foreach ($Step in $Steps) {
-    $ScriptPath = Join-Path $ScriptDir $Step.Script
-    if ($Stopped -or $Step.Skip) {
+    $ScriptPath = Join-Path $ScriptDir $Step['Script']
+    if ($Stopped -or $Step['Skip']) {
         $SkipReason = if ($Stopped) { 'stopped after previous failed step' } else { 'skipped by parameter' }
         $Results += [PSCustomObject]@{
-            name = $Step.Name
-            command = $Step.Script
-            output_dir = $Step.OutputDir
+            name = $Step['Name']
+            command = $Step['Script']
+            output_dir = $Step['OutputDir']
             started_at = ''
             finished_at = ''
             elapsed_seconds = ''
@@ -96,13 +112,22 @@ foreach ($Step in $Steps) {
     if (-not (Test-Path $ScriptPath)) {
         $ExitCode = 1
     } else {
-        & $ScriptPath
+        $StepArgs = @()
+        if ($Step['Name'] -eq 'tech_scan_ai') {
+            $StepArgs = @('-Mode', $ScanMode)
+            & $ScriptPath -Mode $ScanMode
+        } elseif ($Step['Name'] -eq 'tech_minute_probe') {
+            $StepArgs = @('-Mode', $MinuteMode, '-MinuteWorkers', [string]$MinuteWorkers)
+            & $ScriptPath -Mode $MinuteMode -MinuteWorkers $MinuteWorkers
+        } else {
+            & $ScriptPath
+        }
         $ExitCode = $LASTEXITCODE
     }
     $Stopwatch.Stop()
     $FinishedAt = (Get-Date).ToUniversalTime()
     $ElapsedSeconds = [Math]::Round($Stopwatch.Elapsed.TotalSeconds, 3)
-    $OutputPath = Join-Path $ProjectRoot $Step.OutputDir
+    $OutputPath = Join-Path $ProjectRoot $Step['OutputDir']
     $StrictReportsExist = (Test-Path (Join-Path $OutputPath '0_upload_bundle.md')) -and (Test-Path (Join-Path $OutputPath 'debug_bundle.md')) -and (Test-Path (Join-Path $OutputPath 'data_completeness_report.md'))
     $Status = 'passed'
     if ($ExitCode -eq 2 -and $StrictReportsExist) {
@@ -123,9 +148,9 @@ foreach ($Step in $Steps) {
         }
     }
     $Results += [PSCustomObject]@{
-        name = $Step.Name
-        command = $Step.Script
-        output_dir = $Step.OutputDir
+        name = $Step['Name']
+        command = ($Step['Script'] + ' ' + (($StepArgs | ForEach-Object { [string]$_ }) -join ' ')).Trim()
+        output_dir = $Step['OutputDir']
         started_at = $StartedAt.ToString('o')
         finished_at = $FinishedAt.ToString('o')
         elapsed_seconds = $ElapsedSeconds
@@ -171,6 +196,9 @@ $Lines += ''
 $Lines += ('- generated_at: ' + $GeneratedAt)
 $Lines += '- pipeline_name: tech_research_pipeline'
 $Lines += ('- use_run_cache: ' + $UseRunCache.IsPresent.ToString().ToLowerInvariant())
+$Lines += ('- scan_mode: ' + $ScanMode)
+$Lines += ('- minute_mode: ' + $MinuteMode)
+$Lines += ('- minute_workers: ' + $MinuteWorkers)
 $Lines += ('- cache_dir: ' + ($(if ($UseRunCache) { $CacheDir } else { '' })))
 $Lines += ('- total_steps: ' + $Results.Count)
 $Lines += ('- run_steps: ' + $RunSteps)
@@ -200,7 +228,7 @@ $Lines += '- item_cache_note: see run-level cache summary'
 $Lines += ''
 $Lines += '## Output Dirs Generated'
 foreach ($Step in $Steps) {
-    $Lines += ('- ' + $Step.OutputDir)
+    $Lines += ('- ' + $Step['OutputDir'])
 }
 $Lines += ''
 $Lines += '## Slow Steps / Runtime Warnings'
@@ -211,7 +239,7 @@ if ($Warnings.Count -eq 0) {
     $Lines += '| step_name | elapsed_seconds | max_run_seconds | warning |'
     $Lines += '|---|---:|---:|---|'
     foreach ($Warning in $Warnings) {
-        $Note = if ($Warning.name -eq 'tech_scan_ai') { 'scan_ai runtime exceeded budget; provider timeout/runtime polish remains backlog.' } else { 'run_time_budget_exceeded' }
+        $Note = if ($Warning.name -eq 'tech_scan_ai') { 'scan_ai runtime exceeded budget; provider timeout/runtime polish remains backlog.' } elseif ($Warning.name -eq 'tech_minute_probe') { 'minute_probe runtime exceeded budget; provider or symbol-level minute requests remain slow.' } else { 'run_time_budget_exceeded' }
         $Lines += ('| ' + $Warning.name + ' | ' + $Warning.elapsed_seconds + ' | ' + $Warning.max_run_seconds + ' | ' + $Note + ' |')
     }
 }
@@ -225,6 +253,9 @@ $Manifest = New-Object PSObject -Property ([ordered]@{
     pipeline_name = 'tech_research_pipeline';
     generated_at = $GeneratedAt;
     use_run_cache = $UseRunCache.IsPresent;
+    scan_mode = $ScanMode;
+    minute_mode = $MinuteMode;
+    minute_workers = $MinuteWorkers;
     cache_dir = $(if ($UseRunCache) { $CacheDir } else { '' });
     steps = @($Results);
     summary = New-Object PSObject -Property ([ordered]@{

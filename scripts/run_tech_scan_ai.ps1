@@ -1,5 +1,15 @@
+param(
+    [string]$Mode = 'fast'
+)
+
+# Usage: .\scripts\run_tech_scan_ai.ps1 -Mode fast
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Continue'
+
+if ($Mode -notin @('fast', 'diagnostic')) {
+    Write-Host 'Invalid Mode. Valid values: fast, diagnostic.'
+    exit 1
+}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
@@ -30,10 +40,11 @@ Write-Host 'profile: tech'
 Write-Host 'universe: tech_scan_ai'
 Write-Host 'provider-policy: fast'
 Write-Host 'quote-purpose: reference'
+Write-Host ('scan-mode: ' + $Mode)
 Write-Host ('output-dir: ' + $OutputDir)
 
 Push-Location $ProjectRoot
-& $Python -m market_price_guard.main --profile tech --universe tech_scan_ai --provider-mode live --quote-purpose reference --provider-policy fast --output-dir outputs_tech_scan_ai_latest
+& $Python -m market_price_guard.main --profile tech --universe tech_scan_ai --provider-mode live --quote-purpose reference --provider-policy fast --scan-mode $Mode --output-dir outputs_tech_scan_ai_latest
 $ExitCode = $LASTEXITCODE
 Pop-Location
 

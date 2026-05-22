@@ -21,6 +21,9 @@ SUPPORTED_SYMBOLS = {
     "159819.SZ",
     "515880.SH",
     "510300.SH",
+    "300308.SZ",
+    "300502.SZ",
+    "688256.SH",
 }
 HONG_KONG_TZ = timezone(timedelta(hours=8))
 SHANGHAI_TZ = timezone(timedelta(hours=8))
@@ -34,6 +37,9 @@ SYMBOL_NAMES = {
     "159819.SZ": "人工智能ETF",
     "515880.SH": "通信ETF",
     "510300.SH": "沪深300ETF",
+    "300308.SZ": "中际旭创",
+    "300502.SZ": "新易盛",
+    "688256.SH": "寒武纪",
 }
 
 
@@ -180,6 +186,10 @@ def yahoo_ticker_for_symbol(symbol: str) -> str:
         return f"{symbol.split('.')[0]}.SS"
     if symbol == "003816.SZ":
         return "003816.SZ"
+    if symbol in {"300308.SZ", "300502.SZ"}:
+        return symbol
+    if symbol == "688256.SH":
+        return "688256.SS"
     if symbol in {"159632.SZ", "159819.SZ"}:
         return symbol
     if symbol in {"513300.SH", "515880.SH", "510300.SH"}:

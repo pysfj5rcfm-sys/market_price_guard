@@ -49,6 +49,17 @@ def test_cli_accepts_include_minute_bars_aliases():
     assert parse_args(["--minute-bars-probe"]).include_minute_bars is True
 
 
+def test_cli_accepts_runtime_modes_and_worker_defaults():
+    args = parse_args([])
+    assert args.scan_mode == "fast"
+    assert args.minute_mode == "balanced"
+    assert args.minute_workers == 3
+    args = parse_args(["--scan-mode", "diagnostic", "--minute-mode", "fast", "--minute-workers", "4"])
+    assert args.scan_mode == "diagnostic"
+    assert args.minute_mode == "fast"
+    assert args.minute_workers == 4
+
+
 def _minute_record(symbol: str = "588200.SH") -> PriceRecord:
     return PriceRecord(
         project="tech",
@@ -641,6 +652,69 @@ def test_yfinance_ticker_mapping_follows_quote_mapping():
     assert minute_bars._yfinance_minute_ticker_for_symbol("588200.SH") == "588200.SS"
 
 
+def test_minute_modes_control_fallback_order(monkeypatch):
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("akshare down")
+
+    def yfinance_success(ticker, period, interval):
+        return pd.DataFrame(
+            [{"Open": 1.0, "High": 1.2, "Low": 0.9, "Close": 1.1, "Volume": 1000}],
+            index=[pd.Timestamp("2026-05-18 10:00:00+08:00")],
+        )
+
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+
+    calls = {"eastmoney": 0, "yfinance": 0}
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: calls.__setitem__("eastmoney", calls["eastmoney"] + 1))
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: calls.__setitem__("yfinance", calls["yfinance"] + 1) or yfinance_success(ticker, period, interval))
+    fast_records, _rows = apply_minute_bars_probe(
+        [_minute_record()],
+        include_minute_bars=True,
+        provider_mode="live",
+        minute_mode="fast",
+        minute_workers=4,
+    )
+    assert calls == {"eastmoney": 0, "yfinance": 0}
+    assert fast_records[0].minute_mode == "fast"
+    assert fast_records[0].minute_workers == 4
+    assert fast_records[0].fallback_skipped_fast_mode is True
+
+    calls = {"eastmoney": 0, "yfinance": 0}
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", lambda secid, klt: calls.__setitem__("eastmoney", calls["eastmoney"] + 1))
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: calls.__setitem__("yfinance", calls["yfinance"] + 1) or yfinance_success(ticker, period, interval))
+    balanced_records, _rows = apply_minute_bars_probe(
+        [_minute_record()],
+        include_minute_bars=True,
+        provider_mode="live",
+        minute_mode="balanced",
+    )
+    assert calls["eastmoney"] == 0
+    assert calls["yfinance"] == 1
+    assert balanced_records[0].minute_bar_provider == "yfinance"
+    assert "provider_attempted=akshare,yfinance" in balanced_records[0].minute_bar_notes
+    assert "fallback_skipped_balanced_mode" in balanced_records[0].minute_bar_notes
+
+    calls = {"eastmoney": 0, "yfinance": 0}
+
+    def eastmoney_fail(secid, klt):
+        calls["eastmoney"] += 1
+        raise ConnectionError("eastmoney down")
+
+    monkeypatch.setattr(minute_bars, "_call_eastmoney_minute_bars", eastmoney_fail)
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", lambda ticker, period, interval: calls.__setitem__("yfinance", calls["yfinance"] + 1) or pd.DataFrame())
+    diagnostic_records, _rows = apply_minute_bars_probe(
+        [_minute_record()],
+        include_minute_bars=True,
+        provider_mode="live",
+        minute_mode="diagnostic",
+    )
+    assert calls["eastmoney"] > 0
+    assert calls["yfinance"] > 0
+    assert "provider_attempted=akshare,eastmoney_direct,yfinance" in diagnostic_records[0].minute_bar_notes
+
+
 def test_provider_health_sections_do_not_mix_fallback_functions():
     yfinance_record = _minute_record("159819.SZ").model_copy(
         update={
@@ -737,6 +811,10 @@ def test_minute_probe_script_and_docs_are_present():
     known_issues = Path("docs/known_issues.md").read_text(encoding="utf-8")
 
     assert "--include-minute-bars" in script
+    assert "-Mode" in script
+    assert "-MinuteWorkers" in script
+    assert "--minute-mode" in script
+    assert "--minute-workers" in script
     assert "outputs_tech_minute_probe_latest" in script
     assert "Minute Bars Ingestion Probe" in readme
     assert "Minute Bars Probe Contract" in output_contract

@@ -55,6 +55,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--quote-purpose", choices=["operation", "reference"], default="operation")
     parser.add_argument("--reconcile-mode", choices=["default", "full"], default="default")
     parser.add_argument("--include-minute-bars", "--minute-bars-probe", dest="include_minute_bars", action="store_true")
+    parser.add_argument("--scan-mode", choices=["fast", "diagnostic"], default="fast")
+    parser.add_argument("--minute-mode", choices=["fast", "balanced", "diagnostic"], default="balanced")
+    parser.add_argument("--minute-workers", type=int, default=3)
     parser.add_argument("--universe")
     parser.add_argument("--symbols")
     parser.add_argument("--symbol-file", type=Path)
@@ -89,6 +92,7 @@ def collect_prices(
     include_candidates: bool = False,
     universe_type: str | None = None,
     include_minute_bars: bool = False,
+    scan_mode: str = "fast",
 ) -> dict:
     registry_enabled = bool(universe or symbols or symbol_file or include_watchlist or include_candidates or universe_type)
     universe_metadata: dict = {}
@@ -125,6 +129,7 @@ def collect_prices(
             timeout_seconds=timeout_seconds,
             quote_purpose=quote_purpose,
             reconcile_mode=reconcile_mode,
+            scan_mode=scan_mode,
         ),
     )
     return {"watchlist": watchlist, "prices": prices, "universe_metadata": universe_metadata}
@@ -152,6 +157,9 @@ def run_pipeline(
     max_run_seconds: float = 30.0,
     max_data_lag_seconds: float = 300.0,
     include_minute_bars: bool = False,
+    scan_mode: str = "fast",
+    minute_mode: str = "balanced",
+    minute_workers: int = 3,
 ) -> PipelineResult:
     perf_start = time.perf_counter()
     run_start = _utc_now_iso()
@@ -172,13 +180,17 @@ def run_pipeline(
         include_candidates,
         universe_type,
         include_minute_bars,
+        scan_mode,
     )
     rules = load_yaml(stale_rules_path)
     records = apply_scan_ranking(apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules)))
+    records = _apply_runtime_mode_fields(records, scan_mode=scan_mode)
     records, minute_bars_snapshot = apply_minute_bars_probe(
         records,
         include_minute_bars=include_minute_bars,
         provider_mode=provider_mode,
+        minute_mode=minute_mode,
+        minute_workers=minute_workers,
     )
     elapsed = time.perf_counter() - perf_start
     runtime = _runtime_diagnostics(
@@ -194,6 +206,9 @@ def run_pipeline(
         max_run_seconds=max_run_seconds,
         max_data_lag_seconds=max_data_lag_seconds,
         include_minute_bars=include_minute_bars,
+        scan_mode=scan_mode,
+        minute_mode=minute_mode,
+        minute_workers=minute_workers,
     )
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
@@ -290,6 +305,9 @@ def main(argv: list[str] | None = None) -> int:
             max_run_seconds=args.max_run_seconds,
             max_data_lag_seconds=args.max_data_lag_seconds,
             include_minute_bars=args.include_minute_bars,
+            scan_mode=args.scan_mode,
+            minute_mode=args.minute_mode,
+            minute_workers=args.minute_workers,
         )
     except Exception as exc:
         print(f"market_price_guard failed: {exc}", file=sys.stderr)
@@ -330,6 +348,9 @@ def _runtime_diagnostics(
     max_run_seconds: float,
     max_data_lag_seconds: float,
     include_minute_bars: bool,
+    scan_mode: str,
+    minute_mode: str,
+    minute_workers: int,
 ) -> dict:
     from datetime import datetime, timezone
 
@@ -348,11 +369,61 @@ def _runtime_diagnostics(
         "quote_purpose": quote_purpose,
         "reconcile_mode": reconcile_mode,
         "include_minute_bars": include_minute_bars,
+        "scan_mode": scan_mode,
+        "minute_mode": minute_mode,
+        "minute_workers": minute_workers,
+        "parallel_enabled": False,
+        "timeout_seconds": "",
         "max_run_seconds": max_run_seconds,
         "max_data_lag_seconds": max_data_lag_seconds,
         "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,
         "max_quote_lag_seconds": "" if max_quote_lag is None else round(max_quote_lag, 3),
     }
+
+
+def _apply_runtime_mode_fields(records, scan_mode: str):
+    updated = []
+    for record in records:
+        attempts = record.provider_diagnostics.get("provider_attempts", []) or []
+        providers_attempted = [
+            str(attempt.get("provider", ""))
+            for attempt in attempts
+            if isinstance(attempt, dict) and str(attempt.get("provider", ""))
+        ]
+        provider_attempted = ",".join(dict.fromkeys(providers_attempted))
+        provider_success = any(isinstance(attempt, dict) and attempt.get("status") == "success" for attempt in attempts)
+        provider_timeout = "provider_timeout" in record.quality_issues or any(
+            isinstance(attempt, dict) and (attempt.get("reason") == "provider_timeout" or attempt.get("slow_provider_attempt"))
+            for attempt in attempts
+        )
+        stock_fast = (
+            scan_mode == "fast"
+            and record.universe_type == "scan_universe"
+            and record.asset_type.lower() == "stock"
+            and record.symbol.endswith((".SH", ".SZ"))
+        )
+        update = {
+            "scan_mode": scan_mode if record.universe_type == "scan_universe" else "",
+            "stock_fast_path_enabled": stock_fast,
+            "stock_fast_provider": "eastmoney_direct" if stock_fast else "",
+            "provider_timeout": bool(provider_timeout),
+            "fallback_skipped_fast_mode": bool(stock_fast and "akshare" not in providers_attempted),
+            "provider_attempted": provider_attempted,
+            "provider_success": bool(provider_success),
+        }
+        if stock_fast:
+            diagnostics = dict(record.provider_diagnostics)
+            diagnostics.update(
+                {
+                    "scan_mode": scan_mode,
+                    "stock_fast_path_enabled": True,
+                    "stock_fast_provider": "eastmoney_direct",
+                    "fallback_skipped_fast_mode": update["fallback_skipped_fast_mode"],
+                }
+            )
+            update["provider_diagnostics"] = diagnostics
+        updated.append(record.model_copy(update=update))
+    return updated
 
 
 def _utc_now_iso() -> str:

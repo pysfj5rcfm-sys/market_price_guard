@@ -26,6 +26,7 @@ class RouterConfig:
     timeout_seconds: float = 8.0
     quote_purpose: str = "operation"
     reconcile_mode: str = "default"
+    scan_mode: str = "fast"
 
 
 def collect_routed_prices(
@@ -42,7 +43,7 @@ def collect_routed_prices(
 
 def route_symbol(instrument: Instrument, providers: dict[str, Provider], config: RouterConfig) -> RawPrice:
     configured_priority = [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
-    priority = _effective_priority(instrument, config.provider_mode, config.provider_policy, config.quote_purpose)
+    priority = _effective_priority(instrument, config.provider_mode, config.provider_policy, config.quote_purpose, config.scan_mode)
     attempts: list[dict[str, object]] = []
     last_raw: RawPrice | None = None
 
@@ -104,13 +105,27 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
     return _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
 
 
-def _effective_priority(instrument: Instrument, provider_mode: str, provider_policy: str, quote_purpose: str = "operation") -> list[str]:
+def _effective_priority(
+    instrument: Instrument,
+    provider_mode: str,
+    provider_policy: str,
+    quote_purpose: str = "operation",
+    scan_mode: str = "fast",
+) -> list[str]:
     configured = instrument.provider_priority or [instrument.provider]
     priority = [provider for provider in configured if provider != "disabled"]
     if provider_mode == "mock":
         if "manual" in priority:
             return ["manual"]
         return ["mock"]
+    if (
+        scan_mode == "fast"
+        and instrument.universe_type == "scan_universe"
+        and (instrument.asset_type or "").lower() == "stock"
+        and instrument.symbol.endswith((".SH", ".SZ"))
+        and quote_purpose == "reference"
+    ):
+        return [provider for provider in ["eastmoney_direct", "yfinance", "mock"] if provider in set(priority) | {"eastmoney_direct", "yfinance", "mock"}]
     if provider_policy == "fast":
         return _policy_priority(instrument, ["yfinance", "akshare", "mock"], quote_purpose=quote_purpose)
     if provider_policy == "conservative":

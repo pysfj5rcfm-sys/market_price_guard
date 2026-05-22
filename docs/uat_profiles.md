@@ -32,7 +32,7 @@ Default mode is `quick`.
 
 - `tech_fast_strict`
 - `tech_operation_candidates`
-- `tech_minute_probe`
+- `tech_minute_probe` with the default `MinuteMode=balanced`
 - `tech_intraday_metrics`
 - `mock_strict`
 
@@ -66,3 +66,11 @@ The cache remains off by default. The first probe only caches `akshare.fund_etf_
 It does not cache minute bars, YFinance, Eastmoney Direct, AKShare stock helpers, AKShare HK helpers, diagnostic exhaustive calls, operation readiness, VWAP, or advice/action outputs. Cache hits do not change freshness, strict, quote trust tier, usable_for_operation, or operation/reference semantics.
 
 See [uat_run_cache.md](uat_run_cache.md) for details.
+
+## Runtime Modes
+
+See [runtime_modes.md](runtime_modes.md) for v0.7.3 scan and minute runtime modes.
+
+- `run_tech_scan_ai.ps1` defaults to `Mode=fast`.
+- `run_tech_minute_probe.ps1` defaults to `Mode=balanced`.
+- `run_tech_research_pipeline.ps1` defaults to `ScanMode=fast`, `MinuteMode=balanced`, and `MinuteWorkers=3`.

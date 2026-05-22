@@ -114,6 +114,13 @@ OUTPUT_COLUMNS = [
     "liquidity_score_basic",
     "reconciliation_score",
     "scan_score_notes",
+    "scan_mode",
+    "stock_fast_path_enabled",
+    "stock_fast_provider",
+    "provider_timeout",
+    "fallback_skipped_fast_mode",
+    "provider_attempted",
+    "provider_success",
     "minute_bars_available",
     "minute_bar_provider",
     "minute_bar_interval",
@@ -131,6 +138,10 @@ OUTPUT_COLUMNS = [
     "minute_bar_after_close_applies_to",
     "minute_bar_upload_note",
     "yfinance_ticker",
+    "minute_mode",
+    "minute_workers",
+    "parallel_enabled",
+    "per_symbol_elapsed_seconds",
 ]
 
 GOLD_NOTE = (
@@ -461,6 +472,9 @@ def build_upload_bundle(
     if _minute_probe_visible(records, runtime):
         lines.extend(["", "## 分钟线探测摘要 / Minute Bars Probe Summary"])
         lines.append("Minute note is compact. Full provider failure details are in debug_bundle.md.")
+        lines.append(f"- minute_mode: {runtime.get('minute_mode', '')}")
+        lines.append(f"- minute_workers: {runtime.get('minute_workers', '')}")
+        lines.append(f"- parallel_enabled: {runtime.get('parallel_enabled', False)}")
         lines.extend(_minute_bars_summary_table(records))
         lines.extend(_minute_bars_probe_note_lines())
     if str(runtime.get("universe_type", "")) == "operation_candidate":
@@ -612,6 +626,9 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
     lines.extend(_base_quote_caveat_lines())
     lines.extend(["", "## Field Quality / Provider Capability"])
     lines.extend(_field_quality_capability_lines(records))
+    if str(runtime.get("universe_type", "")) == "scan_universe":
+        lines.extend(["", "## Scan Runtime / Coverage Policy"])
+        lines.extend(_scan_runtime_policy_lines(records, runtime))
     lines.extend(["", "## Minute Bars Completeness"])
     lines.extend(_minute_bars_completeness_lines(records, runtime))
     lines.extend(["", "## Scan Ranking Summary"])
@@ -754,6 +771,10 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
         f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
+        f"- scan_mode: {runtime.get('scan_mode', '')}",
+        f"- minute_mode: {runtime.get('minute_mode', '')}",
+        f"- minute_workers: {runtime.get('minute_workers', '')}",
+        f"- parallel_enabled: {runtime.get('parallel_enabled', False)}",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', '')}",
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
@@ -869,9 +890,14 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
         "",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', 'scan_universe')}",
+        f"- scan_mode: {runtime.get('scan_mode', '')}",
+        f"- stock_fast_path_enabled: {str(any(record.stock_fast_path_enabled for record in scan_records or records)).lower()}",
+        "- stock_fast_provider: eastmoney_direct",
         "- data_status: price_change_pct/amount/volume may be missing in this version.",
         "",
     ]
+    lines.extend(_scan_runtime_policy_lines(scan_records or records, runtime))
+    lines.append("")
     lines.extend(_watchlist_table(scan_records or records))
     lines.extend(["", "# Scan Universe Basic Ranking"])
     lines.extend(
@@ -932,6 +958,32 @@ def build_operation_candidate_report(records: list[PriceRecord], runtime: dict[s
         ]
     )
     return "\n".join(lines) + "\n"
+
+
+def _scan_runtime_policy_lines(records: list[PriceRecord], runtime: dict[str, Any]) -> list[str]:
+    stock_records = [record for record in records if record.universe_type == "scan_universe" and record.asset_type.lower() == "stock"]
+    attempted = sum(1 for record in stock_records if "eastmoney_direct" in record.provider_attempted)
+    success = sum(1 for record in stock_records if record.selected_provider == "eastmoney_direct" and record.price is not None)
+    errors = max(0, attempted - success)
+    provider_timeouts = sum(1 for record in records if record.provider_timeout)
+    fallback_skipped = sum(1 for record in records if record.fallback_skipped_fast_mode)
+    coverage = sum(1 for record in stock_records if record.usable_for_reference)
+    missing = max(0, len(stock_records) - coverage)
+    return [
+        "## Runtime / Coverage Policy",
+        f"- scan_mode: {runtime.get('scan_mode', '')}",
+        f"- stock_fast_path_enabled: {str(any(record.stock_fast_path_enabled for record in stock_records)).lower()}",
+        "- stock_fast_provider: eastmoney_direct",
+        f"- eastmoney_direct_stock_attempted_count: {attempted}",
+        f"- eastmoney_direct_stock_success_count: {success}",
+        f"- eastmoney_direct_stock_error_count: {errors}",
+        f"- stock_reference_coverage_count: {coverage}",
+        f"- stock_reference_missing_count: {missing}",
+        f"- provider_timeout_count: {provider_timeouts}",
+        f"- fallback_skipped_fast_mode_count: {fallback_skipped}",
+        f"- slow_symbol_count: {sum(1 for record in records if (record.per_symbol_elapsed_seconds or 0) > float(runtime.get('timeout_seconds', 8.0) or 8.0))}",
+        f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+    ]
 
 
 def build_unsupported_symbols_report(runtime: dict[str, Any]) -> str:
@@ -2735,6 +2787,9 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
         session_counts[session] = session_counts.get(session, 0) + 1
     lines = [
         f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
+        f"- minute_mode: {runtime.get('minute_mode', '')}",
+        f"- minute_workers: {runtime.get('minute_workers', '')}",
+        f"- parallel_enabled: {runtime.get('parallel_enabled', False)}",
         f"- minute_bars_available count: {sum(1 for record in records if record.minute_bars_available)}",
         f"- operation_candidate_symbols_count: {len(operation_candidates)}",
         f"- operation_candidate_minute_available_count: {sum(1 for record in operation_candidates if record.minute_bars_available)}",
@@ -2769,9 +2824,9 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
     lines.extend([f"  - {provider}: {count}" for provider, count in sorted(providers.items())] or ["  - none: 0"])
     lines.extend(
         [
-            "- minute bars missing does not change existing strict in v0.7.2a.2.",
+            "- minute bars missing does not change existing strict in v0.7.3.",
             "- Eastmoney minute bars are diagnostic/reference only.",
-            "- VWAP / intraday position fields are not implemented.",
+            "- minute fallback behavior depends on minute_mode; balanced skips Eastmoney minute fallback by default.",
             "- minute bars are diagnostic only.",
         ]
     )
