@@ -6,6 +6,7 @@ from typing import Protocol
 
 from .freshness import now_utc
 from .models import Instrument, RawPrice, Watchlist
+from .yfinance_circuit import YFinanceCircuitBreaker
 
 
 ETF_SYMBOLS = {"159632.SZ", "513300.SH", "159819.SZ", "515880.SH", "510300.SH"}
@@ -27,6 +28,7 @@ class RouterConfig:
     quote_purpose: str = "operation"
     reconcile_mode: str = "default"
     scan_mode: str = "fast"
+    yfinance_circuit: YFinanceCircuitBreaker | None = None
 
 
 def collect_routed_prices(
@@ -48,6 +50,20 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
     last_raw: RawPrice | None = None
 
     for provider_name in priority:
+        if provider_name == "yfinance" and config.yfinance_circuit is not None and not config.yfinance_circuit.allow():
+            config.yfinance_circuit.record_skip(scope="base_quote")
+            attempts.append(
+                _attempt(
+                    instrument.symbol,
+                    provider_name,
+                    "skipped",
+                    function_name="yfinance.Ticker",
+                    reason="fallback_skipped_yfinance_circuit_open",
+                    elapsed_seconds=0.0,
+                    timeout_seconds=config.timeout_seconds,
+                )
+            )
+            continue
         provider = providers.get(provider_name)
         if provider is None:
             attempts.append(_attempt(instrument.symbol, provider_name, "skipped", reason="provider_not_configured", elapsed_seconds=0.0))
@@ -59,6 +75,8 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
             raw = fetched.get(instrument.symbol)
         except Exception as exc:
             elapsed = time.perf_counter() - start
+            if provider_name == "yfinance" and config.yfinance_circuit is not None:
+                config.yfinance_circuit.record_error(str(exc), elapsed_seconds=elapsed, timeout=elapsed > config.timeout_seconds, symbol=instrument.symbol)
             attempts.append(
                 _attempt(
                     instrument.symbol,
@@ -75,6 +93,12 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
         elapsed = time.perf_counter() - start
 
         if raw is None:
+            if provider_name == "yfinance" and config.yfinance_circuit is not None:
+                is_timeout = elapsed > config.timeout_seconds
+                if is_timeout:
+                    config.yfinance_circuit.record_timeout("provider_timeout", elapsed_seconds=elapsed, symbol=instrument.symbol)
+                else:
+                    config.yfinance_circuit.record_error("symbol_not_found", elapsed_seconds=elapsed, symbol=instrument.symbol)
             attempts.append(
                 _attempt(
                     instrument.symbol,
@@ -99,8 +123,16 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
         attempts.extend(stamped_attempts)
         last_raw = raw
         if _raw_usable_for_selection(raw):
+            if provider_name == "yfinance" and config.yfinance_circuit is not None:
+                config.yfinance_circuit.record_success(elapsed)
             _attach_reconciliation_candidates(instrument, providers, config, raw, provider_name, priority, attempts)
             return _selected_raw(instrument, raw, provider_name, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
+        if provider_name == "yfinance" and config.yfinance_circuit is not None:
+            message = ",".join(raw.quality_issues) or str(raw.provider_diagnostics.get("exception_message", "provider_error"))
+            if "provider_timeout" in raw.quality_issues:
+                config.yfinance_circuit.record_timeout(message, elapsed_seconds=elapsed, symbol=instrument.symbol)
+            else:
+                config.yfinance_circuit.record_error(message, elapsed_seconds=elapsed, symbol=instrument.symbol)
 
     return _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
 
@@ -121,11 +153,13 @@ def _effective_priority(
     if (
         scan_mode == "fast"
         and instrument.universe_type == "scan_universe"
-        and (instrument.asset_type or "").lower() == "stock"
-        and instrument.symbol.endswith((".SH", ".SZ"))
         and quote_purpose == "reference"
     ):
-        return [provider for provider in ["eastmoney_direct", "yfinance", "mock"] if provider in set(priority) | {"eastmoney_direct", "yfinance", "mock"}]
+        if (instrument.asset_type or "").lower() == "stock" and instrument.symbol.endswith((".SH", ".SZ")):
+            return [provider for provider in ["eastmoney_direct", "mock"] if provider in set(priority) | {"eastmoney_direct", "mock"}]
+        if instrument.symbol in ETF_SYMBOLS:
+            return [provider for provider in ["akshare", "eastmoney_direct", "mock"] if provider in set(priority) | {"akshare", "eastmoney_direct", "mock"}]
+        return [provider for provider in (priority or [instrument.provider]) if provider != "yfinance"] or ["mock"]
     if provider_policy == "fast":
         return _policy_priority(instrument, ["yfinance", "akshare", "mock"], quote_purpose=quote_purpose)
     if provider_policy == "conservative":
@@ -254,74 +288,10 @@ def _attach_reconciliation_candidates(
 ) -> None:
     if config.provider_mode != "live" or instrument.symbol not in EASTMONEY_DIRECT_SYMBOLS:
         return
-    candidate_providers = _reconciliation_candidate_providers(instrument, config, selected_provider, priority)
     existing_sources = _reconciliation_sources_from_attempts(attempts, selected_provider)
-    if not candidate_providers and not existing_sources:
+    if not existing_sources:
         return
     sources: list[dict[str, object]] = list(existing_sources)
-    already_attempted = {str(source.get("source", "")) for source in sources}
-    for provider_name in candidate_providers:
-        if provider_name in already_attempted:
-            continue
-        provider = providers.get(provider_name)
-        if provider is None:
-            continue
-        start = time.perf_counter()
-        try:
-            fetched = provider.fetch([instrument.symbol])
-            candidate = fetched.get(instrument.symbol)
-        except Exception as exc:
-            elapsed = time.perf_counter() - start
-            attempts.append(
-                _attempt(
-                    instrument.symbol,
-                    provider_name,
-                    "failed",
-                    function_name=f"{provider_name}.reconciliation",
-                    exception_type=type(exc).__name__,
-                    exception_message=str(exc),
-                    reason="reconciliation_provider_exception",
-                    elapsed_seconds=elapsed,
-                    timeout_seconds=config.timeout_seconds,
-                )
-            )
-            sources.append(
-                {
-                    "source": provider_name,
-                    "status": "provider_error",
-                    "quality_issues": ["provider_error"],
-                    "exception_type": type(exc).__name__,
-                    "exception_message": str(exc),
-                }
-            )
-            continue
-        elapsed = time.perf_counter() - start
-        if candidate is None:
-            attempts.append(
-                _attempt(
-                    instrument.symbol,
-                    provider_name,
-                    "failed",
-                    function_name=f"{provider_name}.reconciliation",
-                    reason="reconciliation_symbol_not_found",
-                    elapsed_seconds=elapsed,
-                    timeout_seconds=config.timeout_seconds,
-                )
-            )
-            sources.append({"source": provider_name, "status": "symbol_not_found", "quality_issues": ["symbol_not_found"]})
-            continue
-        attempts.extend(_stamp_elapsed(_provider_attempts(candidate) or [_raw_attempt(candidate, provider_name)], elapsed, config.timeout_seconds))
-        sources.append(
-            {
-                "source": candidate.source,
-                "provider": provider_name,
-                "status": "success" if _raw_usable_for_selection(candidate) else "failed",
-                "price": candidate.price if candidate.price is not None else "",
-                "quote_time": candidate.quote_time.isoformat() if candidate.quote_time else "",
-                "quality_issues": candidate.quality_issues,
-                "quote_trust_tier": candidate.quote_trust_tier or "",
-            }
-        )
     if sources:
         selected_raw.provider_diagnostics = {
             **selected_raw.provider_diagnostics,
@@ -331,6 +301,8 @@ def _attach_reconciliation_candidates(
 
 
 def _reconciliation_candidate_providers(instrument: Instrument, config: RouterConfig, selected_provider: str, priority: list[str]) -> list[str]:
+    if config.scan_mode == "fast" and instrument.universe_type == "scan_universe":
+        return []
     if config.reconcile_mode == "full" and instrument.symbol in ETF_SYMBOLS:
         ordered = ["eastmoney_direct", "yfinance", "akshare"]
     elif config.provider_policy == "diagnostic":
@@ -516,11 +488,7 @@ def _diagnostic_priority(instrument: Instrument, configured_priority: list[str],
 def _skipped_after_success(symbol: str, priority: list[str], selected_provider: str, provider_policy: str, quote_purpose: str = "operation") -> list[dict[str, object]]:
     if selected_provider not in priority:
         return []
-    skip_reason = f"selected_provider_success_policy_skip:{provider_policy}"
-    if quote_purpose == "reference" and selected_provider == "eastmoney_direct" and symbol in EASTMONEY_DIRECT_SYMBOLS:
-        skip_reason = "skipped because eastmoney_direct reference quote succeeded in reference mode"
-    elif quote_purpose == "reference" and selected_provider == "yfinance" and symbol in ETF_SYMBOLS:
-        skip_reason = "skipped because yfinance reference quote succeeded in reference mode"
+    skip_reason = "selected_provider_success_policy_skip"
     return [
         _attempt(
             symbol,

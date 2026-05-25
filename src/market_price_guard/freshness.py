@@ -8,6 +8,7 @@ from .models import RawPrice
 
 SHANGHAI_TZ = timezone(timedelta(hours=8))
 HONG_KONG_TZ = timezone(timedelta(hours=8))
+FUTURE_QUOTE_TOLERANCE_SECONDS = 120
 
 
 def now_utc() -> datetime:
@@ -48,7 +49,10 @@ def assess_freshness(raw: RawPrice, market: str, rules: dict[str, Any], now: dat
     age_seconds = (_to_utc(current_time) - _to_utc(reference_time)).total_seconds()
 
     if age_seconds < 0:
-        return True, "时间戳晚于当前时间，数据质量不足"
+        if abs(age_seconds) <= FUTURE_QUOTE_TOLERANCE_SECONDS:
+            age_seconds = 0
+        else:
+            return True, f"future_quote_time: 时间戳晚于当前时间且超过 {FUTURE_QUOTE_TOLERANCE_SECONDS} 秒容忍，数据质量不足"
 
     if raw.source == "manual" or market == "MANUAL":
         manual_rules = rules.get("MANUAL", rules.get("manual", {}))

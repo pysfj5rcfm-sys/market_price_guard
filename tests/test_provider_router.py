@@ -6,6 +6,7 @@ from market_price_guard.models import Instrument, PriceRecord, RawPrice, Watchli
 from market_price_guard.normalize import normalize_records
 from market_price_guard.provider_router import RouterConfig, collect_routed_prices, route_symbol
 from market_price_guard.report import build_completeness_report, build_provider_health_report, get_blocking_records, build_tech_block
+from market_price_guard.yfinance_circuit import YFinanceCircuitBreaker
 
 
 class StaticProvider:
@@ -69,9 +70,10 @@ def test_scan_fast_stock_uses_eastmoney_and_skips_akshare_stock_fallback():
         RouterConfig(provider_mode="live", provider_policy="fast", quote_purpose="reference", scan_mode="fast"),
     )
 
-    assert raw.provider_diagnostics["effective_provider_chain"] == ["eastmoney_direct", "yfinance", "mock"]
+    assert raw.provider_diagnostics["effective_provider_chain"] == ["eastmoney_direct", "mock"]
     assert raw.provider_diagnostics["selected_provider"] == "eastmoney_direct"
     assert providers["akshare"].called is False
+    assert providers["yfinance"].called is False
 
 
 def test_scan_diagnostic_stock_keeps_full_fallback_chain():
@@ -97,6 +99,39 @@ def test_scan_diagnostic_stock_keeps_full_fallback_chain():
     )
 
     assert raw.provider_diagnostics["effective_provider_chain"] == ["eastmoney_direct", "yfinance", "akshare", "mock"]
+
+
+def test_yfinance_circuit_skips_following_symbols_after_rate_limit():
+    circuit = YFinanceCircuitBreaker()
+    first = route_symbol(
+        _instrument("00883.HK", provider_priority=["yfinance", "mock"], market="HK"),
+        {
+            "yfinance": StaticProvider(exc=RuntimeError("YFRateLimitError: Too Many Requests")),
+            "mock": StaticProvider(_raw("00883.HK", "mock", 21.0)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="fast", yfinance_circuit=circuit),
+    )
+    second_yf = StaticProvider(_raw("601899.SH", "yfinance", 18.0))
+    second = route_symbol(
+        _instrument("601899.SH", provider_priority=["yfinance", "mock"]),
+        {
+            "yfinance": second_yf,
+            "mock": StaticProvider(_raw("601899.SH", "mock", 18.0)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="fast", yfinance_circuit=circuit),
+    )
+
+    assert circuit.open is True
+    assert circuit.reason == "rate_limited"
+    assert first.provider_diagnostics["selected_provider"] == "mock"
+    assert second_yf.called is False
+    assert second.provider_diagnostics["selected_provider"] == "mock"
+    assert circuit.skipped_by_circuit_count == 1
+    assert circuit.base_quote_skipped_by_circuit_count == 1
+    assert any(
+        attempt["provider"] == "yfinance" and attempt["reason"] == "fallback_skipped_yfinance_circuit_open"
+        for attempt in second.provider_diagnostics["provider_attempts"]
+    )
 
 
 def test_fast_policy_hk_effective_chain_yfinance_first():
@@ -137,7 +172,7 @@ def test_reference_purpose_uses_eastmoney_first_for_tech_etf():
     assert raw.provider_diagnostics["selected_provider"] == "eastmoney_direct"
     assert raw.provider_diagnostics["quote_purpose"] == "reference"
     assert any(
-        attempt["reason"] == "skipped because eastmoney_direct reference quote succeeded in reference mode"
+        attempt["reason"] == "selected_provider_success_policy_skip"
         for attempt in raw.provider_diagnostics["provider_attempts"]
         if attempt["status"] == "skipped"
     )

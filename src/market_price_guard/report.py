@@ -120,7 +120,13 @@ OUTPUT_COLUMNS = [
     "provider_timeout",
     "fallback_skipped_fast_mode",
     "provider_attempted",
+    "base_quote_provider_attempted",
+    "minute_provider_attempted",
     "provider_success",
+    "yfinance_fallback_policy",
+    "yfinance_circuit_open",
+    "yfinance_circuit_reason",
+    "fallback_skipped_yfinance_circuit_open",
     "minute_bars_available",
     "minute_bar_provider",
     "minute_bar_interval",
@@ -141,6 +147,7 @@ OUTPUT_COLUMNS = [
     "minute_mode",
     "minute_workers",
     "parallel_enabled",
+    "parallel_note",
     "per_symbol_elapsed_seconds",
 ]
 
@@ -475,12 +482,16 @@ def build_upload_bundle(
         lines.append(f"- minute_mode: {runtime.get('minute_mode', '')}")
         lines.append(f"- minute_workers: {runtime.get('minute_workers', '')}")
         lines.append(f"- parallel_enabled: {runtime.get('parallel_enabled', False)}")
+        lines.append(f"- parallel_note: {runtime.get('parallel_note', '')}")
         lines.extend(_minute_bars_summary_table(records))
         lines.extend(_minute_bars_probe_note_lines())
     if str(runtime.get("universe_type", "")) == "operation_candidate":
         lines.extend(["", "## Operation Candidate Summary"])
         lines.extend(_operation_candidate_summary_lines(records, runtime))
     if str(runtime.get("universe_type", "")) in {"candidate_watchlist", "scan_universe"}:
+        if str(runtime.get("universe_type", "")) == "scan_universe":
+            lines.extend(["", "## Scan Runtime / Coverage Policy"])
+            lines.extend(_scan_runtime_policy_lines(records, runtime))
         lines.extend(["", "## 扫描优先级摘要 / Scan Priority Summary"])
         lines.extend(_scan_priority_summary_table(records))
         lines.extend(["", "## Top Scan Candidates"])
@@ -489,7 +500,7 @@ def build_upload_bundle(
     lines.extend(["", "## Reconciliation Summary"])
     lines.extend(_reconciliation_summary_lines(records))
     lines.extend(["", "## 项目核心内容"])
-    lines.extend(_bundle_project_lines(records, profile, provider_policy, str(runtime.get("universe_type", ""))))
+    lines.extend(_bundle_project_lines(records, profile, provider_policy, str(runtime.get("universe_type", "")), runtime))
     lines.extend(["", "## Universe isolation"])
     lines.extend(_universe_isolation_lines(runtime))
     lines.extend(["", "## Reference / Operation 使用提示"])
@@ -756,6 +767,9 @@ def build_provider_capability_report(records: list[PriceRecord], runtime: dict[s
 def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
     attempts = _all_provider_attempts(records)
     per_provider = _per_provider_elapsed(attempts)
+    yfinance_runtime_elapsed = runtime.get("yfinance_total_elapsed_seconds", "")
+    if yfinance_runtime_elapsed != "":
+        per_provider["yfinance"] = round(float(yfinance_runtime_elapsed or 0.0), 3)
     slow_attempts = [attempt for attempt in attempts if attempt.get("slow_provider_attempt")]
     quote_times = [record.quote_time for record in records if record.quote_time is not None]
     lines = [
@@ -771,10 +785,28 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- quote_purpose: {runtime.get('quote_purpose', 'operation')}",
         f"- reconcile_mode: {runtime.get('reconcile_mode', 'default')}",
         f"- include_minute_bars: {runtime.get('include_minute_bars', False)}",
-        f"- scan_mode: {runtime.get('scan_mode', '')}",
+        f"- scan_mode: {_runtime_scan_mode(records, runtime)}",
         f"- minute_mode: {runtime.get('minute_mode', '')}",
         f"- minute_workers: {runtime.get('minute_workers', '')}",
         f"- parallel_enabled: {runtime.get('parallel_enabled', False)}",
+        f"- parallel_note: {runtime.get('parallel_note', '')}",
+        f"- future_quote_tolerance_seconds: {runtime.get('future_quote_tolerance_seconds', 120)}",
+        f"- yfinance_fallback_policy: {_yfinance_fallback_policy_from_runtime(records, runtime)}",
+        f"- yfinance_circuit_open: {runtime.get('yfinance_circuit_open', False)}",
+        f"- yfinance_circuit_reason: {runtime.get('yfinance_circuit_reason', '')}",
+        f"- yfinance_circuit_scope: {runtime.get('yfinance_circuit_scope', 'run_only')}",
+        f"- yfinance_total_elapsed_seconds: {runtime.get('yfinance_total_elapsed_seconds', '')}",
+        f"- yfinance_attempted_count: {runtime.get('yfinance_attempted_count', 0)}",
+        f"- yfinance_success_count: {runtime.get('yfinance_success_count', 0)}",
+        f"- yfinance_error_count: {runtime.get('yfinance_error_count', 0)}",
+        f"- yfinance_timeout_count: {runtime.get('yfinance_timeout_count', 0)}",
+        f"- yfinance_rate_limited_count: {runtime.get('yfinance_rate_limited_count', 0)}",
+        f"- yfinance_skipped_by_circuit_count: {runtime.get('yfinance_skipped_by_circuit_count', 0)}",
+        f"- selected_provider_success_policy_skip_count: {_selected_provider_success_policy_skip_count(records)}",
+        f"- base_quote_yfinance_skipped_by_circuit_count: {runtime.get('base_quote_yfinance_skipped_by_circuit_count', 0)}",
+        f"- minute_yfinance_skipped_by_circuit_count: {runtime.get('minute_yfinance_skipped_by_circuit_count', 0)}",
+        f"- yfinance_last_error: {runtime.get('yfinance_last_error', '')}",
+        f"- provider_timeout_count: {sum(1 for record in records if record.provider_timeout)}",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', '')}",
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
@@ -890,7 +922,7 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
         "",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', 'scan_universe')}",
-        f"- scan_mode: {runtime.get('scan_mode', '')}",
+        f"- scan_mode: {_runtime_scan_mode(scan_records or records, runtime)}",
         f"- stock_fast_path_enabled: {str(any(record.stock_fast_path_enabled for record in scan_records or records)).lower()}",
         "- stock_fast_provider: eastmoney_direct",
         "- data_status: price_change_pct/amount/volume may be missing in this version.",
@@ -970,10 +1002,22 @@ def _scan_runtime_policy_lines(records: list[PriceRecord], runtime: dict[str, An
     coverage = sum(1 for record in stock_records if record.usable_for_reference)
     missing = max(0, len(stock_records) - coverage)
     return [
-        "## Runtime / Coverage Policy",
-        f"- scan_mode: {runtime.get('scan_mode', '')}",
+        f"- scan_mode: {_runtime_scan_mode(records, runtime)}",
         f"- stock_fast_path_enabled: {str(any(record.stock_fast_path_enabled for record in stock_records)).lower()}",
         "- stock_fast_provider: eastmoney_direct",
+        f"- yfinance_fallback_policy: {_yfinance_fallback_policy_from_runtime(records, runtime)}",
+        f"- yfinance_circuit_open: {runtime.get('yfinance_circuit_open', False)}",
+        f"- yfinance_circuit_reason: {runtime.get('yfinance_circuit_reason', '')}",
+        f"- yfinance_circuit_scope: {runtime.get('yfinance_circuit_scope', 'run_only')}",
+        f"- yfinance_attempted_count: {runtime.get('yfinance_attempted_count', 0)}",
+        f"- yfinance_success_count: {runtime.get('yfinance_success_count', 0)}",
+        f"- yfinance_error_count: {runtime.get('yfinance_error_count', 0)}",
+        f"- yfinance_timeout_count: {runtime.get('yfinance_timeout_count', 0)}",
+        f"- yfinance_rate_limited_count: {runtime.get('yfinance_rate_limited_count', 0)}",
+        f"- yfinance_skipped_by_circuit_count: {runtime.get('yfinance_skipped_by_circuit_count', 0)}",
+        f"- selected_provider_success_policy_skip_count: {_selected_provider_success_policy_skip_count(records)}",
+        f"- base_quote_yfinance_skipped_by_circuit_count: {runtime.get('base_quote_yfinance_skipped_by_circuit_count', 0)}",
+        f"- minute_yfinance_skipped_by_circuit_count: {runtime.get('minute_yfinance_skipped_by_circuit_count', 0)}",
         f"- eastmoney_direct_stock_attempted_count: {attempted}",
         f"- eastmoney_direct_stock_success_count: {success}",
         f"- eastmoney_direct_stock_error_count: {errors}",
@@ -982,8 +1026,42 @@ def _scan_runtime_policy_lines(records: list[PriceRecord], runtime: dict[str, An
         f"- provider_timeout_count: {provider_timeouts}",
         f"- fallback_skipped_fast_mode_count: {fallback_skipped}",
         f"- slow_symbol_count: {sum(1 for record in records if (record.per_symbol_elapsed_seconds or 0) > float(runtime.get('timeout_seconds', 8.0) or 8.0))}",
-        f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+        f"- run_time_budget_exceeded: {_runtime_value(runtime, 'run_time_budget_exceeded')}",
     ]
+
+
+def _runtime_scan_mode(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
+    value = str(runtime.get("scan_mode") or "").strip()
+    if value:
+        return value
+    for record in records:
+        if record.scan_mode:
+            return record.scan_mode
+    return "unknown"
+
+
+def _runtime_value(runtime: dict[str, Any], key: str) -> str:
+    return str(runtime[key]) if key in runtime else "unknown"
+
+
+def _yfinance_fallback_policy_from_runtime(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
+    scan_mode = _runtime_scan_mode(records, runtime)
+    minute_mode = str(runtime.get("minute_mode") or "").strip()
+    universe_type = str(runtime.get("universe_type") or "")
+    if universe_type == "scan_universe" and scan_mode == "fast":
+        return "disabled_in_fast_mode"
+    if universe_type == "scan_universe" and scan_mode == "diagnostic":
+        return "enabled_with_circuit_breaker"
+    if minute_mode == "balanced":
+        return "enabled_until_circuit_open"
+    if minute_mode == "diagnostic":
+        return "enabled_with_circuit_breaker"
+    if minute_mode == "fast":
+        return "disabled_in_fast_mode"
+    for record in records:
+        if record.yfinance_fallback_policy:
+            return record.yfinance_fallback_policy
+    return "unknown"
 
 
 def build_unsupported_symbols_report(runtime: dict[str, Any]) -> str:
@@ -1242,16 +1320,60 @@ def _yfinance_health_group(records: list[PriceRecord]) -> list[str]:
     yfinance_records = [
         record
         for record in records
-        if record.source == "yfinance" or record.selected_provider == "yfinance" or "yfinance" in _minute_bar_attempted_set(record)
+        if record.source == "yfinance"
+        or record.selected_provider == "yfinance"
+        or "yfinance" in _minute_bar_attempted_set(record)
+        or any(
+            isinstance(attempt, dict) and str(attempt.get("provider", "")) == "yfinance"
+            for attempt in record.provider_diagnostics.get("provider_attempts", []) or []
+        )
     ]
+    attempts = _all_provider_attempts(records)
+    yfinance_attempts = [
+        attempt
+        for attempt in attempts
+        if str(attempt.get("provider", "")) == "yfinance" and attempt.get("status") != "skipped"
+    ]
+    yfinance_skips = [
+        attempt
+        for attempt in attempts
+        if str(attempt.get("provider", "")) == "yfinance" and attempt.get("reason") == "fallback_skipped_yfinance_circuit_open"
+    ]
+    minute_yfinance_skips = sum(
+        1
+        for record in records
+        if record.fallback_skipped_yfinance_circuit_open and "yfinance" in _minute_bar_attempted_set(record)
+    )
+    circuit_open = any(record.yfinance_circuit_open for record in records)
+    circuit_reason = next((record.yfinance_circuit_reason for record in records if record.yfinance_circuit_reason), "")
     if not yfinance_records:
-        return ["- provider: yfinance", "- market_category: HK/A_SHARE", "- status: not_called"]
+        return [
+            "- provider: yfinance",
+            "- market_category: HK/A_SHARE",
+            "- status: not_called",
+            f"- yfinance_circuit_open: {circuit_open}",
+            f"- yfinance_circuit_reason: {circuit_reason}",
+            f"- yfinance_attempted_count: {len(yfinance_attempts)}",
+            f"- yfinance_skipped_by_circuit_count: {len(yfinance_skips) + minute_yfinance_skips}",
+            f"- yfinance_total_elapsed_seconds: {round(sum(float(attempt.get('elapsed_seconds') or 0.0) for attempt in yfinance_attempts), 3)}",
+            f"- selected_provider_success_policy_skip_count: {_selected_provider_success_policy_skip_count(records)}",
+            f"- base_quote_yfinance_skipped_by_circuit_count: {len(yfinance_skips)}",
+            f"- minute_yfinance_skipped_by_circuit_count: {minute_yfinance_skips}",
+        ]
     lines = [
         "- provider: yfinance",
         "- market_category: HK/A_SHARE",
         f"- affected_symbols: {_symbols(yfinance_records)}",
         f"- quote_time_status: {_quote_time_status(yfinance_records)}",
         f"- usable_for_operation: {_usable_for_operation(yfinance_records)}",
+        f"- yfinance_circuit_open: {circuit_open}",
+        f"- yfinance_circuit_reason: {circuit_reason}",
+        f"- yfinance_attempted_count: {len(yfinance_attempts)}",
+        f"- yfinance_skipped_by_circuit_count: {len(yfinance_skips) + minute_yfinance_skips}",
+        f"- yfinance_total_elapsed_seconds: {round(sum(float(attempt.get('elapsed_seconds') or 0.0) for attempt in yfinance_attempts), 3)}",
+        f"- selected_provider_success_policy_skip_count: {_selected_provider_success_policy_skip_count(records)}",
+        f"- base_quote_yfinance_skipped_by_circuit_count: {len(yfinance_skips)}",
+        f"- minute_yfinance_skipped_by_circuit_count: {minute_yfinance_skips}",
         "- source_limit_note: yfinance is an open-source Yahoo Finance public API wrapper for research/educational use; not an official exchange feed",
     ]
     for record in yfinance_records:
@@ -1689,13 +1811,20 @@ def _reconciliation_detail_lines(records: list[PriceRecord]) -> list[str]:
     return lines
 
 
-def _bundle_project_lines(records: list[PriceRecord], profile: str, provider_policy: str, universe_type: str = "") -> list[str]:
+def _bundle_project_lines(
+    records: list[PriceRecord],
+    profile: str,
+    provider_policy: str,
+    universe_type: str = "",
+    runtime: dict[str, Any] | None = None,
+) -> list[str]:
+    runtime = runtime or {}
     if universe_type == "candidate_watchlist":
-        return ["### Candidate watchlist", "", *build_candidate_watchlist_report(records, {}).splitlines()[2:]]
+        return ["### Candidate watchlist", "", *build_candidate_watchlist_report(records, runtime).splitlines()[2:]]
     if universe_type == "scan_universe":
-        return ["### Scan universe", "", *build_scan_universe_report(records, {}).splitlines()[2:]]
+        return ["### Scan universe", "", *build_scan_universe_report(records, runtime).splitlines()[2:]]
     if universe_type == "operation_candidate":
-        return ["### Operation candidates", "", *build_operation_candidate_report(records, {}).splitlines()[2:]]
+        return ["### Operation candidates", "", *build_operation_candidate_report(records, runtime).splitlines()[2:]]
     if provider_policy == "diagnostic":
         return [
             "- 当前用途级别：diagnostic-only",
@@ -1864,6 +1993,14 @@ def _per_provider_elapsed(attempts: list[dict[str, object]]) -> dict[str, float]
             continue
         elapsed[provider] = round(elapsed.get(provider, 0.0) + float(attempt.get("elapsed_seconds") or 0.0), 3)
     return elapsed
+
+
+def _selected_provider_success_policy_skip_count(records: list[PriceRecord]) -> int:
+    return sum(
+        1
+        for attempt in _all_provider_attempts(records)
+        if isinstance(attempt, dict) and attempt.get("reason") == "selected_provider_success_policy_skip"
+    )
 
 
 def _per_symbol_elapsed(records: list[PriceRecord]) -> dict[str, float]:
@@ -2522,21 +2659,24 @@ def _provider_capability_note_lines() -> list[str]:
         "- amount: raw provider unit or unit_unknown.",
         "- bid/ask: not validated.",
         "- turnover_rate: not validated.",
-        "- minute_bars: not implemented in current guard provider path; probe status is diagnostic.",
+        "- minute_bars: available through minute_probe when supported; reference-only and not operation-grade.",
         "",
         "Eastmoney Direct:",
         "- base quote fields: available only when endpoint succeeds.",
         "- trust tier: reference / operation-candidate only.",
         "- stability: unstable in current environment.",
         "- bid/ask: not validated.",
-        "- minute_bars: not validated / not implemented.",
+        "- minute_bars: available through minute_probe fallback when supported; reference-only and not operation-grade.",
         "",
         "yfinance:",
         "- base quote fields: reference-only for current ETF/watchlist usage.",
         "- volume: raw provider unit.",
         "- not operation-grade for A-share ETF operation path.",
         "- timestamp/precision may differ from local exchange feeds.",
-        "- minute_bars: not implemented in guard probe path in v0.7.2a.",
+        "- minute_bars: available as reference fallback through minute_probe when supported; provider_dependent and not operation-grade.",
+        "",
+        "Capability label note:",
+        "- diagnostic_only in provider capability means capability label only; actual fallback behavior is controlled by minute_mode.",
         "",
         "manual:",
         "- GOLD_CNY price only.",
@@ -2675,8 +2815,9 @@ def _provider_capability_safe_usage_lines() -> list[str]:
         "- Field capability does not upgrade trust tier.",
         "- Field completeness does not imply operation-grade.",
         "- volume/amount must not be compared across providers until unit validation is high.",
-        "- bid/ask and turnover are not validated in v0.7.2a.",
-        "- minute bars are probe-only in v0.7.2a; VWAP and QDII premium remain not implemented.",
+        "- bid/ask and turnover are not validated in this guard version.",
+        "- diagnostic_only in provider capability means capability label only; actual fallback behavior is controlled by minute_mode.",
+        "- minute bars are reference-only and do not upgrade operation readiness; QDII premium remains not implemented.",
         "- This report is not trading advice.",
     ]
 
@@ -2714,9 +2855,8 @@ def _minute_bars_summary_table(records: list[PriceRecord]) -> list[str]:
 
 def _minute_bars_probe_note_lines() -> list[str]:
     return [
-        "- Minute bars are diagnostic in v0.7.2a.2b.",
-        "- Minute bars do not change strict or operation readiness in this version.",
-        "- VWAP and intraday derived fields are not calculated in v0.7.2a.",
+        "- Minute bars are reference-only and do not change strict or operation readiness.",
+        "- VWAP and intraday derived fields are calculated separately in outputs_tech_intraday_latest.",
         "- Operation decisions still depend on quote_trust_tier / usable_for_operation / strict / freshness.",
         "- This section does not provide execution instructions.",
     ]
@@ -2724,15 +2864,16 @@ def _minute_bars_probe_note_lines() -> list[str]:
 
 def _minute_bars_detail_table(records: list[PriceRecord]) -> list[str]:
     lines = [
-        "| symbol | source_universe | provider_attempted | provider_success | normalized_symbol | eastmoney_secid | akshare_status | akshare_reason | akshare_error_type | akshare_error_message | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | yfinance_ticker | yfinance_status | yfinance_reason | yfinance_error_type | yfinance_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | after_close_applies_to | retry_suggested | retry_reason | notes |",
+        "| symbol | source_universe | base_quote_provider_attempted | minute_provider_attempted | provider_success | normalized_symbol | eastmoney_secid | akshare_status | akshare_reason | akshare_error_type | akshare_error_message | eastmoney_status | eastmoney_reason | eastmoney_endpoint | eastmoney_error_type | eastmoney_error_message | yfinance_ticker | yfinance_status | yfinance_reason | yfinance_error_type | yfinance_error_message | status | interval | count | latest_time | fetch_time | validation_status | missing_reason | market_session | after_close_possible | after_close_applies_to | retry_suggested | retry_reason | notes |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---:|---|---|---|---|---|---|---|---|---|---|",
     ]
     for record in records:
         lines.append(
-            "| {symbol} | {source_universe} | {provider} | {success} | {normalized} | {secid} | {ak_status} | {ak_reason} | {ak_type} | {ak_message} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {yf_ticker} | {yf_status} | {yf_reason} | {yf_type} | {yf_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {applies_to} | {retry} | {retry_reason} | {notes} |".format(
+            "| {symbol} | {source_universe} | {base_provider} | {minute_provider} | {success} | {normalized} | {secid} | {ak_status} | {ak_reason} | {ak_type} | {ak_message} | {east_status} | {east_reason} | {east_endpoint} | {east_type} | {east_message} | {yf_ticker} | {yf_status} | {yf_reason} | {yf_type} | {yf_message} | {status} | {interval} | {count} | {latest} | {fetch} | {validation} | {reason} | {session} | {after_close} | {applies_to} | {retry} | {retry_reason} | {notes} |".format(
                 symbol=record.symbol,
                 source_universe=_fmt(record.source_universe),
-                provider=_fmt(_minute_bar_provider_attempted(record)),
+                base_provider=_fmt(record.base_quote_provider_attempted or record.provider_attempted),
+                minute_provider=_fmt(_minute_bar_provider_attempted(record)),
                 success=_fmt(record.minute_bar_provider if record.minute_bars_available else "none"),
                 normalized=_fmt(_minute_bar_normalized_symbol(record)),
                 secid=_fmt(_eastmoney_secid_from_record(record)),
@@ -2790,6 +2931,7 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
         f"- minute_mode: {runtime.get('minute_mode', '')}",
         f"- minute_workers: {runtime.get('minute_workers', '')}",
         f"- parallel_enabled: {runtime.get('parallel_enabled', False)}",
+        f"- parallel_note: {runtime.get('parallel_note', '')}",
         f"- minute_bars_available count: {sum(1 for record in records if record.minute_bars_available)}",
         f"- operation_candidate_symbols_count: {len(operation_candidates)}",
         f"- operation_candidate_minute_available_count: {sum(1 for record in operation_candidates if record.minute_bars_available)}",
@@ -2802,11 +2944,20 @@ def _minute_bars_completeness_lines(records: list[PriceRecord], runtime: dict[st
         f"- akshare_attempted_count: {len(akshare_attempted)}",
         f"- akshare_success_count: {sum(1 for record in akshare_attempted if _akshare_minute_status(record) == 'available')}",
         f"- akshare_error_count: {sum(1 for record in akshare_attempted if _akshare_minute_status(record) == 'provider_error')}",
-        f"- yfinance_attempted_count: {len(yfinance_attempted)}",
-        f"- yfinance_success_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_status(record) == 'available')}",
-        f"- yfinance_error_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_status(record) in {'provider_error', 'parse_error'})}",
+        f"- yfinance_attempted_count: {runtime.get('yfinance_attempted_count', len(yfinance_attempted))}",
+        f"- yfinance_success_count: {runtime.get('yfinance_success_count', sum(1 for record in yfinance_attempted if _yfinance_minute_status(record) == 'available'))}",
+        f"- yfinance_error_count: {runtime.get('yfinance_error_count', sum(1 for record in yfinance_attempted if _yfinance_minute_status(record) in {'provider_error', 'parse_error'}))}",
         f"- yfinance_empty_response_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_reason(record) == 'empty_response')}",
         f"- yfinance_parse_error_count: {sum(1 for record in yfinance_attempted if _yfinance_minute_reason(record) == 'parse_error')}",
+        f"- yfinance_fallback_policy: {_yfinance_fallback_policy_from_runtime(records, runtime)}",
+        f"- yfinance_circuit_open: {runtime.get('yfinance_circuit_open', False)}",
+        f"- yfinance_circuit_reason: {runtime.get('yfinance_circuit_reason', '')}",
+        f"- yfinance_circuit_scope: {runtime.get('yfinance_circuit_scope', 'run_only')}",
+        f"- yfinance_timeout_count: {runtime.get('yfinance_timeout_count', 0)}",
+        f"- yfinance_rate_limited_count: {runtime.get('yfinance_rate_limited_count', 0)}",
+        f"- yfinance_skipped_by_circuit_count: {runtime.get('yfinance_skipped_by_circuit_count', 0)}",
+        f"- fallback_skipped_yfinance_circuit_open_count: {runtime.get('fallback_skipped_yfinance_circuit_open_count', 0)}",
+        f"- yfinance_last_error: {runtime.get('yfinance_last_error', '')}",
         f"- eastmoney_attempted_count: {len(eastmoney_attempted)}",
         f"- eastmoney_success_count: {sum(1 for record in eastmoney_attempted if _eastmoney_minute_status(record) == 'available')}",
         f"- eastmoney_error_count: {sum(1 for record in eastmoney_attempted if _eastmoney_minute_status(record) in {'provider_error', 'parse_error'})}",
@@ -2839,6 +2990,7 @@ def _minute_bars_capability_lines(records: list[PriceRecord], runtime: dict[str,
         "- akshare: ETF minute bars attempted through fund_etf_hist_min_em when --include-minute-bars is enabled.",
         "- eastmoney_direct: minute bars attempted as diagnostic fallback; provider_dependent and not operation-grade.",
         "- yfinance: attempted_reference_fallback / provider_dependent_reference after AKShare and Eastmoney fail; not operation-grade.",
+        "- diagnostic_only in provider capability is a capability label only; actual fallback behavior is controlled by minute_mode.",
         "- manual: not_supported.",
         "- mock: supported_for_tests when --include-minute-bars is used with provider-mode=mock.",
     ]
@@ -2861,6 +3013,8 @@ def _minute_bar_normalized_symbol(record: PriceRecord) -> str:
 
 
 def _minute_bar_provider_attempted(record: PriceRecord) -> str:
+    if record.minute_provider_attempted:
+        return record.minute_provider_attempted
     notes = record.minute_bar_notes or ""
     marker = "provider_attempted="
     if marker in notes:
@@ -2876,9 +3030,9 @@ def _minute_bar_upload_note(record: PriceRecord) -> str:
     if record.minute_bars_available:
         interval = record.minute_bar_interval or "minute"
         if record.minute_bar_provider == "akshare":
-            return f"akshare_{interval}_ok; diagnostic_only"
+            return f"akshare_{interval}_ok; balanced_mode; reference_only"
         if record.minute_bar_provider == "eastmoney_direct":
-            return f"eastmoney_{interval}_ok; diagnostic_only; not_operation_grade"
+            return f"eastmoney_{interval}_ok; diagnostic_mode; reference_only; not_operation_grade"
         if record.minute_bar_provider == "yfinance":
             if record.minute_bar_after_close_possible:
                 return "yf_ref_ok; ak/em after_close_possible; provider_dependent; not_operation_grade"

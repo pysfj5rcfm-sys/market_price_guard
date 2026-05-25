@@ -220,7 +220,13 @@ class PriceRecord(BaseModel):
     provider_timeout: bool = False
     fallback_skipped_fast_mode: bool = False
     provider_attempted: str = ""
+    base_quote_provider_attempted: str = ""
+    minute_provider_attempted: str = ""
     provider_success: bool = False
+    yfinance_fallback_policy: str = ""
+    yfinance_circuit_open: bool = False
+    yfinance_circuit_reason: str = ""
+    fallback_skipped_yfinance_circuit_open: bool = False
     minute_bars_available: bool = False
     minute_bar_provider: str = ""
     minute_bar_interval: str = ""
@@ -241,6 +247,7 @@ class PriceRecord(BaseModel):
     minute_mode: str = ""
     minute_workers: int = 0
     parallel_enabled: bool = False
+    parallel_note: str = ""
     per_symbol_elapsed_seconds: float | None = None
 
     def output_dict(self) -> dict[str, object]:

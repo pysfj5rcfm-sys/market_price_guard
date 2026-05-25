@@ -200,3 +200,39 @@ def test_cn_trading_now_still_uses_trading_max_age_for_sz():
     assert market_status_for_now(raw, "CN", now) == "open"
     assert is_stale is True
     assert "交易中价格超过 max_age_seconds" in reason
+
+
+def test_small_future_quote_time_within_tolerance_is_not_stale():
+    now = datetime(2026, 5, 22, 9, 38, 0, tzinfo=timezone(timedelta(hours=8)))
+    raw = RawPrice(
+        symbol="688256.SH",
+        price=129.0,
+        currency="CNY",
+        source="eastmoney_direct",
+        quote_time=now + timedelta(seconds=19),
+        fetch_time=now,
+        market_status="open",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
+
+    assert is_stale is False
+    assert "future_quote_time" not in reason
+
+
+def test_large_future_quote_time_over_tolerance_is_stale():
+    now = datetime(2026, 5, 22, 9, 38, 0, tzinfo=timezone(timedelta(hours=8)))
+    raw = RawPrice(
+        symbol="688256.SH",
+        price=129.0,
+        currency="CNY",
+        source="eastmoney_direct",
+        quote_time=now + timedelta(seconds=121),
+        fetch_time=now,
+        market_status="open",
+    )
+
+    is_stale, reason = assess_freshness(raw, "CN", RULES, now=now)
+
+    assert is_stale is True
+    assert "future_quote_time" in reason

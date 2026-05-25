@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -9,6 +10,7 @@ import pandas as pd
 from .models import PriceRecord
 from .providers.eastmoney_direct_provider import _default_http_get, eastmoney_secid_for_symbol
 from .providers.yfinance_provider import yahoo_ticker_for_symbol
+from .yfinance_circuit import YFinanceCircuitBreaker
 
 
 TIME_COLUMNS = ["时间", "日期时间", "datetime", "time", "timestamp"]
@@ -59,13 +61,14 @@ def apply_minute_bars_probe(
     now: datetime | None = None,
     minute_mode: str = "diagnostic",
     minute_workers: int = 0,
+    yfinance_circuit: YFinanceCircuitBreaker | None = None,
 ) -> tuple[list[PriceRecord], list[dict[str, Any]]]:
     """Attach minute-bar probe status without changing price usability semantics."""
     rows: list[dict[str, Any]] = []
     updated: list[PriceRecord] = []
     for record in records:
         start = datetime.now(timezone.utc)
-        snapshot = _snapshot_for_record(record, include_minute_bars, provider_mode, now, minute_mode)
+        snapshot = _snapshot_for_record(record, include_minute_bars, provider_mode, now, minute_mode, yfinance_circuit)
         elapsed = (datetime.now(timezone.utc) - start).total_seconds()
         updated_record = _record_with_snapshot(record, snapshot, minute_mode, minute_workers, elapsed)
         updated.append(updated_record)
@@ -79,6 +82,7 @@ def _snapshot_for_record(
     provider_mode: str,
     now: datetime | None = None,
     minute_mode: str = "diagnostic",
+    yfinance_circuit: YFinanceCircuitBreaker | None = None,
 ) -> MinuteBarsSnapshot:
     fetch_time = now.astimezone(timezone.utc) if now else datetime.now(timezone.utc)
     if not include_minute_bars:
@@ -115,7 +119,7 @@ def _snapshot_for_record(
         return _mock_snapshot(record, fetch_time)
 
     if _is_etf_symbol(record.symbol):
-        return _etf_snapshot_with_fallback(record, fetch_time, minute_mode)
+        return _etf_snapshot_with_fallback(record, fetch_time, minute_mode, yfinance_circuit)
 
     if _is_cn_security(record.symbol):
         eastmoney_snapshot = None
@@ -123,12 +127,13 @@ def _snapshot_for_record(
             eastmoney_snapshot = _eastmoney_snapshot(record, fetch_time, previous_note="akshare_not_applicable_for_stock_minute_probe")
             if eastmoney_snapshot.status == "available":
                 return eastmoney_snapshot
-        return _yfinance_snapshot(
+        return _yfinance_snapshot_with_circuit(
             record,
             fetch_time,
             previous_note=_eastmoney_attempt_note(eastmoney_snapshot) if eastmoney_snapshot else "eastmoney_status=skipped; eastmoney_reason=fallback_skipped_balanced_mode",
             previous_snapshot=eastmoney_snapshot,
             attempted_providers="eastmoney_direct,yfinance" if eastmoney_snapshot else "yfinance",
+            circuit=yfinance_circuit,
         )
 
     if "symbol_not_found" in record.quality_issues:
@@ -171,11 +176,16 @@ def _snapshot_for_record(
         status="not_supported",
         validation_status=validation,
         missing_reason="not_implemented_for_provider",
-        notes=f"minute bars probe is not implemented for {provider} in v0.7.2a.1",
+        notes=f"minute bars are not supported for {provider} in current reference-only probe path",
     )
 
 
-def _etf_snapshot_with_fallback(record: PriceRecord, fetch_time: datetime, minute_mode: str) -> MinuteBarsSnapshot:
+def _etf_snapshot_with_fallback(
+    record: PriceRecord,
+    fetch_time: datetime,
+    minute_mode: str,
+    yfinance_circuit: YFinanceCircuitBreaker | None = None,
+) -> MinuteBarsSnapshot:
     akshare_snapshot = _akshare_etf_snapshot(record, fetch_time)
     if akshare_snapshot.status == "available":
         return akshare_snapshot
@@ -186,12 +196,13 @@ def _etf_snapshot_with_fallback(record: PriceRecord, fetch_time: datetime, minut
             upload_note="akshare_failed; fallback_skipped_fast_mode; retry_balanced_or_diagnostic",
         )
     if minute_mode == "balanced":
-        return _yfinance_snapshot(
+        return _yfinance_snapshot_with_circuit(
             record,
             fetch_time,
             previous_note=f"{_snapshot_attempt_note(akshare_snapshot)}; eastmoney_status=skipped; eastmoney_reason=fallback_skipped_balanced_mode",
             previous_snapshot=akshare_snapshot,
             attempted_providers="akshare,yfinance",
+            circuit=yfinance_circuit,
         )
     eastmoney_snapshot = _eastmoney_snapshot(
         record,
@@ -201,12 +212,13 @@ def _etf_snapshot_with_fallback(record: PriceRecord, fetch_time: datetime, minut
     )
     if eastmoney_snapshot.status == "available":
         return eastmoney_snapshot
-    return _yfinance_snapshot(
+    return _yfinance_snapshot_with_circuit(
         record,
         fetch_time,
         previous_note=_eastmoney_attempt_note(eastmoney_snapshot),
         previous_snapshot=eastmoney_snapshot,
         attempted_providers="akshare,eastmoney_direct,yfinance",
+        circuit=yfinance_circuit,
     )
 
 
@@ -260,9 +272,16 @@ def _record_with_snapshot(
             "minute_mode": minute_mode,
             "minute_workers": minute_workers,
             "parallel_enabled": False,
+            "parallel_note": "workers parameter parsed, execution remains serial in this version",
             "per_symbol_elapsed_seconds": round(elapsed_seconds, 3) if elapsed_seconds is not None else None,
             "fallback_skipped_fast_mode": record.fallback_skipped_fast_mode or "fallback_skipped_fast_mode=true" in snapshot.notes,
-            "provider_attempted": _provider_attempted_from_notes(snapshot.notes) or record.provider_attempted,
+            "base_quote_provider_attempted": record.base_quote_provider_attempted or record.provider_attempted,
+            "minute_provider_attempted": _provider_attempted_from_notes(snapshot.notes) or snapshot.provider or "missing",
+            "provider_attempted": record.base_quote_provider_attempted or record.provider_attempted,
+            "yfinance_fallback_policy": _minute_yfinance_fallback_policy(minute_mode),
+            "yfinance_circuit_open": "yfinance_circuit_open=true" in snapshot.notes,
+            "yfinance_circuit_reason": _note_value(snapshot.notes, "yfinance_circuit_reason"),
+            "fallback_skipped_yfinance_circuit_open": "fallback_skipped_yfinance_circuit_open" in snapshot.notes,
             "provider_success": snapshot.status == "available" or record.provider_success,
         }
     )
@@ -322,6 +341,23 @@ def _provider_attempted_from_notes(notes: str) -> str:
     return tail.split(";", 1)[0].strip()
 
 
+def _note_value(notes: str, key: str) -> str:
+    marker = f"{key}="
+    if marker not in notes:
+        return ""
+    return notes.split(marker, 1)[1].split(";", 1)[0].strip()
+
+
+def _minute_yfinance_fallback_policy(minute_mode: str) -> str:
+    if minute_mode == "fast":
+        return "disabled_in_fast_mode"
+    if minute_mode == "balanced":
+        return "enabled_until_circuit_open"
+    if minute_mode == "diagnostic":
+        return "enabled_with_circuit_breaker"
+    return ""
+
+
 def _akshare_etf_snapshot(record: PriceRecord, fetch_time: datetime) -> MinuteBarsSnapshot:
     success_diagnostic = _market_session_diagnostic(record, fetch_time, akshare_failed=False)
     try:
@@ -377,7 +413,7 @@ def _akshare_etf_snapshot(record: PriceRecord, fetch_time: datetime) -> MinuteBa
         status="available",
             validation_status=validation_status,
             missing_reason="",
-            notes=f"akshare_error_type=; akshare_error_message=; fund_etf_hist_min_em normalized_symbol={normalized}; {_diagnostic_note(success_diagnostic)}",
+            notes=f"provider_attempted=akshare; provider_success=akshare; akshare_status=available; akshare_reason=; akshare_error_type=; akshare_error_message=; fund_etf_hist_min_em normalized_symbol={normalized}; {_diagnostic_note(success_diagnostic)}",
             **success_diagnostic,
         )
 
@@ -513,12 +549,56 @@ def _call_eastmoney_minute_bars(secid: str, klt: str) -> dict[str, Any]:
     return _default_http_get(url, params, timeout_seconds=5.0)
 
 
+def _yfinance_snapshot_with_circuit(
+    record: PriceRecord,
+    fetch_time: datetime,
+    previous_note: str = "",
+    previous_snapshot: MinuteBarsSnapshot | None = None,
+    attempted_providers: str = "akshare,eastmoney_direct,yfinance",
+    circuit: YFinanceCircuitBreaker | None = None,
+) -> MinuteBarsSnapshot:
+    if circuit is not None and not circuit.allow():
+        circuit.record_skip(scope="minute")
+        inherited_diagnostic = _snapshot_diagnostic(previous_snapshot) if previous_snapshot else _market_session_diagnostic(record, fetch_time, akshare_failed=False)
+        notes = (
+            f"provider_attempted={attempted_providers}; provider_success=none; "
+            "yfinance_status=skipped; yfinance_reason=yfinance_circuit_open; "
+            f"yfinance_circuit_open=true; yfinance_circuit_reason={circuit.reason}; "
+            "fallback_skipped_yfinance_circuit_open=true; "
+            f"{previous_note}; {_diagnostic_note(inherited_diagnostic)}"
+        )
+        return MinuteBarsSnapshot(
+            symbol=record.symbol,
+            provider="yfinance",
+            interval="not_available",
+            bars=[],
+            latest_time=None,
+            fetch_time=fetch_time,
+            status="provider_skipped",
+            validation_status="provider_dependent",
+            missing_reason="yfinance_circuit_open",
+            notes=notes,
+            upload_note="yfinance_circuit_open; no_minute_bars; see_debug",
+            yfinance_ticker="",
+            **inherited_diagnostic,
+        )
+    snapshot = _yfinance_snapshot(record, fetch_time, previous_note, previous_snapshot, attempted_providers, circuit)
+    if circuit is not None and circuit.open and "yfinance_circuit_open=true" not in snapshot.notes:
+        snapshot = _snapshot_with_notes(
+            snapshot,
+            extra_note=f"yfinance_circuit_open=true; yfinance_circuit_reason={circuit.reason}",
+            upload_note=snapshot.upload_note or _minute_bar_upload_note(snapshot),
+        )
+    return snapshot
+
+
 def _yfinance_snapshot(
     record: PriceRecord,
     fetch_time: datetime,
     previous_note: str = "",
     previous_snapshot: MinuteBarsSnapshot | None = None,
     attempted_providers: str = "akshare,eastmoney_direct,yfinance",
+    circuit: YFinanceCircuitBreaker | None = None,
 ) -> MinuteBarsSnapshot:
     inherited_diagnostic = _snapshot_diagnostic(previous_snapshot) if previous_snapshot else _market_session_diagnostic(record, fetch_time, akshare_failed=False)
     if inherited_diagnostic.get("after_close_possible"):
@@ -552,28 +632,54 @@ def _yfinance_snapshot(
     last_error_type = ""
     last_error_message = ""
     for interval, period in [("1m", "1d"), ("5m", "5d")]:
+        if circuit is not None and not circuit.allow():
+            circuit.record_skip(scope="minute")
+            last_error_type = ""
+            last_error_message = "yfinance_circuit_open"
+            last_error = "yfinance_circuit_open"
+            last_reason = "yfinance_circuit_open"
+            break
+        start = time.perf_counter()
         try:
             df = _call_yfinance_minute_bars(ticker_symbol, period=period, interval=interval)
         except ImportError as exc:
+            elapsed = time.perf_counter() - start
             last_error_type = type(exc).__name__
             last_error_message = _short_error_message(exc)
             last_error = f"{last_error_type}: {last_error_message}"
             last_reason = "provider_error"
+            if circuit is not None:
+                circuit.record_error(last_error_message, elapsed_seconds=elapsed, timeout=False, symbol=record.symbol)
             break
         except Exception as exc:
+            elapsed = time.perf_counter() - start
             last_error_type = type(exc).__name__
             last_error_message = _short_error_message(exc)
             last_error = f"{last_error_type}: {last_error_message}"
             last_reason = "provider_error"
+            if circuit is not None:
+                circuit.record_error(
+                    last_error_message,
+                    elapsed_seconds=elapsed,
+                    timeout=elapsed > 8.0,
+                    symbol=record.symbol,
+                )
+            if _looks_yfinance_rate_limited(last_error):
+                break
             continue
+        elapsed = time.perf_counter() - start
         if df is None or df.empty:
             last_error_type = ""
             last_error_message = "empty_response"
             last_error = "empty_response"
             last_reason = "empty_response"
+            if circuit is not None:
+                circuit.record_error(last_error_message, elapsed_seconds=elapsed, timeout=elapsed > 8.0, symbol=record.symbol)
             continue
         bars, reason, raw_count = _yfinance_bars_from_frame(df)
         if bars:
+            if circuit is not None:
+                circuit.record_success(elapsed)
             latest = max(bar.timestamp for bar in bars)
             return MinuteBarsSnapshot(
                 symbol=record.symbol,
@@ -600,10 +706,14 @@ def _yfinance_snapshot(
         last_error_message = reason
         last_error = f"{reason}; raw_count={raw_count}"
         last_reason = reason
+        if circuit is not None:
+            circuit.record_error(last_error_message, elapsed_seconds=elapsed, timeout=elapsed > 8.0, symbol=record.symbol)
 
     status = "unavailable" if last_reason in {"empty_response", "no_recent_bars"} else "provider_error"
     if last_reason == "parse_error":
         status = "parse_error"
+    if last_reason == "yfinance_circuit_open":
+        status = "provider_skipped"
     return MinuteBarsSnapshot(
         symbol=record.symbol,
         provider="yfinance",
@@ -867,20 +977,25 @@ def _short_text(text: str, limit: int = 160) -> str:
     return text.replace("\n", " ").replace("\r", " ").replace(";", ",")[:limit]
 
 
+def _looks_yfinance_rate_limited(text: str) -> bool:
+    lowered = text.lower()
+    return "too many requests" in lowered or "rate limited" in lowered or "yfratelimiterror" in lowered
+
+
 def _minute_bar_upload_note(snapshot: MinuteBarsSnapshot) -> str:
     if snapshot.provider == "manual" and snapshot.missing_reason == "manual_price_only":
         return "manual_price_only; minute_not_supported"
     if snapshot.status == "available":
         interval = snapshot.interval or "minute"
         if snapshot.provider == "akshare":
-            return f"akshare_{interval}_ok; diagnostic_only"
+            return f"akshare_{interval}_ok; balanced_mode; reference_only"
         if snapshot.provider == "eastmoney_direct":
-            return f"eastmoney_{interval}_ok; diagnostic_only; not_operation_grade"
+            return f"eastmoney_{interval}_ok; diagnostic_mode; reference_only; not_operation_grade"
         if snapshot.provider == "yfinance":
             if snapshot.after_close_possible:
                 return "yf_ref_ok; ak/em after_close_possible; provider_dependent; not_operation_grade"
             return "yf_ref_ok; provider_dependent; not_operation_grade"
-        return f"{snapshot.provider}_minute_ok; diagnostic_only"
+        return f"{snapshot.provider}_minute_ok; reference_only"
     if snapshot.status == "not_supported" and snapshot.missing_reason == "manual_price_only":
         return "manual_price_only; minute_not_supported"
     if snapshot.status == "not_attempted":

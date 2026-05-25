@@ -180,12 +180,13 @@ def test_reference_tech_chain_uses_eastmoney_before_yfinance_and_akshare(monkeyp
     completeness = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
-    assert calls["yfinance"] == len(ETF_SYMBOLS)
+    assert calls["yfinance"] == 0
     assert calls["akshare"] == 1
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["selected_provider"]) == {"eastmoney_direct"}
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["quote_trust_tier"]) == {"reference"}
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["usable_for_operation"].astype(str)) == {"False"}
     assert "effective_provider_chain: eastmoney_direct, yfinance, akshare, mock" in health
+    assert "selected_provider_success_policy_skip" in health
     assert "selected_provider=eastmoney_direct" in upload or "eastmoney_direct" in upload
     assert "eastmoney_direct" in debug
     assert "not official exchange real-time feed" in completeness

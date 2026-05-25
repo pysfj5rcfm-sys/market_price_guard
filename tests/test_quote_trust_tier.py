@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -14,7 +14,14 @@ from market_price_guard.report import build_completeness_report, build_provider_
 def test_prices_snapshot_keeps_old_columns_and_adds_quote_trust_columns(tmp_path):
     output_dir = tmp_path / "tech"
 
-    run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
+    run_pipeline(
+        output_dir=output_dir,
+        provider_mode="mock",
+        profile="tech",
+        strict=True,
+        mock_prices_path=_fresh_mock_prices(tmp_path),
+        manual_prices_path=_fresh_manual_prices(tmp_path),
+    )
     df = pd.read_csv(output_dir / "prices_snapshot.csv", encoding="utf-8-sig")
 
     old_columns = [
@@ -89,7 +96,14 @@ def test_yfinance_etf_is_reference_only_if_ever_called():
 def test_reports_include_quote_trust_sections(tmp_path):
     output_dir = tmp_path / "tech"
 
-    run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
+    run_pipeline(
+        output_dir=output_dir,
+        provider_mode="mock",
+        profile="tech",
+        strict=True,
+        mock_prices_path=_fresh_mock_prices(tmp_path),
+        manual_prices_path=_fresh_manual_prices(tmp_path),
+    )
 
     index = (output_dir / "index.md").read_text(encoding="utf-8")
     completeness = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
@@ -108,7 +122,14 @@ def test_reports_include_quote_trust_sections(tmp_path):
 def test_tech_flow_and_scoped_outputs_remain_backward_compatible(tmp_path):
     output_dir = tmp_path / "tech"
 
-    result = run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
+    result = run_pipeline(
+        output_dir=output_dir,
+        provider_mode="mock",
+        profile="tech",
+        strict=True,
+        mock_prices_path=_fresh_mock_prices(tmp_path),
+        manual_prices_path=_fresh_manual_prices(tmp_path),
+    )
 
     assert result.exit_code == EXIT_OK
     assert (output_dir / "tech_price_block.md").exists()
@@ -133,7 +154,40 @@ def _normalize(raw_prices: dict[str, RawPrice]):
 def _fresh_mock_prices(tmp_path):
     path = tmp_path / "fresh_mock_prices.yaml"
     content = Path("config/mock_prices.yaml").read_text(encoding="utf-8")
-    path.write_text(content.replace("2026-05-20T12:", "2026-05-21T12:"), encoding="utf-8")
+    now = datetime.now(timezone(timedelta(hours=8)))
+    quote_time = (now - timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    fetch_time = now.strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    path.write_text(
+        content.replace("2026-05-20T12:45:00+08:00", quote_time).replace("2026-05-20T12:50:00+08:00", fetch_time),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _fresh_manual_prices(tmp_path):
+    path = tmp_path / "fresh_manual_prices.yaml"
+    quote_time = (datetime.now(timezone(timedelta(hours=8))) - timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    path.write_text(
+        f"""
+manual_prices:
+  - symbol: "GOLD_CNY"
+    name: "黄金持仓参考价"
+    market: "MANUAL"
+    price: 1040.0
+    currency: "CNY"
+    quote_time: "{quote_time}"
+    source: "manual"
+    source_note: "用户手工录入"
+    product_type: "gold_savings_or_gold_wealth_product"
+    price_type: "estimated_sellable_or_valuation_price"
+    tradable: true
+    project: "tech"
+    asset_role: "defense_or_potential_tech_funding"
+    is_core: true
+    required_for_operation: true
+""".strip(),
+        encoding="utf-8",
+    )
     return path
 
 

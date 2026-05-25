@@ -19,6 +19,7 @@ from .providers.yfinance_provider import YFinanceProvider
 from .report import CompletenessSummary, build_completeness_summary, format_blocking_record, write_outputs
 from .scan_ranking import apply_scan_ranking
 from .symbol_registry import build_watchlist_from_registry, merge_watchlist_with_registry
+from .yfinance_circuit import YFinanceCircuitBreaker
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -93,6 +94,7 @@ def collect_prices(
     universe_type: str | None = None,
     include_minute_bars: bool = False,
     scan_mode: str = "fast",
+    yfinance_circuit: YFinanceCircuitBreaker | None = None,
 ) -> dict:
     registry_enabled = bool(universe or symbols or symbol_file or include_watchlist or include_candidates or universe_type)
     universe_metadata: dict = {}
@@ -130,6 +132,7 @@ def collect_prices(
             quote_purpose=quote_purpose,
             reconcile_mode=reconcile_mode,
             scan_mode=scan_mode,
+            yfinance_circuit=yfinance_circuit,
         ),
     )
     return {"watchlist": watchlist, "prices": prices, "universe_metadata": universe_metadata}
@@ -163,6 +166,7 @@ def run_pipeline(
 ) -> PipelineResult:
     perf_start = time.perf_counter()
     run_start = _utc_now_iso()
+    yfinance_circuit = YFinanceCircuitBreaker()
     collected = collect_prices(
         watchlist_path,
         mock_prices_path,
@@ -181,6 +185,7 @@ def run_pipeline(
         universe_type,
         include_minute_bars,
         scan_mode,
+        yfinance_circuit,
     )
     rules = load_yaml(stale_rules_path)
     records = apply_scan_ranking(apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules)))
@@ -191,7 +196,9 @@ def run_pipeline(
         provider_mode=provider_mode,
         minute_mode=minute_mode,
         minute_workers=minute_workers,
+        yfinance_circuit=yfinance_circuit,
     )
+    records = _apply_yfinance_circuit_fields(records, yfinance_circuit)
     elapsed = time.perf_counter() - perf_start
     runtime = _runtime_diagnostics(
         records=records,
@@ -209,11 +216,13 @@ def run_pipeline(
         scan_mode=scan_mode,
         minute_mode=minute_mode,
         minute_workers=minute_workers,
+        yfinance_circuit=yfinance_circuit,
     )
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
     runtime["exit_code"] = exit_code
     runtime["minute_bars_snapshot"] = minute_bars_snapshot
+    runtime.update(yfinance_circuit.snapshot())
     runtime.update(collected.get("universe_metadata", {}))
     write_outputs(records, output_dir, provider_mode=provider_mode, runtime=runtime)
     return PipelineResult(
@@ -351,6 +360,7 @@ def _runtime_diagnostics(
     scan_mode: str,
     minute_mode: str,
     minute_workers: int,
+    yfinance_circuit: YFinanceCircuitBreaker | None = None,
 ) -> dict:
     from datetime import datetime, timezone
 
@@ -373,7 +383,10 @@ def _runtime_diagnostics(
         "minute_mode": minute_mode,
         "minute_workers": minute_workers,
         "parallel_enabled": False,
+        "parallel_note": "workers parameter parsed, execution remains serial in this version",
         "timeout_seconds": "",
+        "future_quote_tolerance_seconds": 120,
+        **((yfinance_circuit.snapshot()) if yfinance_circuit else {}),
         "max_run_seconds": max_run_seconds,
         "max_data_lag_seconds": max_data_lag_seconds,
         "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,
@@ -409,6 +422,12 @@ def _apply_runtime_mode_fields(records, scan_mode: str):
             "provider_timeout": bool(provider_timeout),
             "fallback_skipped_fast_mode": bool(stock_fast and "akshare" not in providers_attempted),
             "provider_attempted": provider_attempted,
+            "base_quote_provider_attempted": provider_attempted,
+            "yfinance_fallback_policy": _yfinance_fallback_policy(record, scan_mode),
+            "fallback_skipped_yfinance_circuit_open": any(
+                isinstance(attempt, dict) and attempt.get("reason") == "fallback_skipped_yfinance_circuit_open"
+                for attempt in attempts
+            ),
             "provider_success": bool(provider_success),
         }
         if stock_fast:
@@ -422,6 +441,34 @@ def _apply_runtime_mode_fields(records, scan_mode: str):
                 }
             )
             update["provider_diagnostics"] = diagnostics
+        updated.append(record.model_copy(update=update))
+    return updated
+
+
+def _yfinance_fallback_policy(record, scan_mode: str) -> str:
+    if record.universe_type == "scan_universe":
+        if scan_mode == "fast" and record.asset_type.lower() == "stock" and record.symbol.endswith((".SH", ".SZ")):
+            return "disabled_in_fast_mode"
+        if scan_mode == "diagnostic":
+            return "enabled_with_circuit_breaker"
+    return ""
+
+
+def _apply_yfinance_circuit_fields(records, yfinance_circuit: YFinanceCircuitBreaker):
+    snapshot = yfinance_circuit.snapshot()
+    updated = []
+    for record in records:
+        update = {
+            "yfinance_circuit_open": bool(snapshot.get("yfinance_circuit_open")),
+            "yfinance_circuit_reason": str(snapshot.get("yfinance_circuit_reason") or ""),
+        }
+        if record.yfinance_fallback_policy == "" and record.minute_mode:
+            if record.minute_mode == "fast":
+                update["yfinance_fallback_policy"] = "disabled_in_fast_mode"
+            elif record.minute_mode == "balanced":
+                update["yfinance_fallback_policy"] = "enabled_until_circuit_open"
+            elif record.minute_mode == "diagnostic":
+                update["yfinance_fallback_policy"] = "enabled_with_circuit_breaker"
         updated.append(record.model_copy(update=update))
     return updated
 

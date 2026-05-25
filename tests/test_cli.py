@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import time
+from datetime import datetime, timedelta, timezone
 
 from market_price_guard.main import EXIT_OK, EXIT_STRICT_BLOCKED, PROJECT_ROOT, main, run_pipeline
 from market_price_guard.providers.akshare_provider import AkshareProvider
@@ -261,7 +262,7 @@ def test_provider_health_report_does_not_change_strict_exit_code(tmp_path):
 
 
 def test_profile_tech_only_contains_tech_symbols(tmp_path):
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path), manual_prices_path=_fresh_manual_prices(tmp_path))
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
@@ -344,7 +345,7 @@ def test_profile_tech_ignores_energy_strict_failures(monkeypatch, tmp_path):
 
     monkeypatch.setattr(AkshareProvider, "fetch", fail_fetch)
 
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path))
+    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="tech", strict=True, mock_prices_path=_fresh_mock_prices(tmp_path), manual_prices_path=_fresh_manual_prices(tmp_path))
 
     assert result.exit_code == EXIT_OK
 
@@ -379,7 +380,20 @@ markets: {{}}
 def _fresh_mock_prices(tmp_path):
     path = tmp_path / "fresh_mock_prices.yaml"
     content = (PROJECT_ROOT / "config" / "mock_prices.yaml").read_text(encoding="utf-8")
-    path.write_text(content.replace("2026-05-20T12:", "2026-05-21T12:"), encoding="utf-8")
+    now = datetime.now(timezone(timedelta(hours=8)))
+    quote_time = (now - timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    fetch_time = now.strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    path.write_text(
+        content.replace("2026-05-20T12:45:00+08:00", quote_time).replace("2026-05-20T12:50:00+08:00", fetch_time),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _fresh_manual_prices(tmp_path):
+    path = tmp_path / "fresh_manual_prices.yaml"
+    quote_time = (datetime.now(timezone(timedelta(hours=8))) - timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    path.write_text(_manual_gold_yaml(quote_time_line=f'    quote_time: "{quote_time}"'), encoding="utf-8")
     return path
 
 

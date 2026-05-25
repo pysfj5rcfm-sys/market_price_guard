@@ -9,6 +9,7 @@ import market_price_guard.minute_bars as minute_bars
 from market_price_guard.main import _merge_watchlists_core_first, parse_args, run_pipeline
 from market_price_guard.models import Instrument, PriceRecord, WatchProject, Watchlist
 from market_price_guard.minute_bars import apply_minute_bars_probe
+from market_price_guard.yfinance_circuit import YFinanceCircuitBreaker
 from market_price_guard.report import (
     build_upload_bundle,
     build_completeness_report,
@@ -501,6 +502,9 @@ def test_yfinance_fallback_is_not_attempted_when_akshare_succeeds(monkeypatch):
     records, _rows = apply_minute_bars_probe([_minute_record()], include_minute_bars=True, provider_mode="live")
 
     assert records[0].minute_bar_provider == "akshare"
+    assert records[0].minute_provider_attempted == "akshare"
+    assert records[0].minute_bar_upload_note == "akshare_1m_ok; balanced_mode; reference_only"
+    assert "diagnostic_only" not in records[0].minute_bar_upload_note
     assert calls == {"yfinance": 0, "eastmoney": 0}
 
 
@@ -583,6 +587,10 @@ def test_upload_bundle_uses_compact_minute_note_and_debug_keeps_details(monkeypa
     snapshot = pd.DataFrame([record.output_dict() for record in records])
 
     assert "Minute note is compact" in upload
+    assert "Minute bars are reference-only and do not change strict or operation readiness." in upload
+    assert "outputs_tech_intraday_latest" in upload
+    assert "v0.7.2a.2b" not in upload
+    assert "VWAP and intraday derived fields are not calculated in v0.7.2a" not in upload
     assert "yf_ref_ok" in upload
     assert "provider_dependent" in upload
     assert "not_operation_grade" in upload
@@ -594,6 +602,8 @@ def test_upload_bundle_uses_compact_minute_note_and_debug_keeps_details(monkeypa
     assert "akshare_error_message" in debug
     assert "minute_bar_notes" in snapshot.columns
     assert "minute_bar_upload_note" in snapshot.columns
+    assert "base_quote_provider_attempted" in snapshot.columns
+    assert "minute_provider_attempted" in snapshot.columns
     assert records[0].minute_bar_upload_note
 
 
@@ -614,6 +624,37 @@ def test_upload_bundle_all_minute_providers_failed_note_is_short(monkeypatch, tm
     assert "akshare down" not in upload
     assert "eastmoney down" not in upload
     assert "yfinance down" not in upload
+
+
+def test_scan_upload_runtime_policy_uses_same_runtime_source(tmp_path):
+    record = _minute_record("300308.SZ").model_copy(
+        update={
+            "universe_type": "scan_universe",
+            "source_universe": "tech_scan_ai",
+            "asset_type": "stock",
+            "scan_mode": "fast",
+            "stock_fast_path_enabled": True,
+            "stock_fast_provider": "eastmoney_direct",
+            "yfinance_fallback_policy": "disabled_in_fast_mode",
+            "fallback_skipped_fast_mode": True,
+        }
+    )
+    runtime = {
+        "profile": "tech",
+        "provider_mode": "live",
+        "provider_policy": "fast",
+        "quote_purpose": "reference",
+        "universe_type": "scan_universe",
+        "scan_mode": "fast",
+        "run_time_budget_exceeded": True,
+    }
+
+    upload = build_upload_bundle([record], tmp_path, provider_mode="live", runtime=runtime)
+
+    assert "- scan_mode: fast" in upload
+    assert "- yfinance_fallback_policy: disabled_in_fast_mode" in upload
+    assert "- run_time_budget_exceeded: True" in upload
+    assert "- run_time_budget_exceeded: False" not in upload
 
 
 def test_yfinance_reference_fallback_empty_exception_and_parse(monkeypatch):
@@ -694,6 +735,7 @@ def test_minute_modes_control_fallback_order(monkeypatch):
     assert calls["yfinance"] == 1
     assert balanced_records[0].minute_bar_provider == "yfinance"
     assert "provider_attempted=akshare,yfinance" in balanced_records[0].minute_bar_notes
+    assert balanced_records[0].minute_provider_attempted == "akshare,yfinance"
     assert "fallback_skipped_balanced_mode" in balanced_records[0].minute_bar_notes
 
     calls = {"eastmoney": 0, "yfinance": 0}
@@ -713,6 +755,42 @@ def test_minute_modes_control_fallback_order(monkeypatch):
     assert calls["eastmoney"] > 0
     assert calls["yfinance"] > 0
     assert "provider_attempted=akshare,eastmoney_direct,yfinance" in diagnostic_records[0].minute_bar_notes
+
+
+def test_yfinance_minute_circuit_opens_on_rate_limit_and_skips_later_symbols(monkeypatch):
+    class FailingAk:
+        @staticmethod
+        def fund_etf_hist_min_em(symbol, period, adjust=""):
+            raise ConnectionError("akshare down")
+
+    calls = {"yfinance": 0}
+    monkeypatch.setattr(minute_bars, "_import_akshare", lambda: FailingAk)
+
+    def yfinance_rate_limit(ticker, period, interval):
+        calls["yfinance"] += 1
+        raise RuntimeError("YFRateLimitError: Too Many Requests")
+
+    monkeypatch.setattr(minute_bars, "_call_yfinance_minute_bars", yfinance_rate_limit)
+    circuit = YFinanceCircuitBreaker()
+    records, _rows = apply_minute_bars_probe(
+        [_minute_record("159819.SZ"), _minute_record("515880.SH")],
+        include_minute_bars=True,
+        provider_mode="live",
+        minute_mode="balanced",
+        yfinance_circuit=circuit,
+    )
+
+    assert circuit.open is True
+    assert circuit.reason == "rate_limited"
+    assert calls["yfinance"] == 1
+    assert circuit.attempted_count == 1
+    assert circuit.rate_limited_count == 1
+    assert circuit.skipped_by_circuit_count == 1
+    assert circuit.minute_skipped_by_circuit_count == 1
+    assert records[1].fallback_skipped_yfinance_circuit_open is True
+    assert records[1].minute_bar_missing_reason == "yfinance_circuit_open"
+    assert "fallback_skipped_yfinance_circuit_open" in records[1].minute_bar_notes
+    assert records[1].usable_for_operation is False
 
 
 def test_provider_health_sections_do_not_mix_fallback_functions():

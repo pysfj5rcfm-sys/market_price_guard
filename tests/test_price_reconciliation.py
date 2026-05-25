@@ -144,11 +144,11 @@ def test_full_reconcile_mode_attempts_multiple_sources_for_tech_etf(monkeypatch,
     report = (output_dir / "price_reconciliation_report.md").read_text(encoding="utf-8")
     upload = (output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
 
-    assert calls["yfinance"] >= 1
+    assert calls["yfinance"] == 0
     assert calls["akshare"] >= 1
     assert "reconcile_mode: full" in upload
     assert "159819.SZ" in report
-    assert "single_source_only" not in _line_for_symbol(report, "159819.SZ")
+    assert "single_source_only" in _line_for_symbol(report, "159819.SZ")
     assert not (output_dir / "energy_price_block.md").exists()
     assert not (output_dir / "controller_price_summary.md").exists()
 
