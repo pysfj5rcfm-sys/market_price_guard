@@ -4,10 +4,7 @@ universe_type: operation_candidate
 quote_purpose: reference
 required_for_operation: false
 affect_core_strict: false
-description: >
-  Technology operation-candidate universe for symbols selected from scan_ai or watchlist
-  for pre-trade verification. These symbols are not core holdings and do not affect
-  tech_fast_strict.
+description: 科技 operation_candidate 层：下周可能重点观察/条件触发的候选层；不是默认买入清单。159516 仅保留为失败试错观察身份，禁补禁T，不作为补仓候选。
 rules:
   required_for_operation: false
   default_quote_purpose: reference
@@ -15,8 +12,41 @@ rules:
   allow_operation_upgrade: false
   ranking_is_trading_advice: false
   output_is_trading_advice: false
+  not_default_buy_list: true
+  forbidden_as_candidate_by_default:
+  - 002463.SZ
+  - 513300.SH
+  - 510300.SH
+  - GOLD_CNY
+  qdii_premium_required_for_nasdaq_add: true
+  restricted_candidate_symbols:
+    159516.SZ: failed_trial_observation_only; no_add_no_t; not_repair_candidate; any
+      new trade requires full re-evaluation
 symbols:
+- 159819.SZ
+- 515880.SH
+- 159516.SZ
+- 159995.SZ
+- 588200.SH
+- 512480.SH
+- 588890.SH
+- 588170.SH
+- 159558.SZ
+- 515050.SH
+- 159994.SZ
+priority:
+  p1_current_direction_candidates:
+  - 515880.SH
+  - 159819.SZ
+  restricted_observation_candidate:
+  - 159516.SZ
+  p2_semiconductor_chip_candidates:
   - 159995.SZ
   - 588200.SH
+  - 512480.SH
+  - 588890.SH
   - 588170.SH
   - 159558.SZ
+  p3_communication_peer_candidates:
+  - 515050.SH
+  - 159994.SZ

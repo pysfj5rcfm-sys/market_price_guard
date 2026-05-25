@@ -34,6 +34,7 @@ $OutputDir = Join-Path $ProjectRoot 'outputs_tech_pipeline_latest'
 $CacheDir = Join-Path $ProjectRoot 'outputs_tech_pipeline_cache_latest'
 $SummaryPath = Join-Path $OutputDir 'pipeline_summary.md'
 $ManifestPath = Join-Path $OutputDir 'pipeline_manifest.json'
+$LayerManifestPath = Join-Path $OutputDir 'pipeline_layer_manifest.json'
 $UploadManifestPath = Join-Path $OutputDir 'upload_manifest.md'
 
 $PreviousUseRunCache = $env:MARKET_GUARD_USE_UAT_RUN_CACHE
@@ -190,6 +191,39 @@ $StrictBlocked = @($Results | Where-Object { $_.status -eq 'strict_blocked_but_r
 $Skipped = @($Results | Where-Object { $_.status -eq 'skipped_by_parameter' }).Count
 $RunSteps = @($Results | Where-Object { $_.status -ne 'skipped_by_parameter' }).Count
 
+$LayerManifests = @()
+foreach ($Step in $Steps) {
+    $StepOutputPath = Join-Path $ProjectRoot $Step['OutputDir']
+    $StepLayerManifestPath = Join-Path $StepOutputPath 'layer_manifest.json'
+    if (Test-Path $StepLayerManifestPath) {
+        try {
+            $LayerData = Get-Content $StepLayerManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $LayerManifests += $LayerData
+        } catch {
+            $LayerManifests += [PSCustomObject]@{
+                layer_name = $Step['Name']
+                config_source_path = ('manifest_parse_error:' + $StepLayerManifestPath)
+                configured_symbol_count = 0
+                loaded_symbol_count = 0
+                config_mismatch = $true
+                missing_from_loaded = @()
+                extra_loaded_symbols = @()
+            }
+        }
+    } else {
+        $LayerManifests += [PSCustomObject]@{
+            layer_name = $Step['Name']
+            config_source_path = ('manifest_missing:' + $Step['OutputDir'] + '/layer_manifest.json')
+            configured_symbol_count = 0
+            loaded_symbol_count = 0
+            config_mismatch = $true
+            missing_from_loaded = @()
+            extra_loaded_symbols = @()
+        }
+    }
+}
+$LayerMismatchCount = @($LayerManifests | Where-Object { $_.config_mismatch }).Count
+
 $Lines = @()
 $Lines += '# Tech Research Pipeline Summary'
 $Lines += ''
@@ -226,6 +260,20 @@ $Lines += ('- run_cache_error_count: ' + $RunCacheErrorCount)
 $Lines += '- item_cache_status: not_collected'
 $Lines += '- item_cache_note: see run-level cache summary'
 $Lines += ''
+$Lines += '## Layer Config Summary'
+$Lines += ''
+if ($LayerMismatchCount -gt 0) {
+    $Lines += 'CONFIG_MISMATCH: true'
+    $Lines += ''
+}
+$Lines += '| layer | config_source_path | configured | loaded | mismatch | missing | extra |'
+$Lines += '|---|---|---:|---:|---|---|---|'
+foreach ($Layer in $LayerManifests) {
+    $Missing = if ($Layer.missing_from_loaded) { ($Layer.missing_from_loaded -join ', ') } else { 'none' }
+    $Extra = if ($Layer.extra_loaded_symbols) { ($Layer.extra_loaded_symbols -join ', ') } else { 'none' }
+    $Lines += ('| ' + $Layer.layer_name + ' | ' + $Layer.config_source_path + ' | ' + $Layer.configured_symbol_count + ' | ' + $Layer.loaded_symbol_count + ' | ' + ([string]$Layer.config_mismatch).ToLowerInvariant() + ' | ' + $Missing + ' | ' + $Extra + ' |')
+}
+$Lines += ''
 $Lines += '## Output Dirs Generated'
 foreach ($Step in $Steps) {
     $Lines += ('- ' + $Step['OutputDir'])
@@ -258,6 +306,7 @@ $Manifest = New-Object PSObject -Property ([ordered]@{
     minute_workers = $MinuteWorkers;
     cache_dir = $(if ($UseRunCache) { $CacheDir } else { '' });
     steps = @($Results);
+    layer_config_summary = @($LayerManifests);
     summary = New-Object PSObject -Property ([ordered]@{
         passed = $Passed;
         failed = $Failed;
@@ -271,6 +320,14 @@ $Manifest = New-Object PSObject -Property ([ordered]@{
     })
 })
 $Manifest | ConvertTo-Json -Depth 6 | Set-Content $ManifestPath -Encoding UTF8
+
+$PipelineLayerManifest = New-Object PSObject -Property ([ordered]@{
+    pipeline_name = 'tech_research_pipeline';
+    generated_at = $GeneratedAt;
+    layer_mismatch_count = $LayerMismatchCount;
+    layers = @($LayerManifests);
+})
+$PipelineLayerManifest | ConvertTo-Json -Depth 8 | Set-Content $LayerManifestPath -Encoding UTF8
 
 $UploadLines = @(
     '# Tech Research Pipeline Upload Manifest',

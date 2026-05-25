@@ -2,11 +2,19 @@ name: tech_core
 profile: tech
 universe_type: core_holdings
 quote_purpose: operation
-symbols:
-  - 159632.SZ
-  - 513300.SH
-  - 159819.SZ
-  - 515880.SH
-  - 159516.SZ
-  - 510300.SH
-  - GOLD_CNY
+symbols: &id001
+- 159632.SZ
+- 513300.SH
+- 159819.SZ
+- 515880.SH
+- 159516.SZ
+- 510300.SH
+- GOLD_CNY
+description: 科技 operation 层：仅保留当前持仓与基础参考。新增扩池标的本轮不进入 operation，避免非持仓验证标的阻断 tech_fast_strict。
+rules:
+  current_holdings_required_for_operation: *id001
+  operation_validators_non_blocking: []
+  new_symbols_are_not_buy_list: true
+  no_position_or_cost_change: true
+  gold_manual_reference_only: true
+  operation_layer_not_broad_scan_pool: true

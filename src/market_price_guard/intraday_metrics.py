@@ -8,6 +8,7 @@ from typing import Any
 
 import pandas as pd
 
+from .config_observability import build_layer_manifest, layer_manifest_summary_lines, write_layer_manifest
 from .symbol_registry import load_symbol_registry, load_universe
 
 
@@ -131,6 +132,10 @@ def build_intraday_outputs(inputs: IntradayInputs) -> pd.DataFrame:
         "tech_spot_file": str(inputs.tech_spot_dir / "prices_snapshot.csv"),
         "operation_candidate_spot_file": str(inputs.operation_candidate_dir / "prices_snapshot.csv"),
     }
+    layer_manifest = build_intraday_layer_manifest(df, inputs)
+    df.attrs["layer_manifest"] = layer_manifest
+    runtime["layer_manifest"] = layer_manifest
+    write_layer_manifest(inputs.output_dir, layer_manifest)
     (inputs.output_dir / "index.md").write_text(build_index_report(df, runtime), encoding="utf-8")
     (inputs.output_dir / "0_upload_bundle.md").write_text(build_upload_bundle(df, runtime), encoding="utf-8")
     (inputs.output_dir / "reference_vwap_report.md").write_text(build_reference_vwap_report(df, runtime), encoding="utf-8")
@@ -141,6 +146,37 @@ def build_intraday_outputs(inputs: IntradayInputs) -> pd.DataFrame:
     (inputs.output_dir / "price_reconciliation_report.md").write_text(build_price_reconciliation_report(), encoding="utf-8")
     (inputs.output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics(runtime), encoding="utf-8")
     return df
+
+
+def build_intraday_layer_manifest(df: pd.DataFrame, inputs: IntradayInputs) -> dict[str, Any]:
+    source_manifest_path = inputs.minute_probe_dir / "layer_manifest.json"
+    configured_symbols: list[str] = []
+    warnings: list[str] = []
+    if source_manifest_path.exists():
+        try:
+            import json
+
+            source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
+            configured_symbols = [str(symbol) for symbol in source_manifest.get("configured_symbols", [])]
+        except Exception as exc:
+            warnings.append(f"source_layer_manifest_load_error:{type(exc).__name__}:{exc}")
+    if not configured_symbols:
+        core_spec = load_universe("tech_core", inputs.universes_dir)
+        candidate_spec = load_universe("tech_operation_candidates", inputs.universes_dir)
+        configured_symbols = list(dict.fromkeys(core_spec.symbols + candidate_spec.symbols))
+        warnings.append("source_layer_manifest_missing; fell back to current universe files for configured symbols")
+    loaded_symbols = [str(value) for value in df.get("symbol", [])]
+    return build_layer_manifest(
+        layer_name="tech_intraday_metrics",
+        universe_name="tech_intraday_metrics",
+        universe_type="reference_intraday_metrics",
+        config_source_path="derived_from_outputs_tech_minute_probe_latest",
+        configured_symbols=configured_symbols,
+        loaded_symbols=loaded_symbols,
+        config_load_status="derived",
+        config_load_warnings=warnings,
+        source_layer_manifest_path="outputs_tech_minute_probe_latest/layer_manifest.json",
+    )
 
 
 def calculate_intraday_metrics(inputs: IntradayInputs) -> list[dict[str, Any]]:
@@ -413,6 +449,11 @@ def build_upload_bundle(df: pd.DataFrame, runtime: dict[str, Any]) -> str:
         f"- generated_at: {runtime['generated_at']}",
         f"- source_minute_file: {runtime['source_minute_file']}",
         "",
+        "## Config Source / Layer Manifest",
+    ]
+    lines.extend(layer_manifest_summary_lines(runtime.get("layer_manifest")))
+    lines.extend([
+        "",
         "## Safety Note",
         "- Reference VWAP is not operation-grade.",
         "- Intraday metrics do not change strict or usable_for_operation.",
@@ -421,7 +462,7 @@ def build_upload_bundle(df: pd.DataFrame, runtime: dict[str, Any]) -> str:
         "## Reference Intraday Summary",
         "| symbol | name | universe | provider | validation | bars | latest_time | ref_vwap | last | dist_vwap_pct | pos_pct | spot_align | support | note |",
         "|---|---|---|---|---|---:|---|---:|---:|---:|---:|---|---|---|",
-    ]
+    ])
     for _, row in df.iterrows():
         lines.append(
             "| {symbol} | {name} | {universe} | {provider} | {validation} | {bars} | {latest} | {vwap} | {last} | {dist} | {pos} | {align} | {support} | {note} |".format(
@@ -485,6 +526,7 @@ def build_reference_vwap_report(df: pd.DataFrame, runtime: dict[str, Any]) -> st
 
 
 def build_data_completeness_report(df: pd.DataFrame) -> str:
+    manifest = getattr(df, "attrs", {}).get("layer_manifest")
     lines = [
         "# Intraday Metrics Data Completeness Report",
         "",
@@ -504,8 +546,13 @@ def build_data_completeness_report(df: pd.DataFrame) -> str:
         f"- aligned_count: {sum(1 for value in df.get('spot_minute_time_alignment_status', []) if value == 'aligned')}",
         f"- minute_stale_count: {sum(1 for value in df.get('spot_minute_time_alignment_status', []) if value == 'minute_stale')}",
         "",
-        "Derived intraday fields are reference-only and do not change operation readiness.",
+        "## Config Source / Layer Manifest",
     ]
+    lines.extend(layer_manifest_summary_lines(manifest))
+    lines.extend([
+        "",
+        "Derived intraday fields are reference-only and do not change operation readiness.",
+    ])
     return "\n".join(lines) + "\n"
 
 
@@ -517,10 +564,15 @@ def build_debug_bundle(df: pd.DataFrame, runtime: dict[str, Any]) -> str:
         f"- tech_spot_file: {runtime['tech_spot_file']}",
         f"- operation_candidate_spot_file: {runtime['operation_candidate_spot_file']}",
         "",
+        "## Config Source / Layer Manifest",
+    ]
+    lines.extend(layer_manifest_summary_lines(runtime.get("layer_manifest")))
+    lines.extend([
+        "",
         "## Calculation Trace",
         "| symbol | source_universe | minute_rows | valid_rows | invalid_rows | volume_sum | vwap_method | high | low | last | spot_time | minute_time | alignment | reason |",
         "|---|---|---:|---:|---:|---:|---|---:|---:|---:|---|---|---|---|",
-    ]
+    ])
     for _, row in df.iterrows():
         lines.append(
             "| {symbol} | {universe} | {minute_rows} | {valid_rows} | {invalid_rows} | {volume_sum} | {method} | {high} | {low} | {last} | {spot_time} | {minute_time} | {alignment} | {reason} |".format(
@@ -579,15 +631,17 @@ def build_price_reconciliation_report() -> str:
 
 
 def build_runtime_diagnostics(runtime: dict[str, Any]) -> str:
-    return "\n".join(
-        [
+    lines = [
             "# Runtime Diagnostics",
             "",
             f"- generated_at: {runtime['generated_at']}",
             "- provider_calls: 0",
             "- note: intraday metrics read existing CSV artifacts only.",
+            "",
+            "## Config Source / Layer Manifest",
         ]
-    ) + "\n"
+    lines.extend(layer_manifest_summary_lines(runtime.get("layer_manifest")))
+    return "\n".join(lines) + "\n"
 
 
 def _report_table(df: pd.DataFrame) -> list[str]:

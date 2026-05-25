@@ -12,7 +12,7 @@ def test_markdown_report_reads_as_utf8(tmp_path):
     report = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
 
     assert "数据完整度报告" in report
-    assert "不输出买卖建议" in report
+    assert "不输出具体操作建议" in report
     health_report = (output_dir / "provider_health_report.md").read_text(encoding="utf-8")
     assert "行情源健康报告" in health_report
 

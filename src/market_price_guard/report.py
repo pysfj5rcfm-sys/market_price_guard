@@ -9,6 +9,7 @@ import yaml
 
 from .models import PriceRecord
 from .price_reconciliation import build_reconciliation_report, reconciliation_summary
+from .config_observability import layer_manifest_summary_lines
 
 
 PROVIDER_CAPABILITIES_PATH = Path("config/provider_capabilities.yaml")
@@ -267,30 +268,30 @@ def write_outputs(records: list[PriceRecord], output_dir: Path, provider_mode: s
             index=False,
             encoding="utf-8-sig",
         )
-    (output_dir / "data_completeness_report.md").write_text(build_completeness_report(records, runtime=runtime), encoding="utf-8")
-    (output_dir / "runtime_diagnostics.md").write_text(build_runtime_diagnostics_report(records, runtime), encoding="utf-8")
-    (output_dir / "price_reconciliation_report.md").write_text(build_price_reconciliation_report(records, runtime), encoding="utf-8")
-    (output_dir / "provider_capability_report.md").write_text(build_provider_capability_report(records, runtime), encoding="utf-8")
+    (output_dir / "data_completeness_report.md").write_text(_sanitize_bundle_text(build_completeness_report(records, runtime=runtime)), encoding="utf-8")
+    (output_dir / "runtime_diagnostics.md").write_text(_sanitize_bundle_text(build_runtime_diagnostics_report(records, runtime)), encoding="utf-8")
+    (output_dir / "price_reconciliation_report.md").write_text(_sanitize_bundle_text(build_price_reconciliation_report(records, runtime)), encoding="utf-8")
+    (output_dir / "provider_capability_report.md").write_text(_sanitize_bundle_text(build_provider_capability_report(records, runtime)), encoding="utf-8")
     (output_dir / "provider_health_report.md").write_text(
-        build_provider_health_report(records, provider_mode=provider_mode),
+        _sanitize_bundle_text(build_provider_health_report(records, provider_mode=provider_mode)),
         encoding="utf-8",
     )
     if "energy_price_block.md" in emit_files:
-        (output_dir / "energy_price_block.md").write_text(build_project_block(records, "energy", "能源账户价格事实块"), encoding="utf-8")
+        (output_dir / "energy_price_block.md").write_text(_sanitize_bundle_text(build_project_block(records, "energy", "能源账户价格事实块")), encoding="utf-8")
     if "tech_price_block.md" in emit_files:
-        (output_dir / "tech_price_block.md").write_text(build_tech_block(records, runtime=runtime), encoding="utf-8")
+        (output_dir / "tech_price_block.md").write_text(_sanitize_bundle_text(build_tech_block(records, runtime=runtime)), encoding="utf-8")
     if "controller_price_summary.md" in emit_files:
-        (output_dir / "controller_price_summary.md").write_text(build_controller_summary(records), encoding="utf-8")
+        (output_dir / "controller_price_summary.md").write_text(_sanitize_bundle_text(build_controller_summary(records)), encoding="utf-8")
     if "candidate_watchlist_report.md" in emit_files:
-        (output_dir / "candidate_watchlist_report.md").write_text(build_candidate_watchlist_report(records, runtime), encoding="utf-8")
+        (output_dir / "candidate_watchlist_report.md").write_text(_sanitize_bundle_text(build_candidate_watchlist_report(records, runtime)), encoding="utf-8")
     if "scan_universe_report.md" in emit_files:
-        (output_dir / "scan_universe_report.md").write_text(build_scan_universe_report(records, runtime), encoding="utf-8")
+        (output_dir / "scan_universe_report.md").write_text(_sanitize_bundle_text(build_scan_universe_report(records, runtime)), encoding="utf-8")
     if "operation_candidate_report.md" in emit_files:
-        (output_dir / "operation_candidate_report.md").write_text(build_operation_candidate_report(records, runtime), encoding="utf-8")
+        (output_dir / "operation_candidate_report.md").write_text(_sanitize_bundle_text(build_operation_candidate_report(records, runtime)), encoding="utf-8")
     if runtime.get("unsupported_count"):
-        (output_dir / "unsupported_symbols_report.md").write_text(build_unsupported_symbols_report(runtime), encoding="utf-8")
+        (output_dir / "unsupported_symbols_report.md").write_text(_sanitize_bundle_text(build_unsupported_symbols_report(runtime)), encoding="utf-8")
     (output_dir / "index.md").write_text(
-        build_index_report(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime),
+        _sanitize_bundle_text(build_index_report(records, output_dir=output_dir, provider_mode=provider_mode, runtime=runtime)),
         encoding="utf-8",
     )
     (output_dir / "0_upload_bundle.md").write_text(
@@ -450,6 +451,11 @@ def build_upload_bundle(
         f"- scan_count: {runtime.get('scan_count', '')}",
         f"- unsupported_count: {runtime.get('unsupported_count', '')}",
         "",
+        "## Config Source / Layer Manifest",
+    ]
+    lines.extend(layer_manifest_summary_lines(runtime.get("layer_manifest")))
+    lines.extend([
+        "",
         "## 本轮结论",
         f"- 可用于快速参考：{usable_for_reference}",
         f"- 可用于具体操作建议：{usable_for_operation}",
@@ -467,7 +473,7 @@ def build_upload_bundle(
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
         "",
         "### Blocking records 摘要",
-    ]
+    ])
     lines.extend(_blocking_record_lines(summary.strict_blockers))
     lines.extend(["", "## Quote Trust Tier 摘要"])
     lines.extend(_quote_trust_bundle_lines(records))
@@ -542,6 +548,8 @@ def build_debug_bundle(
         "## Symbol Registry Resolution 摘要",
     ]
     lines.extend(_registry_resolution_lines(runtime))
+    lines.extend(["", "## Config Source / Layer Manifest"])
+    lines.extend(layer_manifest_summary_lines(runtime.get("layer_manifest")))
     lines.extend([
         "",
         "## Provider Health 摘要",
@@ -607,8 +615,13 @@ def build_completeness_report(records: list[PriceRecord], runtime: dict[str, Any
         "",
         "行情源健康状态详见 provider_health_report.md。",
         "",
-        "## Strict blocking records",
+        "## Config Source / Layer Manifest",
     ]
+    lines.extend(layer_manifest_summary_lines(runtime.get("layer_manifest")))
+    lines.extend([
+        "",
+        "## Strict blocking records",
+    ])
     if any(record.source == "eastmoney_direct" or record.selected_provider == "eastmoney_direct" for record in records):
         lines.insert(
             7,
@@ -809,6 +822,7 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- provider_timeout_count: {sum(1 for record in records if record.provider_timeout)}",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', '')}",
+        f"- layer_config_mismatch: {runtime.get('layer_manifest', {}).get('config_mismatch', '') if isinstance(runtime.get('layer_manifest'), dict) else ''}",
         f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
         f"- max_run_seconds: {runtime.get('max_run_seconds', '')}",
         f"- max_data_lag_seconds: {runtime.get('max_data_lag_seconds', '')}",
@@ -822,6 +836,8 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         lines.extend([f"- {provider}: {elapsed}" for provider, elapsed in per_provider.items()])
     else:
         lines.append("- 无")
+    lines.extend(["", "## Config Source / Layer Manifest"])
+    lines.extend(layer_manifest_summary_lines(runtime.get("layer_manifest")))
     lines.extend(["", "## per_symbol_elapsed_seconds"])
     symbol_elapsed = _per_symbol_elapsed(records)
     if symbol_elapsed:
@@ -1904,9 +1920,22 @@ def _sanitize_bundle_text(text: str) -> str:
         "卖出": "具体执行动作",
         "加仓": "仓位动作",
         "减仓": "仓位动作",
+        "买卖": "具体操作",
         "做T": "盘中高频判断",
         "目标价": "执行价格",
         "挂单价": "挂单参数",
+        "挂单": "执行参数",
+        "add debug_bundle.md": "include debug_bundle.md",
+        "Add debug_bundle.md": "Include debug_bundle.md",
+        "no add, no T": "restricted observation",
+        "no add": "restricted observation",
+        "No trading advice": "No operation guidance",
+        "trading advice": "operation guidance",
+        "buy list": "candidate list",
+        "buy": "operation",
+        "sell": "operation",
+        "add": "include",
+        "reduce": "lower",
     }
     for old, new in replacements.items():
         text = text.replace(old, new)

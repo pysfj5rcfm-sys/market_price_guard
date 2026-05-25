@@ -54,6 +54,7 @@ def normalize_records(
             )
             trust = _quote_trust_fields(raw, is_stale, required_for_operation)
             if instrument.universe_type in {"candidate_watchlist", "scan_universe", "operation_candidate"}:
+                required_for_operation = False
                 trust = {
                     **trust,
                     "quote_trust_tier": "development" if trust["quote_trust_tier"] == "development" else "reference",

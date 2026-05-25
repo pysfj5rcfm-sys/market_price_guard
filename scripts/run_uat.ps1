@@ -283,6 +283,14 @@ foreach ($Item in $Items) {
     $QuotePurpose = ''
     $UniverseType = ''
     $UnsupportedCount = 0
+    $LayerManifestExists = $false
+    $LayerName = ''
+    $LayerConfigSourcePath = ''
+    $LayerConfiguredCount = ''
+    $LayerLoadedCount = ''
+    $LayerConfigMismatch = ''
+    $LayerMissing = @()
+    $LayerExtra = @()
     if (Test-Path $IndexPath) {
         $IndexContent = Get-Content $IndexPath -Raw -Encoding UTF8
         if ($IndexContent -match 'quote_purpose:\s*([A-Za-z_]+)') {
@@ -293,6 +301,23 @@ foreach ($Item in $Items) {
         }
         if ($IndexContent -match 'unsupported_count:\s*(\d+)') {
             $UnsupportedCount = [int]$Matches[1]
+        }
+    }
+    $LayerManifestPath = Join-Path $OutputPath 'layer_manifest.json'
+    if (Test-Path $LayerManifestPath) {
+        try {
+            $LayerManifest = Get-Content $LayerManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $LayerManifestExists = $true
+            $LayerName = [string]$LayerManifest.layer_name
+            $LayerConfigSourcePath = [string]$LayerManifest.config_source_path
+            $LayerConfiguredCount = [string]$LayerManifest.configured_symbol_count
+            $LayerLoadedCount = [string]$LayerManifest.loaded_symbol_count
+            $LayerConfigMismatch = ([string]$LayerManifest.config_mismatch).ToLowerInvariant()
+            $LayerMissing = @($LayerManifest.missing_from_loaded)
+            $LayerExtra = @($LayerManifest.extra_loaded_symbols)
+        } catch {
+            $LayerManifestExists = $false
+            $LayerConfigMismatch = 'parse_error'
         }
     }
 
@@ -375,6 +400,14 @@ foreach ($Item in $Items) {
         ElapsedSeconds = $ElapsedSeconds
         Mode = $Mode
         SkipReason = ''
+        LayerManifestExists = $LayerManifestExists
+        LayerName = $LayerName
+        LayerConfigSourcePath = $LayerConfigSourcePath
+        LayerConfiguredCount = $LayerConfiguredCount
+        LayerLoadedCount = $LayerLoadedCount
+        LayerConfigMismatch = $LayerConfigMismatch
+        LayerMissing = $LayerMissing
+        LayerExtra = $LayerExtra
     }
 }
 Pop-Location
@@ -468,6 +501,14 @@ foreach ($Result in $Results) {
     $Lines += ('- price_reconciliation_report.md exists: ' + $Result.ReconciliationExists)
     $Lines += ('- unsupported_symbols_report.md exists: ' + $Result.UnsupportedSymbolsExists)
     $Lines += ('- price_block exists: ' + $Result.PriceBlockExists)
+    $Lines += ('- layer_manifest.json exists: ' + $Result.LayerManifestExists)
+    $Lines += ('- layer_name: ' + $Result.LayerName)
+    $Lines += ('- config_source_path: ' + $Result.LayerConfigSourcePath)
+    $Lines += ('- configured_symbol_count: ' + $Result.LayerConfiguredCount)
+    $Lines += ('- loaded_symbol_count: ' + $Result.LayerLoadedCount)
+    $Lines += ('- config_mismatch: ' + $Result.LayerConfigMismatch)
+    $Lines += ('- missing_from_loaded: ' + ($(if ($Result.LayerMissing.Count -gt 0) { $Result.LayerMissing -join ', ' } else { 'none' })))
+    $Lines += ('- extra_loaded_symbols: ' + ($(if ($Result.LayerExtra.Count -gt 0) { $Result.LayerExtra -join ', ' } else { 'none' })))
     if ($Result.Name -in @('tech_watchlist', 'tech_scan_ai', 'tech_operation_candidates')) {
         $Lines += '- strict_pollution_isolation: candidate/scan/operation-candidate universes are non-strict reference outputs.'
     }

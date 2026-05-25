@@ -39,7 +39,7 @@ def test_provider_capability_report_and_csv_fields_are_generated(tmp_path):
     assert "Field Capability Matrix By Provider" in report
     assert "Symbol Field Quality" in report
     assert "diagnostic only" in report
-    assert "This report is not trading advice" in report
+    assert "This report is not operation guidance" in report
     assert "Provider Capability Summary" in debug
     assert "provider_capability_report.md" in debug
     assert "Field Quality Notes" in bundle

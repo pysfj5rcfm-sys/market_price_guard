@@ -114,11 +114,15 @@ def test_tech_minute_probe_includes_operation_candidates_from_registry(tmp_path)
         "515880.SH",
         "510300.SH",
         "GOLD_CNY",
-        "159995.SZ",
-        "588200.SH",
-        "588170.SH",
-        "159558.SZ",
-    ]
+            "159995.SZ",
+            "588200.SH",
+            "512480.SH",
+            "588890.SH",
+            "588170.SH",
+            "159558.SZ",
+            "515050.SH",
+            "159994.SZ",
+        ]
     mock_path.write_text(
         "prices:\n"
         + "\n".join(
@@ -148,7 +152,16 @@ def test_tech_minute_probe_includes_operation_candidates_from_registry(tmp_path)
     candidates = prices[prices["source_universe"] == "tech_operation_candidates"]
 
     assert result.exit_code == 0
-    assert set(candidates["symbol"]) == {"159995.SZ", "588200.SH", "588170.SH", "159558.SZ"}
+    assert set(candidates["symbol"]) == {
+        "159995.SZ",
+        "588200.SH",
+        "512480.SH",
+        "588890.SH",
+        "588170.SH",
+        "159558.SZ",
+        "515050.SH",
+        "159994.SZ",
+    }
     assert set(candidates["required_for_operation"].astype(str)) == {"False"}
     assert set(candidates["usable_for_operation"].astype(str)) == {"False"}
     assert set(candidates["minute_bars_available"].astype(str)) == {"True"}

@@ -20,6 +20,7 @@ from .report import CompletenessSummary, build_completeness_summary, format_bloc
 from .scan_ranking import apply_scan_ranking
 from .symbol_registry import build_watchlist_from_registry, merge_watchlist_with_registry
 from .yfinance_circuit import YFinanceCircuitBreaker
+from .config_observability import layer_manifest_from_records, write_layer_manifest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -224,7 +225,12 @@ def run_pipeline(
     runtime["minute_bars_snapshot"] = minute_bars_snapshot
     runtime.update(yfinance_circuit.snapshot())
     runtime.update(collected.get("universe_metadata", {}))
+    layer_manifest = layer_manifest_from_records(records, runtime)
+    if layer_manifest:
+        runtime["layer_manifest"] = layer_manifest
     write_outputs(records, output_dir, provider_mode=provider_mode, runtime=runtime)
+    if layer_manifest:
+        write_layer_manifest(output_dir, layer_manifest)
     return PipelineResult(
         records_count=len(records),
         output_dir=output_dir,

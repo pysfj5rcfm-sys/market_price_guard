@@ -64,7 +64,7 @@ def test_scan_reports_upload_debug_csv_and_completeness_include_ranking(tmp_path
     assert "Scan Universe Basic Ranking" in scan_report
     assert "Basic Ranking Table" in scan_report
     assert "Not Rankable" in scan_report
-    assert "not trading advice" in scan_report
+    assert "not operation guidance" in scan_report
     assert "Watchlist Review Priority" in watchlist_report
     assert "Scan Priority Summary" in upload
     assert "Top Scan Candidates" in upload
