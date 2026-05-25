@@ -202,10 +202,14 @@ def layer_manifest_summary_lines(manifest: dict[str, Any] | None) -> list[str]:
     return lines
 
 
-def run_config_check(output_dir: Path) -> dict[str, Any]:
+def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT) -> dict[str, Any]:
+    config_dir = project_root / "config"
+    universes_dir = config_dir / "universes"
+    watchlist_path = config_dir / "watchlist.yaml"
+    registry_path = config_dir / "symbol_registry.yaml"
     output_dir.mkdir(parents=True, exist_ok=True)
-    root_data = _read_yaml(WATCHLIST_PATH, [])
-    registry = _read_yaml(REGISTRY_PATH, [])
+    root_data = _read_yaml(watchlist_path, [])
+    registry = _read_yaml(registry_path, [])
     root_layers = root_data.get("projects", {}).get("tech", {}).get("layer_universes", {}) if isinstance(root_data, dict) else {}
     universe_results = {}
     all_symbols: list[str] = []
@@ -213,7 +217,7 @@ def run_config_check(output_dir: Path) -> dict[str, Any]:
     errors: list[str] = []
     for layer in TECH_LAYER_ORDER:
         data_warnings: list[str] = []
-        data = _read_yaml(UNIVERSES_DIR / f"{layer}.yaml", data_warnings)
+        data = _read_yaml(universes_dir / f"{layer}.yaml", data_warnings)
         symbols = extract_configured_symbols(data)
         all_symbols.extend(symbols)
         root_key = LAYER_TO_ROOT_MIRROR[layer]
@@ -229,7 +233,7 @@ def run_config_check(output_dir: Path) -> dict[str, Any]:
         warnings.extend(data_warnings)
         universe_results[layer] = {
             "root_layer_name": root_key,
-            "config_source_path": _display_path(UNIVERSES_DIR / f"{layer}.yaml"),
+            "config_source_path": _display_path_for_root(universes_dir / f"{layer}.yaml", project_root),
             "configured_symbol_count": len(symbols),
             "configured_symbols": symbols,
             "duplicate_configured_symbols": duplicates,
@@ -246,17 +250,19 @@ def run_config_check(output_dir: Path) -> dict[str, Any]:
     hard_rule_results = _hard_rule_check(universe_results, registry if isinstance(registry, dict) else {})
     errors.extend(hard_rule_results["errors"])
     warnings.extend(hard_rule_results["warnings"])
+    policy_warnings = _policy_warnings(universe_results, registry if isinstance(registry, dict) else {})
     result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "failed" if errors else "ok",
         "universes": universe_results,
-        "root_watchlist_path": _display_path(WATCHLIST_PATH),
-        "root_watchlist_hash_sha256": _sha256(WATCHLIST_PATH),
-        "symbol_registry_path": _display_path(REGISTRY_PATH),
-        "symbol_registry_hash_sha256": _sha256(REGISTRY_PATH),
+        "root_watchlist_path": _display_path_for_root(watchlist_path, project_root),
+        "root_watchlist_hash_sha256": _sha256(watchlist_path),
+        "symbol_registry_path": _display_path_for_root(registry_path, project_root),
+        "symbol_registry_hash_sha256": _sha256(registry_path),
         "missing_registry_symbols": missing_registry,
         "duplicate_registry_entries": registry_duplicates,
         "hard_rule_check": hard_rule_results,
+        "policy_warnings": policy_warnings,
         "warnings": warnings,
         "errors": errors,
     }
@@ -299,6 +305,8 @@ def format_config_check_markdown(result: dict[str, Any]) -> str:
     hard = result.get("hard_rule_check", {})
     for item in hard.get("checks", []):
         lines.append(f"- {item.get('name', '')}: {item.get('status', '')} ({item.get('detail', '')})")
+    lines.extend(["", "## Policy Warnings"])
+    lines.extend([f"- {warning}" for warning in result.get("policy_warnings", [])] or ["- none"])
     lines.extend(["", "## Warnings"])
     lines.extend([f"- {warning}" for warning in result.get("warnings", [])] or ["- none"])
     lines.extend(["", "## Errors"])
@@ -342,8 +350,12 @@ def _mtime(path: Path) -> str:
 
 
 def _display_path(path: Path) -> str:
+    return _display_path_for_root(path, PROJECT_ROOT)
+
+
+def _display_path_for_root(path: Path, project_root: Path) -> str:
     try:
-        return path.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+        return path.resolve().relative_to(project_root.resolve()).as_posix()
     except ValueError:
         return str(path)
 
@@ -394,7 +406,6 @@ def _contains_symbol_key(value: Any) -> bool:
 
 
 def _hard_rule_check(universe_results: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]:
-    candidates = universe_results.get("tech_operation_candidates", {}).get("configured_symbols", [])
     errors: list[str] = []
     warnings: list[str] = []
     checks: list[dict[str, str]] = []
@@ -406,32 +417,78 @@ def _hard_rule_check(universe_results: dict[str, Any], registry: dict[str, Any])
         elif not ok:
             errors.append(f"{name}:{detail}")
 
-    add(
-        "002463_not_operation_candidate",
-        "002463.SZ" not in candidates,
-        "002463.SZ not present" if "002463.SZ" not in candidates else "002463.SZ present in operation_candidate",
-    )
-    add(
-        "GOLD_CNY_not_operation_candidate",
-        "GOLD_CNY" not in candidates,
-        "GOLD_CNY not present" if "GOLD_CNY" not in candidates else "GOLD_CNY present in operation_candidate",
-    )
-    add(
-        "510300_not_operation_candidate",
-        "510300.SH" not in candidates,
-        "510300.SH not present" if "510300.SH" not in candidates else "510300.SH present in operation_candidate",
-    )
-    if "159516.SZ" in candidates:
-        text = " ".join(
-            [
-                str(registry.get("159516.SZ", {}).get("notes", "")),
-                str(registry.get("159516.SZ", {}).get("candidate_restriction", "")),
-            ]
-        ).lower()
-        required = ["failed", "no_add_no_t", "not_repair_candidate", "re_evaluation"]
-        ok = all(marker in text for marker in required)
-        add("159516_candidate_restriction", ok, "159516.SZ restriction markers required")
-    else:
-        add("159516_candidate_restriction", True, "159516.SZ not present in operation_candidate")
+    for layer, info in universe_results.items():
+        symbols = info.get("configured_symbols", [])
+        add(f"{layer}_no_duplicate_symbols", not _duplicates(symbols), "top-level symbols are unique")
+        missing = [symbol for symbol in symbols if symbol not in registry]
+        add(f"{layer}_registry_coverage", not missing, "all symbols registered" if not missing else _join_symbols(missing))
     add("scan_watchlist_not_auto_operation", True, "reported only; script does not modify config")
     return {"checks": checks, "warnings": warnings, "errors": errors}
+
+
+POLICY_WARNING_MARKERS = {
+    "failed_trial_observation",
+    "failed_trial_observation_only",
+    "no_add_no_t",
+    "not_repair_candidate",
+    "new_trade_requires_full_re_evaluation",
+    "event_stock",
+    "event_watch_only",
+    "individual_stock",
+    "manual_price_only",
+    "defensive_asset",
+    "broad_base_reference",
+    "non_tech_asset",
+    "qdii_premium_required",
+    "premium_required",
+    "non_default_candidate",
+    "operation_validator",
+    "reference_only",
+}
+
+
+def _policy_warnings(universe_results: dict[str, Any], registry: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    for layer, info in universe_results.items():
+        root_layer = str(info.get("root_layer_name") or layer)
+        for symbol in info.get("configured_symbols", []):
+            warnings.extend(_policy_warnings_for_symbol(symbol, root_layer, registry.get(symbol, {})))
+    return list(dict.fromkeys(warnings))
+
+
+def _policy_warnings_for_symbol(symbol: str, layer: str, entry: dict[str, Any]) -> list[str]:
+    tags = {str(tag) for tag in entry.get("universe_tags", []) if str(tag)}
+    role = str(entry.get("role", ""))
+    notes = str(entry.get("notes", ""))
+    restriction = str(entry.get("candidate_restriction", ""))
+    haystack = " ".join([role, notes, restriction, " ".join(sorted(tags))]).lower().replace(" ", "_").replace("-", "_")
+    warnings: list[str] = []
+    for marker in sorted(POLICY_WARNING_MARKERS):
+        if marker in tags or marker in haystack or bool(entry.get(marker, False)):
+            warnings.append(f"{symbol}:{layer}:{marker}")
+    if bool(entry.get("qdii_premium_required", False)):
+        warnings.append(f"{symbol}:{layer}:qdii_premium_required")
+        warnings.append(f"{symbol}:{layer}:premium data required before operation decision")
+    if layer == "operation_candidate":
+        if "event" in role or "event_watch" in tags or "event" in haystack:
+            warnings.extend(
+                [
+                    f"{symbol}:{layer}:event_stock_candidate_warning",
+                    f"{symbol}:{layer}:requires_event_state_machine_review",
+                    f"{symbol}:{layer}:requires_user_confirmation",
+                ]
+            )
+        if "non_tech" in tags or "broad_base" in tags or "broad_base" in haystack:
+            warnings.append(f"{symbol}:{layer}:non_tech_candidate_warning")
+        if str(entry.get("market", "")) == "MANUAL" or str(entry.get("asset_type", "")) == "manual_price":
+            warnings.append(f"{symbol}:{layer}:manual_price_only_candidate_warning")
+        if symbol == "159516.SZ":
+            warnings.extend(
+                [
+                    f"{symbol}:{layer}:failed_trial_observation_only",
+                    f"{symbol}:{layer}:no_add_no_t",
+                    f"{symbol}:{layer}:not_repair_candidate",
+                    f"{symbol}:{layer}:new_trade_requires_full_re_evaluation",
+                ]
+            )
+    return list(dict.fromkeys(warnings))
