@@ -186,6 +186,9 @@ def test_run_uat_script_contract():
     assert "akshare.fund_etf_spot_em" in script
     assert "price_reconciliation_report.md" in script
     assert "outputs_uat_summary.md" in script
+    assert "outputs_uat_latest" in script
+    assert "outputs_uat_summary.json" in script
+    assert "uat_run_manifest.json" in script
 
 
 def test_uat_profiles_doc_contract():

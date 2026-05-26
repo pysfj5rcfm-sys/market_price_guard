@@ -22,22 +22,40 @@ class Provider(Protocol):
 
 @dataclass
 class ProviderRuntimeBudget:
+    account: str = ""
+    run_id: str = ""
     timeout_seconds: float = 8.0
+    max_time_seconds_by_provider: dict[str, float] = field(default_factory=lambda: {"eastmoney_direct": 24.0, "akshare": 8.0, "yfinance": 8.0})
     max_slow_attempts_per_provider: int = 1
     max_failed_attempts_per_provider: int = 3
-    max_attempts_by_provider: dict[str, int] = field(default_factory=lambda: {"eastmoney_direct": 8, "akshare": 1, "yfinance": 1})
+    max_attempts_by_provider: dict[str, int] = field(default_factory=lambda: {"eastmoney_direct": 8, "akshare": 50, "yfinance": 1})
+    timeout_threshold: int = 1
+    failure_threshold: int = 3
     attempts_by_provider: dict[str, int] = field(default_factory=dict)
     elapsed_by_provider: dict[str, float] = field(default_factory=dict)
     slow_attempts_by_provider: dict[str, int] = field(default_factory=dict)
     failed_attempts_by_provider: dict[str, int] = field(default_factory=dict)
+    timeout_attempts_by_provider: dict[str, int] = field(default_factory=dict)
+    skipped_by_budget_by_provider: dict[str, int] = field(default_factory=dict)
+    circuit_open_by_provider: dict[str, str] = field(default_factory=dict)
 
     def should_skip(self, provider: str) -> str:
+        if provider in self.circuit_open_by_provider:
+            return self.circuit_open_by_provider[provider]
         max_attempts = self.max_attempts_by_provider.get(provider)
         if max_attempts is not None and self.attempts_by_provider.get(provider, 0) >= max_attempts:
+            self.skipped_by_budget_by_provider[provider] = self.skipped_by_budget_by_provider.get(provider, 0) + 1
+            return "provider_skipped_by_runtime_budget"
+        max_time = self.max_time_seconds_by_provider.get(provider)
+        if max_time is not None and self.elapsed_by_provider.get(provider, 0.0) >= max_time:
+            self.skipped_by_budget_by_provider[provider] = self.skipped_by_budget_by_provider.get(provider, 0) + 1
             return "provider_skipped_by_runtime_budget"
         if self.slow_attempts_by_provider.get(provider, 0) >= self.max_slow_attempts_per_provider:
+            self.skipped_by_budget_by_provider[provider] = self.skipped_by_budget_by_provider.get(provider, 0) + 1
             return "provider_skipped_by_runtime_budget"
         if self.failed_attempts_by_provider.get(provider, 0) >= self.max_failed_attempts_per_provider:
+            self.skipped_by_budget_by_provider[provider] = self.skipped_by_budget_by_provider.get(provider, 0) + 1
+            self.circuit_open_by_provider[provider] = "skipped_by_provider_circuit"
             return "provider_skipped_by_failure_budget"
         return ""
 
@@ -46,8 +64,13 @@ class ProviderRuntimeBudget:
         self.elapsed_by_provider[provider] = round(self.elapsed_by_provider.get(provider, 0.0) + elapsed_seconds, 3)
         if slow:
             self.slow_attempts_by_provider[provider] = self.slow_attempts_by_provider.get(provider, 0) + 1
+            self.timeout_attempts_by_provider[provider] = self.timeout_attempts_by_provider.get(provider, 0) + 1
         if not success:
             self.failed_attempts_by_provider[provider] = self.failed_attempts_by_provider.get(provider, 0) + 1
+        if self.timeout_attempts_by_provider.get(provider, 0) >= self.timeout_threshold:
+            self.circuit_open_by_provider[provider] = "skipped_by_provider_circuit"
+        if self.failed_attempts_by_provider.get(provider, 0) >= self.failure_threshold:
+            self.circuit_open_by_provider[provider] = "skipped_by_provider_circuit"
 
 
 @dataclass(frozen=True)
@@ -273,6 +296,7 @@ def _selected_raw(
         "actual_provider_attempted": _actual_attempted(attempts),
         "provider_skip_reasons": _skip_reasons(attempts),
         "normalized_symbol": _normalize_symbol(instrument.symbol),
+        "route_reason": _route_reason(instrument, priority, quote_purpose),
         "provider_policy": provider_policy,
         "quote_purpose": quote_purpose,
         "provider_attempts": attempts,
@@ -333,6 +357,7 @@ def _final_failed_raw(
         "actual_provider_attempted": _actual_attempted(attempts),
         "provider_skip_reasons": _skip_reasons(attempts),
         "normalized_symbol": _normalize_symbol(instrument.symbol),
+        "route_reason": _route_reason(instrument, priority, quote_purpose),
         "provider_policy": provider_policy,
         "quote_purpose": quote_purpose,
         "provider_attempts": attempts,
@@ -352,6 +377,8 @@ def _final_failed_raw(
 
 def _final_failure_reason(attempts: list[dict[str, object]]) -> str:
     reasons = [str(attempt.get("reason", "")) for attempt in attempts if isinstance(attempt, dict)]
+    if "skipped_by_provider_circuit" in reasons:
+        return "skipped_by_provider_circuit"
     if "provider_skipped_by_runtime_budget" in reasons:
         return "provider_skipped_by_runtime_budget"
     if "provider_skipped_by_failure_budget" in reasons:
@@ -586,6 +613,20 @@ def _policy_priority(instrument: Instrument, stock_chain: list[str], quote_purpo
             return ["eastmoney_direct", "yfinance", "akshare", "mock"]
         return ["akshare", "mock"]
     return [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
+
+
+def _route_reason(instrument: Instrument, priority: list[str], quote_purpose: str) -> str:
+    if instrument.symbol == "GOLD_CNY" or instrument.provider == "manual":
+        return "manual_reference_required"
+    if _is_a_share_stock(instrument):
+        return "account_generic_a_share_stock_route"
+    if _is_a_share_symbol(instrument.symbol):
+        return "account_generic_a_share_etf_route"
+    if instrument.symbol.endswith(".HK"):
+        return "account_generic_hk_route"
+    if "mock" in priority and len(priority) == 1:
+        return "mock_mode_development_route"
+    return f"configured_provider_route:{quote_purpose}"
 
 
 def _diagnostic_priority(instrument: Instrument, configured_priority: list[str], quote_purpose: str) -> list[str]:

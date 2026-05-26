@@ -8,7 +8,8 @@ $ErrorActionPreference = 'Continue'
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
-$SummaryPath = Join-Path $ProjectRoot 'outputs_uat_summary.md'
+$RootSummaryPath = Join-Path $ProjectRoot 'outputs_uat_summary.md'
+$SummaryRoot = Join-Path $ProjectRoot 'outputs_uat_latest'
 $RunCacheDir = Join-Path $ProjectRoot 'outputs_uat_run_cache_latest'
 
 $AllowedModes = @('quick', 'intraday', 'full', 'energy')
@@ -18,6 +19,11 @@ if ($Mode -notin $AllowedModes) {
     Write-Host 'Valid modes: quick, intraday, full, energy'
     exit 1
 }
+$ModeSummaryDir = Join-Path $SummaryRoot $Mode
+$SummaryPath = Join-Path $ModeSummaryDir 'outputs_uat_summary.md'
+$SummaryJsonPath = Join-Path $ModeSummaryDir 'outputs_uat_summary.json'
+$ManifestPath = Join-Path $SummaryRoot 'uat_run_manifest.json'
+New-Item -ItemType Directory -Force -Path $ModeSummaryDir | Out-Null
 
 $ModeItems = @{
     quick = @(
@@ -603,6 +609,38 @@ foreach ($Result in $Results) {
 }
 
 $Lines | Set-Content $SummaryPath -Encoding UTF8
+$Lines | Set-Content $RootSummaryPath -Encoding UTF8
+
+$SummaryObject = [ordered]@{
+    generated_at = $GeneratedAt
+    mode = $Mode
+    use_run_cache = $UseRunCache.IsPresent
+    run_count = $RunCount
+    passed = $Passed
+    failed = $Failed
+    strict_blocked_but_reported = $StrictBlocked
+    skipped_by_profile = $SkippedByProfile
+    summary_path = $SummaryPath
+    root_latest_summary_path = $RootSummaryPath
+    results = @($Results)
+}
+$SummaryObject | ConvertTo-Json -Depth 8 | Set-Content $SummaryJsonPath -Encoding UTF8
+
+$Manifest = [ordered]@{
+    generated_at = $GeneratedAt
+    latest_mode = $Mode
+    root_latest_summary_path = $RootSummaryPath
+    modes = [ordered]@{}
+}
+foreach ($KnownMode in $AllowedModes) {
+    $KnownDir = Join-Path $SummaryRoot $KnownMode
+    $Manifest.modes[$KnownMode] = [ordered]@{
+        summary_md = (Join-Path $KnownDir 'outputs_uat_summary.md')
+        summary_json = (Join-Path $KnownDir 'outputs_uat_summary.json')
+        exists = (Test-Path (Join-Path $KnownDir 'outputs_uat_summary.md'))
+    }
+}
+$Manifest | ConvertTo-Json -Depth 6 | Set-Content $ManifestPath -Encoding UTF8
 
 if ($null -ne $PreviousUseRunCache) {
     $env:MARKET_GUARD_USE_UAT_RUN_CACHE = $PreviousUseRunCache
@@ -616,6 +654,7 @@ if ($null -ne $PreviousRunCacheDir) {
 }
 
 Write-Host ('UAT summary: ' + $SummaryPath)
+Write-Host ('UAT root latest summary: ' + $RootSummaryPath)
 if ($AnyFailed) {
     exit 1
 }

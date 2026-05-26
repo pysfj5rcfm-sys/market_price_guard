@@ -340,6 +340,49 @@ def test_a_share_route_budget_failure_is_not_generic_symbol_not_found():
     assert "symbol_not_found" not in raw.quality_issues
 
 
+def test_runtime_budget_circuit_skips_provider_without_counting_attempted():
+    budget = ProviderRuntimeBudget(timeout_seconds=0.001, max_failed_attempts_per_provider=1, failure_threshold=1)
+    first = route_symbol(
+        _instrument("601899.SH", provider_priority=["akshare", "mock"], asset_type="stock"),
+        {
+            "eastmoney_direct": StaticProvider(_raw("601899.SH", "eastmoney_direct", None, quality_issues=["provider_error"])),
+            "akshare": StaticProvider(_raw("601899.SH", "akshare", None, quality_issues=["provider_error"])),
+            "mock": StaticProvider(_raw("601899.SH", "mock", 18.42)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="diagnostic", runtime_budget=budget),
+    )
+    second_provider = StaticProvider(_raw("601985.SH", "eastmoney_direct", 7.25))
+    second = route_symbol(
+        _instrument("601985.SH", provider_priority=["akshare", "mock"], asset_type="stock"),
+        {"eastmoney_direct": second_provider, "mock": StaticProvider(_raw("601985.SH", "mock", 7.25))},
+        RouterConfig(provider_mode="live", provider_policy="diagnostic", runtime_budget=budget),
+    )
+
+    assert first.provider_diagnostics["actual_provider_attempted"][0] == "eastmoney_direct"
+    assert second_provider.called is False
+    assert second.provider_diagnostics["provider_skip_reasons"]["eastmoney_direct"] == "skipped_by_provider_circuit"
+    assert "eastmoney_direct" not in second.provider_diagnostics["actual_provider_attempted"]
+
+
+def test_provider_health_summary_has_planned_actual_skip_counts():
+    raw = route_symbol(
+        _instrument("601899.SH", provider_priority=["akshare", "mock"], asset_type="stock"),
+        {
+            "eastmoney_direct": StaticProvider(_raw("601899.SH", "eastmoney_direct", 18.42)),
+            "akshare": StaticProvider(_raw("601899.SH", "akshare", 18.4)),
+            "mock": StaticProvider(_raw("601899.SH", "mock", 18.0)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="diagnostic", quote_purpose="reference"),
+    )
+    report = build_provider_health_report([_record(raw)], provider_mode="live")
+
+    assert "## Provider Health Summary" in report
+    assert "planned_count" in report
+    assert "actual_attempt_count" in report
+    assert "skipped_count" in report
+    assert "route_reason: account_generic_a_share_stock_route" in report
+
+
 def test_allow_mock_fallback_for_operation_makes_mock_fallback_usable():
     instrument = _instrument(
         "601899.SH",

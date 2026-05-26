@@ -738,6 +738,8 @@ def build_provider_health_report(records: list[PriceRecord], provider_mode: str 
         lines.extend(_mock_health_group(records))
     lines.extend(["", "## Provider call summary"])
     lines.extend(_provider_call_summary_lines(records))
+    lines.extend(["", "## Provider Health Summary"])
+    lines.extend(_provider_health_summary_lines(records))
     lines.extend(["", "## Provider attempts by symbol"])
     lines.extend(_provider_attempts_by_symbol(records))
     return "\n".join(lines) + "\n"
@@ -835,6 +837,16 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- max_quote_lag_seconds: {runtime.get('max_quote_lag_seconds', '')}",
         f"- oldest_quote_time: {min(quote_times).isoformat() if quote_times else ''}",
         f"- newest_quote_time: {max(quote_times).isoformat() if quote_times else ''}",
+        "",
+        "## Provider Runtime Summary",
+        f"- account: {runtime.get('profile', '')}",
+        f"- layer: {runtime.get('universe_name', '') or runtime.get('profile', '')}",
+        f"- total_elapsed_seconds: {runtime.get('total_elapsed_seconds', '')}",
+        f"- run_time_budget_exceeded: {runtime.get('run_time_budget_exceeded', False)}",
+        f"- slow_provider_attempts: {len(slow_attempts)}",
+        f"- provider_timeout_count: {sum(1 for attempt in attempts if attempt.get('reason') == 'provider_timeout' or attempt.get('slow_provider_attempt'))}",
+        f"- provider_skipped_by_runtime_budget_count: {_provider_skipped_by_runtime_budget_count(records)}",
+        f"- provider_circuit_open_count: {len(runtime.get('provider_circuit_open', {}) or {}) + _provider_skipped_by_circuit_count(records)}",
         "",
         "## per_provider_elapsed_seconds",
     ]
@@ -1503,6 +1515,7 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
         lines.append(f"- actual_provider_attempted: {_format_symbols(diagnostic.get('actual_provider_attempted', []))}")
         lines.append(f"- provider_skip_reasons: {_format_skip_reasons(diagnostic.get('provider_skip_reasons', {}))}")
         lines.append(f"- normalized_symbol: {diagnostic.get('normalized_symbol', record.symbol)}")
+        lines.append(f"- route_reason: {diagnostic.get('route_reason', '')}")
         lines.append(f"- selected_provider: {diagnostic.get('selected_provider', record.source)}")
         lines.append(f"- selected_source: {diagnostic.get('selected_source', record.source)}")
         lines.append(f"- fallback_used: {diagnostic.get('fallback_used', False)}")
@@ -1662,6 +1675,56 @@ def _provider_call_summary_lines(records: list[PriceRecord]) -> list[str]:
                 failed=not any(attempt.get("status") == "success" for attempt in function_attempts),
                 exception_type=first.get("exception_type", ""),
                 exception_message=first.get("exception_message", ""),
+            )
+        )
+    return lines
+
+
+def _provider_health_summary_lines(records: list[PriceRecord]) -> list[str]:
+    attempts = _all_provider_attempts(records)
+    planned: dict[str, int] = {}
+    for record in records:
+        chain = record.provider_diagnostics.get("provider_planned_chain") or record.provider_diagnostics.get("effective_provider_chain") or []
+        if isinstance(chain, list):
+            for provider in chain:
+                key = str(provider)
+                if key:
+                    planned[key] = planned.get(key, 0) + 1
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for attempt in attempts:
+        provider = str(attempt.get("provider", ""))
+        if provider:
+            grouped.setdefault(provider, []).append(attempt)
+    providers = sorted(set(planned) | set(grouped))
+    lines = [
+        "| provider | planned_count | actual_attempt_count | success_count | failure_count | timeout_count | skipped_count | elapsed_seconds | slow_attempt_count | top_failure_reasons |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+    ]
+    if not providers:
+        lines.append("| none | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | none |")
+        return lines
+    for provider in providers:
+        provider_attempts = grouped.get(provider, [])
+        actual = [attempt for attempt in provider_attempts if attempt.get("status") != "skipped"]
+        skipped = [attempt for attempt in provider_attempts if attempt.get("status") == "skipped"]
+        failed = [attempt for attempt in actual if attempt.get("status") == "failed"]
+        reasons: dict[str, int] = {}
+        for attempt in [*failed, *skipped]:
+            reason = str(attempt.get("reason") or attempt.get("exception_type") or "unknown")
+            reasons[reason] = reasons.get(reason, 0) + 1
+        top_reasons = ", ".join(f"{reason}:{count}" for reason, count in sorted(reasons.items(), key=lambda item: (-item[1], item[0]))[:3]) or "none"
+        lines.append(
+            "| {provider} | {planned} | {actual} | {success} | {failure} | {timeout} | {skipped} | {elapsed} | {slow} | {reasons} |".format(
+                provider=provider,
+                planned=planned.get(provider, 0),
+                actual=len(actual),
+                success=sum(1 for attempt in actual if attempt.get("status") == "success"),
+                failure=len(failed),
+                timeout=sum(1 for attempt in actual if attempt.get("reason") == "provider_timeout" or attempt.get("slow_provider_attempt")),
+                skipped=len(skipped),
+                elapsed=round(sum(float(attempt.get("elapsed_seconds") or 0.0) for attempt in actual), 3),
+                slow=sum(1 for attempt in actual if attempt.get("slow_provider_attempt")),
+                reasons=top_reasons,
             )
         )
     return lines
@@ -2046,6 +2109,14 @@ def _provider_skipped_by_failure_budget_count(records: list[PriceRecord]) -> int
     )
 
 
+def _provider_skipped_by_circuit_count(records: list[PriceRecord]) -> int:
+    return sum(
+        1
+        for attempt in _all_provider_attempts(records)
+        if attempt.get("reason") == "skipped_by_provider_circuit"
+    )
+
+
 def _per_provider_elapsed(attempts: list[dict[str, object]]) -> dict[str, float]:
     elapsed: dict[str, float] = {}
     for attempt in attempts:
@@ -2138,6 +2209,10 @@ def _provider_runtime_budget_lines(runtime: dict[str, Any], records: list[PriceR
     lines = [
         f"- provider_skipped_by_runtime_budget_count: {_provider_skipped_by_runtime_budget_count(records)}",
         f"- provider_skipped_by_failure_budget_count: {_provider_skipped_by_failure_budget_count(records)}",
+        f"- provider_skipped_by_circuit_count: {_provider_skipped_by_circuit_count(records)}",
+        f"- provider_budget_account: {runtime.get('provider_budget_account', runtime.get('profile', ''))}",
+        f"- provider_budget_run_id: {runtime.get('provider_budget_run_id', '')}",
+        f"- provider_circuit_open: {runtime.get('provider_circuit_open', {})}",
     ]
     providers = sorted(set(elapsed) | set(attempted) | set(slow) | set(failed))
     if not providers:

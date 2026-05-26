@@ -179,7 +179,7 @@ $Lines += ''
 $Lines += ('- generated_at: ' + $GeneratedAt)
 $Lines += '- account: energy'
 $Lines += '- pipeline_name: energy_research_pipeline'
-$Lines += '- version: v0.7.4.4'
+$Lines += '- version: v0.7.5'
 $Lines += ('- scan_mode: ' + $ScanMode)
 $Lines += ('- total_steps: ' + $Results.Count)
 $Lines += ('- passed: ' + $Passed)
@@ -228,6 +228,42 @@ foreach ($Result in $Results) {
     $Lines += ('| ' + $Result.name + ' | ' + ([string]$Result.runtime_warning).ToLowerInvariant() + ' | ' + $Result.max_run_seconds + ' |')
 }
 $Lines += ''
+$Lines += '## Runtime Budget Summary'
+$Lines += ''
+$Lines += '| step | run_time_budget_exceeded | provider_timeout_count | skipped_by_runtime_budget | circuit_open_count |'
+$Lines += '|---|---|---:|---:|---:|'
+foreach ($Result in $Results) {
+    $RuntimePath = Join-Path (Join-Path $ProjectRoot $Result.output_dir) 'runtime_diagnostics.md'
+    $BudgetExceeded = 'unknown'
+    $TimeoutCount = '0'
+    $SkippedBudget = '0'
+    $CircuitCount = '0'
+    if (Test-Path $RuntimePath) {
+        $RuntimeContent = Get-Content $RuntimePath -Raw -Encoding UTF8
+        if ($RuntimeContent -match 'run_time_budget_exceeded:\s*([A-Za-z]+)') { $BudgetExceeded = $Matches[1].ToLowerInvariant() }
+        if ($RuntimeContent -match 'provider_timeout_count:\s*(\d+)') { $TimeoutCount = $Matches[1] }
+        if ($RuntimeContent -match 'provider_skipped_by_runtime_budget_count:\s*(\d+)') { $SkippedBudget = $Matches[1] }
+        if ($RuntimeContent -match 'provider_circuit_open_count:\s*(\d+)') { $CircuitCount = $Matches[1] }
+    }
+    $Lines += ('| ' + $Result.name + ' | ' + $BudgetExceeded + ' | ' + $TimeoutCount + ' | ' + $SkippedBudget + ' | ' + $CircuitCount + ' |')
+}
+$Lines += ''
+$Lines += '## Provider Health Summary'
+$Lines += ''
+$Lines += '| step | provider_health_report | planned_actual_summary |'
+$Lines += '|---|---|---|'
+foreach ($Result in $Results) {
+    $HealthPath = Join-Path (Join-Path $ProjectRoot $Result.output_dir) 'provider_health_report.md'
+    $HealthExists = Test-Path $HealthPath
+    $SummaryState = if ($HealthExists) {
+        $HealthContent = Get-Content $HealthPath -Raw -Encoding UTF8
+        if ($HealthContent -match '## Provider Health Summary') { 'available' } else { 'legacy_format' }
+    } else {
+        'missing'
+    }
+    $Lines += ('| ' + $Result.name + ' | ' + ([string]$HealthExists).ToLowerInvariant() + ' | ' + $SummaryState + ' |')
+}
+$Lines += ''
 $Lines += '## Safety Statements'
 $Lines += ''
 $Lines += '- operation_candidate is not an execution list.'
@@ -240,7 +276,7 @@ $Lines | Set-Content $SummaryPath -Encoding UTF8
 $Manifest = New-Object PSObject -Property ([ordered]@{
     account = 'energy';
     pipeline_name = 'energy_research_pipeline';
-    version = 'v0.7.4.4';
+    version = 'v0.7.5';
     generated_at = $GeneratedAt;
     scan_mode = $ScanMode;
     steps = @($Results);
@@ -263,7 +299,7 @@ $Manifest | ConvertTo-Json -Depth 8 | Set-Content $ManifestPath -Encoding UTF8
 $PipelineLayerManifest = New-Object PSObject -Property ([ordered]@{
     account = 'energy';
     pipeline_name = 'energy_research_pipeline';
-    version = 'v0.7.4.4';
+    version = 'v0.7.5';
     generated_at = $GeneratedAt;
     layer_mismatch_count = $LayerMismatchCount;
     layers = @($LayerManifests);

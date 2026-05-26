@@ -292,6 +292,42 @@ if ($Warnings.Count -eq 0) {
     }
 }
 $Lines += ''
+$Lines += '## Runtime Budget Summary'
+$Lines += ''
+$Lines += '| step | run_time_budget_exceeded | provider_timeout_count | skipped_by_runtime_budget | circuit_open_count |'
+$Lines += '|---|---|---:|---:|---:|'
+foreach ($Result in $Results) {
+    $RuntimePath = Join-Path (Join-Path $ProjectRoot $Result.output_dir) 'runtime_diagnostics.md'
+    $BudgetExceeded = 'unknown'
+    $TimeoutCount = '0'
+    $SkippedBudget = '0'
+    $CircuitCount = '0'
+    if (Test-Path $RuntimePath) {
+        $RuntimeContent = Get-Content $RuntimePath -Raw -Encoding UTF8
+        if ($RuntimeContent -match 'run_time_budget_exceeded:\s*([A-Za-z]+)') { $BudgetExceeded = $Matches[1].ToLowerInvariant() }
+        if ($RuntimeContent -match 'provider_timeout_count:\s*(\d+)') { $TimeoutCount = $Matches[1] }
+        if ($RuntimeContent -match 'provider_skipped_by_runtime_budget_count:\s*(\d+)') { $SkippedBudget = $Matches[1] }
+        if ($RuntimeContent -match 'provider_circuit_open_count:\s*(\d+)') { $CircuitCount = $Matches[1] }
+    }
+    $Lines += ('| ' + $Result.name + ' | ' + $BudgetExceeded + ' | ' + $TimeoutCount + ' | ' + $SkippedBudget + ' | ' + $CircuitCount + ' |')
+}
+$Lines += ''
+$Lines += '## Provider Health Summary'
+$Lines += ''
+$Lines += '| step | provider_health_report | planned_actual_summary |'
+$Lines += '|---|---|---|'
+foreach ($Result in $Results) {
+    $HealthPath = Join-Path (Join-Path $ProjectRoot $Result.output_dir) 'provider_health_report.md'
+    $HealthExists = Test-Path $HealthPath
+    $SummaryState = if ($HealthExists) {
+        $HealthContent = Get-Content $HealthPath -Raw -Encoding UTF8
+        if ($HealthContent -match '## Provider Health Summary') { 'available' } else { 'legacy_format' }
+    } else {
+        'missing'
+    }
+    $Lines += ('| ' + $Result.name + ' | ' + ([string]$HealthExists).ToLowerInvariant() + ' | ' + $SummaryState + ' |')
+}
+$Lines += ''
 $Lines += '## Safety Note'
 $Lines += 'This pipeline generates data outputs only. It does not modify config, does not promote symbols, and does not generate trading advice.'
 $Lines += 'Data-only pipeline: no config changes, no automatic symbol promotion, no trading advice.'

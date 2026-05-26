@@ -171,8 +171,9 @@ def run_pipeline(
     run_start = _utc_now_iso()
     yfinance_circuit = YFinanceCircuitBreaker()
     provider_runtime_budget = ProviderRuntimeBudget(
+        account=profile,
+        run_id=run_start,
         timeout_seconds=timeout_seconds,
-        max_attempts_by_provider={"eastmoney_direct": 3, "akshare": 1, "yfinance": 1} if profile == "energy" else {},
     )
     collected = collect_prices(
         watchlist_path,
@@ -225,6 +226,7 @@ def run_pipeline(
         minute_mode=minute_mode,
         minute_workers=minute_workers,
         yfinance_circuit=yfinance_circuit,
+        provider_runtime_budget=provider_runtime_budget,
     )
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
@@ -409,6 +411,13 @@ def _runtime_diagnostics(
         "provider_attempts": dict(provider_runtime_budget.attempts_by_provider) if provider_runtime_budget else {},
         "provider_slow_attempts": dict(provider_runtime_budget.slow_attempts_by_provider) if provider_runtime_budget else {},
         "provider_failed_attempts": dict(provider_runtime_budget.failed_attempts_by_provider) if provider_runtime_budget else {},
+        "provider_timeout_attempts": dict(provider_runtime_budget.timeout_attempts_by_provider) if provider_runtime_budget else {},
+        "provider_skipped_by_budget": dict(provider_runtime_budget.skipped_by_budget_by_provider) if provider_runtime_budget else {},
+        "provider_circuit_open": dict(provider_runtime_budget.circuit_open_by_provider) if provider_runtime_budget else {},
+        "provider_budget_account": provider_runtime_budget.account if provider_runtime_budget else profile,
+        "provider_budget_run_id": provider_runtime_budget.run_id if provider_runtime_budget else run_start_time_utc,
+        "provider_max_attempts": dict(provider_runtime_budget.max_attempts_by_provider) if provider_runtime_budget else {},
+        "provider_max_time_seconds": dict(provider_runtime_budget.max_time_seconds_by_provider) if provider_runtime_budget else {},
     }
 
 
