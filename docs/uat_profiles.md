@@ -1,5 +1,7 @@
 # UAT Runtime Profiles
 
+market_price_guard is not tech-only. Current quick and intraday UAT coverage is still mostly tech account coverage; future account-generic UAT should keep tech and energy checks isolated instead of mixing account configs or outputs.
+
 `scripts/run_uat.ps1` supports three runtime profiles:
 
 | mode | purpose | typical use |

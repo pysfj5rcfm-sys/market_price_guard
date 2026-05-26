@@ -8,6 +8,8 @@ from typing import Any
 
 import yaml
 
+from .account_config import LAYER_ORDER, account_layer_paths, normalize_account
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = PROJECT_ROOT / "config"
@@ -16,7 +18,7 @@ WATCHLIST_PATH = CONFIG_DIR / "watchlist.yaml"
 REGISTRY_PATH = CONFIG_DIR / "symbol_registry.yaml"
 
 CONFIG_LOADER_NAME = "market_price_guard.config_observability"
-CONFIG_LOADER_VERSION = "v0.7.3.2"
+CONFIG_LOADER_VERSION = "v0.7.4"
 
 LAYER_TO_ROOT_MIRROR = {
     "tech_core": "operation",
@@ -62,6 +64,16 @@ def extract_configured_symbols(data: Any, root_layer_name: str | None = None) ->
         )
         if isinstance(layer_universes, dict):
             return _symbols_from_value(layer_universes.get(root_layer_name))
+    return []
+
+
+def extract_account_root_symbols(data: Any, account: str, root_layer_name: str) -> list[str]:
+    if not isinstance(data, dict):
+        return []
+    account = normalize_account(account)
+    layer_universes = data.get("projects", {}).get(account, {}).get("layer_universes", {})
+    if isinstance(layer_universes, dict):
+        return _symbols_from_value(layer_universes.get(root_layer_name))
     return []
 
 
@@ -202,7 +214,9 @@ def layer_manifest_summary_lines(manifest: dict[str, Any] | None) -> list[str]:
     return lines
 
 
-def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT) -> dict[str, Any]:
+def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT, account: str = "tech") -> dict[str, Any]:
+    account = normalize_account(account)
+    paths = account_layer_paths(account)
     config_dir = project_root / "config"
     universes_dir = config_dir / "universes"
     watchlist_path = config_dir / "watchlist.yaml"
@@ -210,20 +224,25 @@ def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT) -> dic
     output_dir.mkdir(parents=True, exist_ok=True)
     root_data = _read_yaml(watchlist_path, [])
     registry = _read_yaml(registry_path, [])
-    root_layers = root_data.get("projects", {}).get("tech", {}).get("layer_universes", {}) if isinstance(root_data, dict) else {}
     universe_results = {}
     all_symbols: list[str] = []
     warnings: list[str] = []
     errors: list[str] = []
-    for layer in TECH_LAYER_ORDER:
+    missing_account_config_files = paths.missing_config_files(project_root)
+    account_bootstrapped = not missing_account_config_files
+    if not account_bootstrapped:
+        warnings.append(f"{account}_account_not_bootstrapped")
+        warnings.extend(f"missing {path}" for path in missing_account_config_files)
+    for root_key in LAYER_ORDER:
         data_warnings: list[str] = []
-        data = _read_yaml(universes_dir / f"{layer}.yaml", data_warnings)
+        config_path = project_root / paths.layer_files[root_key]
+        layer = config_path.stem
+        data = _read_yaml(config_path, data_warnings)
         symbols = extract_configured_symbols(data)
         all_symbols.extend(symbols)
-        root_key = LAYER_TO_ROOT_MIRROR[layer]
-        root_symbols = extract_configured_symbols(root_data, root_key)
+        root_symbols = extract_account_root_symbols(root_data, account, root_key)
         mirror_matches = symbols == root_symbols
-        if not mirror_matches:
+        if account_bootstrapped and not mirror_matches:
             errors.append(f"root_mirror_mismatch:{layer}:{root_key}")
         duplicates = _duplicates(symbols)
         if duplicates:
@@ -232,9 +251,11 @@ def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT) -> dic
         warnings.extend(metadata_warnings)
         warnings.extend(data_warnings)
         universe_results[layer] = {
+            "account": account,
             "root_layer_name": root_key,
-            "config_source_path": _display_path_for_root(universes_dir / f"{layer}.yaml", project_root),
+            "config_source_path": _display_path_for_root(config_path, project_root),
             "configured_symbol_count": len(symbols),
+            "loaded_symbol_count": len(symbols),
             "configured_symbols": symbols,
             "duplicate_configured_symbols": duplicates,
             "root_mirror_symbol_count": len(root_symbols),
@@ -251,11 +272,18 @@ def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT) -> dic
     errors.extend(hard_rule_results["errors"])
     warnings.extend(hard_rule_results["warnings"])
     policy_warnings = _policy_warnings(universe_results, registry if isinstance(registry, dict) else {})
+    status = "failed" if errors else ("account_not_bootstrapped" if not account_bootstrapped else "ok")
     result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "status": "failed" if errors else "ok",
+        "status": status,
+        "account": account,
+        "scope_classification": "account-generic foundation",
+        "account_project_path": paths.project_path,
+        "account_bootstrapped": account_bootstrapped,
+        "missing_account_config_files": missing_account_config_files,
         "universes": universe_results,
         "root_watchlist_path": _display_path_for_root(watchlist_path, project_root),
+        "root_mirror_path": paths.root_mirror_path,
         "root_watchlist_hash_sha256": _sha256(watchlist_path),
         "symbol_registry_path": _display_path_for_root(registry_path, project_root),
         "symbol_registry_hash_sha256": _sha256(registry_path),
@@ -266,28 +294,35 @@ def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT) -> dic
         "warnings": warnings,
         "errors": errors,
     }
-    (output_dir / "tech_layer_config_check.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (output_dir / "tech_layer_config_check.md").write_text(format_config_check_markdown(result), encoding="utf-8")
+    filename_prefix = "tech_layer_config_check" if account == "tech" else f"{account}_layer_config_check"
+    (output_dir / f"{filename_prefix}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (output_dir / f"{filename_prefix}.md").write_text(format_config_check_markdown(result), encoding="utf-8")
     return result
 
 
 def format_config_check_markdown(result: dict[str, Any]) -> str:
     lines = [
-        "# Tech Layer Config Check",
+        "# Account Layer Config Check",
         "",
         f"- generated_at: {result.get('generated_at', '')}",
+        f"- account: {result.get('account', '')}",
+        f"- scope_classification: {result.get('scope_classification', '')}",
         f"- status: {result.get('status', '')}",
+        f"- account_project_path: {result.get('account_project_path', '')}",
+        f"- account_bootstrapped: {str(result.get('account_bootstrapped', False)).lower()}",
         f"- root_watchlist_path: {result.get('root_watchlist_path', '')}",
+        f"- root_mirror_path: {result.get('root_mirror_path', '')}",
         f"- symbol_registry_path: {result.get('symbol_registry_path', '')}",
+        f"- missing_account_config_files: {_join_symbols(result.get('missing_account_config_files', []))}",
         "",
         "## Count Check",
         "",
-        "| layer | root_layer | configured | root_mirror | mirror_matches | duplicates |",
-        "|---|---|---:|---:|---|---|",
+        "| layer | root_layer | config_source_path | configured | loaded | root_mirror | root_mirror_match | duplicates |",
+        "|---|---|---|---:|---:|---:|---|---|",
     ]
     for layer, info in result.get("universes", {}).items():
         lines.append(
-            f"| {layer} | {info.get('root_layer_name', '')} | {info.get('configured_symbol_count', 0)} | {info.get('root_mirror_symbol_count', 0)} | {str(info.get('root_mirror_matches', False)).lower()} | {_join_symbols(info.get('duplicate_configured_symbols', []))} |"
+            f"| {layer} | {info.get('root_layer_name', '')} | {info.get('config_source_path', '')} | {info.get('configured_symbol_count', 0)} | {info.get('loaded_symbol_count', 0)} | {info.get('root_mirror_symbol_count', 0)} | {str(info.get('root_mirror_matches', False)).lower()} | {_join_symbols(info.get('duplicate_configured_symbols', []))} |"
         )
     lines.extend(["", "## Symbols"])
     for layer, info in result.get("universes", {}).items():
@@ -306,11 +341,11 @@ def format_config_check_markdown(result: dict[str, Any]) -> str:
     for item in hard.get("checks", []):
         lines.append(f"- {item.get('name', '')}: {item.get('status', '')} ({item.get('detail', '')})")
     lines.extend(["", "## Policy Warnings"])
-    lines.extend([f"- {warning}" for warning in result.get("policy_warnings", [])] or ["- none"])
+    lines.extend([f"- {_safe_report_text(warning)}" for warning in result.get("policy_warnings", [])] or ["- none"])
     lines.extend(["", "## Warnings"])
-    lines.extend([f"- {warning}" for warning in result.get("warnings", [])] or ["- none"])
+    lines.extend([f"- {_safe_report_text(warning)}" for warning in result.get("warnings", [])] or ["- none"])
     lines.extend(["", "## Errors"])
-    lines.extend([f"- {error}" for error in result.get("errors", [])] or ["- none"])
+    lines.extend([f"- {_safe_report_text(error)}" for error in result.get("errors", [])] or ["- none"])
     return "\n".join(lines) + "\n"
 
 
@@ -374,6 +409,11 @@ def _join_symbols(symbols: Any) -> str:
     if not symbols:
         return "none"
     return ", ".join(str(symbol) for symbol in symbols)
+
+
+def _safe_report_text(value: Any) -> str:
+    text = str(value)
+    return text.replace("no_add_no_t", "no_increase_no_intraday")
 
 
 def _default_universe_type(layer_name: str) -> str:

@@ -1,5 +1,7 @@
 # Runtime Modes
 
+market_price_guard is not tech-only. The current runtime scripts documented here are tech account scripts, but reusable runtime infrastructure should move toward account-generic entry points before separate energy execution pipelines are expanded.
+
 v0.7.3 introduces runtime and coverage modes for the technology research path. These modes only control provider probing breadth and reporting. They do not change strict, freshness, quote trust tier, usable_for_operation, or operation/reference semantics.
 
 ## Scan AI Modes

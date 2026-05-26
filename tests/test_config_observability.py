@@ -92,8 +92,8 @@ def test_strict_and_usable_for_operation_unchanged_by_manifest(tmp_path):
 def test_check_tech_layer_config_script_declared():
     script = Path("scripts/check_tech_layer_config.ps1").read_text(encoding="utf-8")
 
-    assert "market_price_guard.check_tech_layer_config" in script
-    assert "outputs_config_check_latest" in script
+    assert "check_account_layer_config.ps1" in script
+    assert "-Account tech" in script
 
 
 @pytest.mark.script

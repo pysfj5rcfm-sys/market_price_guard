@@ -1,5 +1,7 @@
 # UAT Run Cache
 
+market_price_guard is not tech-only. Run cache behavior must remain account-safe: cache metadata may be reused as infrastructure, but future tech and energy UAT runs must keep account outputs and execution checks separate.
+
 `run_uat.ps1` supports an opt-in run-scoped cache:
 
 ```powershell

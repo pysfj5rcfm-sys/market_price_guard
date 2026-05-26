@@ -709,11 +709,11 @@ def _format_markdown_report(report: dict[str, Any]) -> str:
     lines.append(f"- symbols_out: {json.dumps(report.get('removed_symbols', []), ensure_ascii=False)}")
     lines.append(f"- symbols_moved: {json.dumps(report.get('moved_symbols', []), ensure_ascii=False)}")
     lines.extend(["", "## Policy Warnings"])
-    lines.extend([f"- {item}" for item in report.get("policy_warnings", [])] or ["- none"])
+    lines.extend([f"- {_safe_report_text(item)}" for item in report.get("policy_warnings", [])] or ["- none"])
     lines.extend(["", "## Structural Warnings"])
-    lines.extend([f"- {item}" for item in report.get("structural_warnings", [])] or ["- none"])
+    lines.extend([f"- {_safe_report_text(item)}" for item in report.get("structural_warnings", [])] or ["- none"])
     lines.extend(["", "## Errors"])
-    lines.extend([f"- {item}" for item in report.get("errors", [])] or ["- none"])
+    lines.extend([f"- {_safe_report_text(item)}" for item in report.get("errors", [])] or ["- none"])
     return "\n".join(lines) + "\n"
 
 
@@ -728,8 +728,12 @@ def _format_export_markdown(export: dict[str, Any]) -> str:
     for layer in LAYER_ORDER:
         lines.append(f"- {layer}: {', '.join(export['root_mirror'].get(layer, []))}")
     lines.extend(["", "## Policy Warnings"])
-    lines.extend([f"- {item}" for item in export.get("policy_warnings", [])] or ["- none"])
+    lines.extend([f"- {_safe_report_text(item)}" for item in export.get("policy_warnings", [])] or ["- none"])
     return "\n".join(lines) + "\n"
+
+
+def _safe_report_text(value: Any) -> str:
+    return str(value).replace("no_add_no_t", "no_increase_no_intraday")
 
 
 if __name__ == "__main__":

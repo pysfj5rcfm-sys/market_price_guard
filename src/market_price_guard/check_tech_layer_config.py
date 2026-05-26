@@ -14,7 +14,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    result = run_config_check(args.output_dir)
+    result = run_config_check(args.output_dir, account="tech")
     print(f"Config check report: {args.output_dir / 'tech_layer_config_check.md'}")
     return 1 if result.get("status") == "failed" else 0
 
