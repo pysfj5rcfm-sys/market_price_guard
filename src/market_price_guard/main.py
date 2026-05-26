@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .normalize import load_watchlist, load_yaml, normalize_records
 from .price_reconciliation import apply_reconciliation
-from .provider_router import RouterConfig, collect_routed_prices
+from .provider_router import ProviderRuntimeBudget, RouterConfig, collect_routed_prices
 from .models import WatchProject, Watchlist
 from .minute_bars import apply_minute_bars_probe
 from .providers.akshare_provider import AkshareProvider
@@ -96,6 +96,7 @@ def collect_prices(
     include_minute_bars: bool = False,
     scan_mode: str = "fast",
     yfinance_circuit: YFinanceCircuitBreaker | None = None,
+    runtime_budget: ProviderRuntimeBudget | None = None,
 ) -> dict:
     registry_enabled = bool(universe or symbols or symbol_file or include_watchlist or include_candidates or universe_type)
     universe_metadata: dict = {}
@@ -134,6 +135,7 @@ def collect_prices(
             reconcile_mode=reconcile_mode,
             scan_mode=scan_mode,
             yfinance_circuit=yfinance_circuit,
+            runtime_budget=runtime_budget,
         ),
     )
     return {"watchlist": watchlist, "prices": prices, "universe_metadata": universe_metadata}
@@ -168,6 +170,10 @@ def run_pipeline(
     perf_start = time.perf_counter()
     run_start = _utc_now_iso()
     yfinance_circuit = YFinanceCircuitBreaker()
+    provider_runtime_budget = ProviderRuntimeBudget(
+        timeout_seconds=timeout_seconds,
+        max_attempts_by_provider={"eastmoney_direct": 3, "akshare": 1, "yfinance": 1} if profile == "energy" else {},
+    )
     collected = collect_prices(
         watchlist_path,
         mock_prices_path,
@@ -187,6 +193,7 @@ def run_pipeline(
         include_minute_bars,
         scan_mode,
         yfinance_circuit,
+        provider_runtime_budget,
     )
     rules = load_yaml(stale_rules_path)
     records = apply_scan_ranking(apply_reconciliation(normalize_records(collected["watchlist"], collected["prices"], rules)))
@@ -367,6 +374,7 @@ def _runtime_diagnostics(
     minute_mode: str,
     minute_workers: int,
     yfinance_circuit: YFinanceCircuitBreaker | None = None,
+    provider_runtime_budget: ProviderRuntimeBudget | None = None,
 ) -> dict:
     from datetime import datetime, timezone
 
@@ -397,6 +405,10 @@ def _runtime_diagnostics(
         "max_data_lag_seconds": max_data_lag_seconds,
         "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,
         "max_quote_lag_seconds": "" if max_quote_lag is None else round(max_quote_lag, 3),
+        "provider_elapsed_seconds": dict(provider_runtime_budget.elapsed_by_provider) if provider_runtime_budget else {},
+        "provider_attempts": dict(provider_runtime_budget.attempts_by_provider) if provider_runtime_budget else {},
+        "provider_slow_attempts": dict(provider_runtime_budget.slow_attempts_by_provider) if provider_runtime_budget else {},
+        "provider_failed_attempts": dict(provider_runtime_budget.failed_attempts_by_provider) if provider_runtime_budget else {},
     }
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from .freshness import now_utc
@@ -20,6 +20,36 @@ class Provider(Protocol):
         ...
 
 
+@dataclass
+class ProviderRuntimeBudget:
+    timeout_seconds: float = 8.0
+    max_slow_attempts_per_provider: int = 1
+    max_failed_attempts_per_provider: int = 3
+    max_attempts_by_provider: dict[str, int] = field(default_factory=lambda: {"eastmoney_direct": 8, "akshare": 1, "yfinance": 1})
+    attempts_by_provider: dict[str, int] = field(default_factory=dict)
+    elapsed_by_provider: dict[str, float] = field(default_factory=dict)
+    slow_attempts_by_provider: dict[str, int] = field(default_factory=dict)
+    failed_attempts_by_provider: dict[str, int] = field(default_factory=dict)
+
+    def should_skip(self, provider: str) -> str:
+        max_attempts = self.max_attempts_by_provider.get(provider)
+        if max_attempts is not None and self.attempts_by_provider.get(provider, 0) >= max_attempts:
+            return "provider_skipped_by_runtime_budget"
+        if self.slow_attempts_by_provider.get(provider, 0) >= self.max_slow_attempts_per_provider:
+            return "provider_skipped_by_runtime_budget"
+        if self.failed_attempts_by_provider.get(provider, 0) >= self.max_failed_attempts_per_provider:
+            return "provider_skipped_by_failure_budget"
+        return ""
+
+    def record(self, provider: str, elapsed_seconds: float, *, success: bool, slow: bool) -> None:
+        self.attempts_by_provider[provider] = self.attempts_by_provider.get(provider, 0) + 1
+        self.elapsed_by_provider[provider] = round(self.elapsed_by_provider.get(provider, 0.0) + elapsed_seconds, 3)
+        if slow:
+            self.slow_attempts_by_provider[provider] = self.slow_attempts_by_provider.get(provider, 0) + 1
+        if not success:
+            self.failed_attempts_by_provider[provider] = self.failed_attempts_by_provider.get(provider, 0) + 1
+
+
 @dataclass(frozen=True)
 class RouterConfig:
     provider_mode: str = "mock"
@@ -29,6 +59,7 @@ class RouterConfig:
     reconcile_mode: str = "default"
     scan_mode: str = "fast"
     yfinance_circuit: YFinanceCircuitBreaker | None = None
+    runtime_budget: ProviderRuntimeBudget | None = None
 
 
 def collect_routed_prices(
@@ -50,6 +81,41 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
     last_raw: RawPrice | None = None
 
     for provider_name in priority:
+        if (
+            provider_name == "akshare"
+            and instrument.symbol.endswith(".HK")
+            and config.provider_policy == "fast"
+            and any(
+                attempt.get("provider") == "yfinance" and attempt.get("status") == "failed"
+                for attempt in attempts
+                if isinstance(attempt, dict)
+            )
+        ):
+            attempts.append(
+                _attempt(
+                    instrument.symbol,
+                    provider_name,
+                    "skipped",
+                    reason="hk_akshare_skipped_after_fast_provider_failure_budget",
+                    elapsed_seconds=0.0,
+                    timeout_seconds=config.timeout_seconds,
+                )
+            )
+            continue
+        if config.runtime_budget is not None:
+            skip_reason = config.runtime_budget.should_skip(provider_name)
+            if skip_reason:
+                attempts.append(
+                    _attempt(
+                        instrument.symbol,
+                        provider_name,
+                        "skipped",
+                        reason=skip_reason,
+                        elapsed_seconds=0.0,
+                        timeout_seconds=config.timeout_seconds,
+                    )
+                )
+                continue
         if provider_name == "yfinance" and config.yfinance_circuit is not None and not config.yfinance_circuit.allow():
             config.yfinance_circuit.record_skip(scope="base_quote")
             attempts.append(
@@ -75,6 +141,8 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
             raw = fetched.get(instrument.symbol)
         except Exception as exc:
             elapsed = time.perf_counter() - start
+            if config.runtime_budget is not None:
+                config.runtime_budget.record(provider_name, elapsed, success=False, slow=elapsed > config.timeout_seconds)
             if provider_name == "yfinance" and config.yfinance_circuit is not None:
                 config.yfinance_circuit.record_error(str(exc), elapsed_seconds=elapsed, timeout=elapsed > config.timeout_seconds, symbol=instrument.symbol)
             attempts.append(
@@ -93,6 +161,8 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
         elapsed = time.perf_counter() - start
 
         if raw is None:
+            if config.runtime_budget is not None:
+                config.runtime_budget.record(provider_name, elapsed, success=False, slow=elapsed > config.timeout_seconds)
             if provider_name == "yfinance" and config.yfinance_circuit is not None:
                 is_timeout = elapsed > config.timeout_seconds
                 if is_timeout:
@@ -120,6 +190,8 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
                 {**attempt, "status": "failed", "reason": "provider_timeout"}
                 for attempt in stamped_attempts
             ]
+        if config.runtime_budget is not None:
+            config.runtime_budget.record(provider_name, elapsed, success=_raw_usable_for_selection(raw), slow=elapsed > config.timeout_seconds)
         attempts.extend(stamped_attempts)
         last_raw = raw
         if _raw_usable_for_selection(raw):
@@ -155,7 +227,7 @@ def _effective_priority(
         and instrument.universe_type == "scan_universe"
         and quote_purpose == "reference"
     ):
-        if (instrument.asset_type or "").lower() == "stock" and instrument.symbol.endswith((".SH", ".SZ")):
+        if _is_a_share_stock(instrument):
             return [provider for provider in ["eastmoney_direct", "mock"] if provider in set(priority) | {"eastmoney_direct", "mock"}]
         if instrument.symbol in ETF_SYMBOLS:
             return [provider for provider in ["akshare", "eastmoney_direct", "mock"] if provider in set(priority) | {"akshare", "eastmoney_direct", "mock"}]
@@ -195,8 +267,12 @@ def _selected_raw(
     raw.provider_diagnostics = {
         **raw.provider_diagnostics,
         "configured_provider_priority": configured_priority,
+        "provider_planned_chain": priority,
         "provider_priority": priority,
         "effective_provider_chain": priority,
+        "actual_provider_attempted": _actual_attempted(attempts),
+        "provider_skip_reasons": _skip_reasons(attempts),
+        "normalized_symbol": _normalize_symbol(instrument.symbol),
         "provider_policy": provider_policy,
         "quote_purpose": quote_purpose,
         "provider_attempts": attempts,
@@ -240,14 +316,23 @@ def _final_failed_raw(
     raw = last_raw or _missing_raw(instrument, priority[-1] if priority else instrument.provider, attempts)
     raw.quote_purpose = quote_purpose
     issues = list(raw.quality_issues)
+    failure_reason = _final_failure_reason(attempts)
+    if failure_reason and "symbol_not_found" in issues:
+        issues = [issue for issue in issues if issue != "symbol_not_found"]
+        issues.append("provider_error")
+        issues.append(failure_reason)
     if not any(issue in issues for issue in ["provider_error", "symbol_not_found", "invalid_price", "quote_time_missing", "invalid_quote_time"]):
         issues.append("provider_error")
     raw.quality_issues = list(dict.fromkeys(issues))
     raw.provider_diagnostics = {
         **raw.provider_diagnostics,
         "configured_provider_priority": configured_priority,
+        "provider_planned_chain": priority,
         "provider_priority": priority,
         "effective_provider_chain": priority,
+        "actual_provider_attempted": _actual_attempted(attempts),
+        "provider_skip_reasons": _skip_reasons(attempts),
+        "normalized_symbol": _normalize_symbol(instrument.symbol),
         "provider_policy": provider_policy,
         "quote_purpose": quote_purpose,
         "provider_attempts": attempts,
@@ -260,8 +345,27 @@ def _final_failed_raw(
         "fallback_reason": "",
         "usable_for_operation": False,
         "selection_reason": "all_provider_attempts_failed",
+        "final_failure_reason": failure_reason,
     }
     return raw
+
+
+def _final_failure_reason(attempts: list[dict[str, object]]) -> str:
+    reasons = [str(attempt.get("reason", "")) for attempt in attempts if isinstance(attempt, dict)]
+    if "provider_skipped_by_runtime_budget" in reasons:
+        return "provider_skipped_by_runtime_budget"
+    if "provider_skipped_by_failure_budget" in reasons:
+        return "provider_skipped_by_failure_budget"
+    if "provider_timeout" in reasons:
+        return "provider_timeout"
+    if any(
+        isinstance(attempt, dict)
+        and attempt.get("provider") not in {"mock", "mock_fallback", ""}
+        and (attempt.get("status") == "failed" or attempt.get("exception_type"))
+        for attempt in attempts
+    ):
+        return "provider_error"
+    return ""
 
 
 def _raw_usable_for_selection(raw: RawPrice) -> bool:
@@ -286,7 +390,7 @@ def _attach_reconciliation_candidates(
     priority: list[str],
     attempts: list[dict[str, object]],
 ) -> None:
-    if config.provider_mode != "live" or instrument.symbol not in EASTMONEY_DIRECT_SYMBOLS:
+    if config.provider_mode != "live" or not (instrument.symbol in EASTMONEY_DIRECT_SYMBOLS or _is_a_share_stock(instrument)):
         return
     existing_sources = _reconciliation_sources_from_attempts(attempts, selected_provider)
     if not existing_sources:
@@ -347,7 +451,7 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
     attempts = diagnostics.get("attempts")
     if not isinstance(attempts, list):
         return []
-    usable = False if raw.source == "eastmoney_direct" else _raw_usable_for_selection(raw)
+    usable = False if raw.source in {"eastmoney_direct", "mock", "mock_fallback"} or "mock_fallback_not_allowed" in raw.quality_issues else _raw_usable_for_selection(raw)
     return [
         {
             "symbol": raw.symbol,
@@ -388,6 +492,12 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
 
 def _raw_attempt(raw: RawPrice, provider_name: str) -> dict[str, object]:
     status = "success" if _raw_usable_for_selection(raw) else "failed"
+    usable_for_operation = (
+        status == "success"
+        and provider_name not in {"mock", "mock_fallback"}
+        and raw.source not in {"mock", "mock_fallback"}
+        and "mock_fallback_not_allowed" not in raw.quality_issues
+    )
     return _attempt(
         raw.symbol,
         provider_name,
@@ -395,7 +505,7 @@ def _raw_attempt(raw: RawPrice, provider_name: str) -> dict[str, object]:
         function_name=str(raw.provider_diagnostics.get("function_name", provider_name)),
         price=raw.price,
         quote_time=raw.quote_time.isoformat() if raw.quote_time else "",
-        usable_for_operation=status == "success",
+        usable_for_operation=usable_for_operation,
         reason=",".join(raw.quality_issues),
     )
 
@@ -465,9 +575,11 @@ def _missing_raw(instrument: Instrument, provider_name: str, attempts: list[dict
 def _policy_priority(instrument: Instrument, stock_chain: list[str], quote_purpose: str = "operation") -> list[str]:
     if instrument.symbol == "GOLD_CNY" or instrument.provider == "manual":
         return ["manual"]
-    if instrument.symbol in ENERGY_A_SHARE_SYMBOLS | HK_SYMBOLS:
-        if quote_purpose == "reference" and instrument.symbol in EASTMONEY_DIRECT_SYMBOLS:
+    if _is_a_share_stock(instrument):
+        if quote_purpose == "reference" or (str(instrument.project_scope or "") == "energy" and stock_chain[:1] == ["yfinance"]):
             return list(dict.fromkeys(["eastmoney_direct", *stock_chain]))
+        return stock_chain
+    if instrument.symbol in HK_SYMBOLS:
         return stock_chain
     if instrument.symbol in ETF_SYMBOLS:
         if quote_purpose == "reference":
@@ -480,7 +592,7 @@ def _diagnostic_priority(instrument: Instrument, configured_priority: list[str],
     if instrument.symbol == "GOLD_CNY" or instrument.provider == "manual":
         return ["manual"]
     base = configured_priority or _policy_priority(instrument, ["akshare", "yfinance", "mock"], quote_purpose=quote_purpose)
-    if instrument.symbol in EASTMONEY_DIRECT_SYMBOLS:
+    if instrument.symbol in EASTMONEY_DIRECT_SYMBOLS or _is_a_share_stock(instrument):
         return list(dict.fromkeys(["eastmoney_direct", *base, "akshare", "yfinance", "mock"]))
     return base
 
@@ -499,3 +611,37 @@ def _skipped_after_success(symbol: str, priority: list[str], selected_provider: 
         )
         for provider in priority[priority.index(selected_provider) + 1 :]
     ]
+
+
+def _is_a_share_stock(instrument: Instrument) -> bool:
+    asset_type = (instrument.asset_type or "stock").lower()
+    return asset_type == "stock" and _is_a_share_symbol(instrument.symbol)
+
+
+def _is_a_share_symbol(symbol: str) -> bool:
+    if not symbol.endswith((".SH", ".SZ")):
+        return False
+    code = symbol.split(".", 1)[0]
+    return code.startswith(("000", "001", "002", "003", "300", "301", "600", "601", "603", "605", "688", "689"))
+
+
+def _normalize_symbol(symbol: str) -> str:
+    return str(symbol).strip().upper()
+
+
+def _actual_attempted(attempts: list[dict[str, object]]) -> list[str]:
+    return list(
+        dict.fromkeys(
+            str(attempt.get("provider", ""))
+            for attempt in attempts
+            if attempt.get("provider") and attempt.get("status") != "skipped"
+        )
+    )
+
+
+def _skip_reasons(attempts: list[dict[str, object]]) -> dict[str, str]:
+    return {
+        str(attempt.get("provider", "")): str(attempt.get("reason", ""))
+        for attempt in attempts
+        if attempt.get("provider") and attempt.get("status") == "skipped"
+    }

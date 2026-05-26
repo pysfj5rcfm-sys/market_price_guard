@@ -86,6 +86,22 @@ def test_eastmoney_provider_ulist_fallback_covers_scan_stock():
     assert raw.provider_diagnostics["function_name"] == "eastmoney_direct.ulist_np_get"
 
 
+def test_eastmoney_provider_supports_generic_energy_a_share_symbol():
+    captured = {}
+
+    def fake_get(url, params, timeout):
+        captured["secid"] = params["secid"]
+        return _response(price=9.87, code="600938", name="中国海油A")
+
+    raw = EastmoneyDirectProvider(http_get=fake_get).fetch(["600938.SH"])["600938.SH"]
+
+    assert captured["secid"] == "1.600938"
+    assert raw.source == "eastmoney_direct"
+    assert raw.price == 9.87
+    assert raw.quote_trust_tier == "reference"
+    assert raw.usable_for_reference is True
+
+
 def test_eastmoney_request_includes_secid_and_uses_headers():
     captured = {}
 

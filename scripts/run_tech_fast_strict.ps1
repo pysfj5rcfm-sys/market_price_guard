@@ -4,26 +4,35 @@ $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $Python = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
+$BundledPython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
 $OutputDir = 'outputs_tech_latest'
 $IndexPath = Join-Path $ProjectRoot ($OutputDir + '\index.md')
 
 if (-not (Test-Path $Python)) {
-    Write-Host 'Venv not found: .venv\Scripts\python.exe. Please create .venv and install dependencies first.'
-    exit 1
+    $Python = ''
 }
 
-$null = & $Python --version 2>$null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host 'Venv python could not start. Falling back to python on PATH.'
-    $PathPython = Get-Command python -ErrorAction SilentlyContinue
-    if ($null -eq $PathPython) {
-        $PathPython = Get-Command py -ErrorAction SilentlyContinue
+if ($Python) {
+    $null = & $Python --version 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host 'Venv python could not start. Trying bundled/runtime Python.'
+        $Python = ''
     }
-    if ($null -eq $PathPython) {
-        Write-Host 'Program error: fallback python launcher not found on PATH.'
-        exit 1
+}
+if (-not $Python) {
+    if (Test-Path $BundledPython) {
+        $Python = $BundledPython
+    } else {
+        $PathPython = Get-Command python -ErrorAction SilentlyContinue
+        if ($null -eq $PathPython) {
+            $PathPython = Get-Command py -ErrorAction SilentlyContinue
+        }
+        if ($null -eq $PathPython) {
+            Write-Host 'Program error: fallback python launcher not found on PATH.'
+            exit 1
+        }
+        $Python = $PathPython.Source
     }
-    $Python = $PathPython.Source
 }
 
 Write-Host 'profile: tech'
@@ -31,8 +40,28 @@ Write-Host 'provider-policy: fast'
 Write-Host ('output-dir: ' + $OutputDir)
 
 Push-Location $ProjectRoot
+$PreviousPythonPath = $env:PYTHONPATH
+$SrcPath = Join-Path $ProjectRoot 'src'
+$VenvSitePackages = Join-Path $ProjectRoot '.venv\Lib\site-packages'
+$BundledSitePackages = Join-Path (Split-Path -Parent $Python) 'Lib\site-packages'
+$PythonPathParts = @($SrcPath)
+if (Test-Path $BundledSitePackages) {
+    $PythonPathParts += $BundledSitePackages
+}
+if (Test-Path $VenvSitePackages) {
+    $PythonPathParts += $VenvSitePackages
+}
+if ($PreviousPythonPath) {
+    $PythonPathParts += $PreviousPythonPath
+}
+$env:PYTHONPATH = ($PythonPathParts -join [System.IO.Path]::PathSeparator)
 & $Python -m market_price_guard.main --profile tech --provider-mode live --provider-policy fast --strict --output-dir $OutputDir
 $ExitCode = $LASTEXITCODE
+if ($PreviousPythonPath) {
+    $env:PYTHONPATH = $PreviousPythonPath
+} else {
+    Remove-Item Env:\PYTHONPATH -ErrorAction SilentlyContinue
+}
 Pop-Location
 
 Write-Host ('exit code: ' + $ExitCode)

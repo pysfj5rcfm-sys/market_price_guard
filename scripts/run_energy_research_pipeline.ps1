@@ -179,7 +179,7 @@ $Lines += ''
 $Lines += ('- generated_at: ' + $GeneratedAt)
 $Lines += '- account: energy'
 $Lines += '- pipeline_name: energy_research_pipeline'
-$Lines += '- version: v0.7.4.3'
+$Lines += '- version: v0.7.4.4'
 $Lines += ('- scan_mode: ' + $ScanMode)
 $Lines += ('- total_steps: ' + $Results.Count)
 $Lines += ('- passed: ' + $Passed)
@@ -240,7 +240,7 @@ $Lines | Set-Content $SummaryPath -Encoding UTF8
 $Manifest = New-Object PSObject -Property ([ordered]@{
     account = 'energy';
     pipeline_name = 'energy_research_pipeline';
-    version = 'v0.7.4.3';
+    version = 'v0.7.4.4';
     generated_at = $GeneratedAt;
     scan_mode = $ScanMode;
     steps = @($Results);
@@ -263,7 +263,7 @@ $Manifest | ConvertTo-Json -Depth 8 | Set-Content $ManifestPath -Encoding UTF8
 $PipelineLayerManifest = New-Object PSObject -Property ([ordered]@{
     account = 'energy';
     pipeline_name = 'energy_research_pipeline';
-    version = 'v0.7.4.3';
+    version = 'v0.7.4.4';
     generated_at = $GeneratedAt;
     layer_mismatch_count = $LayerMismatchCount;
     layers = @($LayerManifests);

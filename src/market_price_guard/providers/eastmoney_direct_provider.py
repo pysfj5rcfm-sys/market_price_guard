@@ -20,7 +20,7 @@ FUNCTION_NAME = "eastmoney_direct.stock_get"
 ULIST_FUNCTION_NAME = "eastmoney_direct.ulist_np_get"
 FIELDS = "f43,f57,f58,f60,f44,f45,f46,f47,f48,f86,f170,f169"
 ULIST_FIELDS = "f12,f14,f2,f3,f4,f5,f6,f15,f16,f17,f18,f124"
-SUPPORTED_SYMBOLS = {
+KNOWN_SYMBOLS = {
     "159632.SZ",
     "513300.SH",
     "159819.SZ",
@@ -63,7 +63,7 @@ class EastmoneyDirectProvider(PriceProvider):
         fetch_time = now_utc()
         prices: dict[str, RawPrice] = {}
         for symbol in symbols:
-            if symbol not in SUPPORTED_SYMBOLS:
+            if not _is_supported_symbol(symbol):
                 continue
             prices[symbol] = self._fetch_symbol(symbol, fetch_time)
         return prices
@@ -397,6 +397,15 @@ def eastmoney_secid_for_symbol(symbol: str) -> str:
     raise ValueError(f"unsupported eastmoney market: {symbol}")
 
 
+def _is_supported_symbol(symbol: str) -> bool:
+    if symbol in KNOWN_SYMBOLS:
+        return True
+    code, sep, suffix = symbol.partition(".")
+    if not sep or suffix not in {"SH", "SZ"}:
+        return False
+    return code.startswith(("000", "001", "002", "003", "15", "30", "51", "52", "56", "58", "60", "68"))
+
+
 def _default_http_get(url: str, params: dict[str, str], timeout_seconds: float = 5.0) -> dict[str, Any]:
     request = Request(f"{url}?{urlencode(params)}", headers=_eastmoney_headers())
     with urlopen(request, timeout=timeout_seconds) as response:
@@ -519,7 +528,7 @@ def _error_price(
                 {
                     "provider": "eastmoney_direct",
                     "function_name": FUNCTION_NAME,
-                    "category": _category_for_symbol(symbol) if symbol in SUPPORTED_SYMBOLS else "",
+                    "category": _category_for_symbol(symbol) if _is_supported_symbol(symbol) else "",
                     "status": "fail",
                     "provider_status": "failed",
                     "matched_symbols": [],

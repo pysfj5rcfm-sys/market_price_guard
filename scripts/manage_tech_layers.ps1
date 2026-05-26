@@ -42,6 +42,10 @@ $PreviousPythonPath = $env:PYTHONPATH
 $SrcPath = Join-Path $ProjectRoot 'src'
 $VenvSitePackages = Join-Path $ProjectRoot '.venv\Lib\site-packages'
 $PythonPathParts = @($SrcPath)
+$BundledSitePackages = Join-Path (Split-Path -Parent $Python) 'Lib\site-packages'
+if (Test-Path $BundledSitePackages) {
+    $PythonPathParts += $BundledSitePackages
+}
 if (Test-Path $VenvSitePackages) {
     $PythonPathParts += $VenvSitePackages
 }

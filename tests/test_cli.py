@@ -331,6 +331,15 @@ def test_slow_provider_attempt_is_reported(monkeypatch, tmp_path):
     assert "slow_provider_attempt=True" in health_report
 
 
+def test_runtime_diagnostics_include_provider_budget_counts(tmp_path):
+    run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="energy")
+    runtime_report = (tmp_path / "out" / "runtime_diagnostics.md").read_text(encoding="utf-8")
+
+    assert "provider_runtime_budget" in runtime_report
+    assert "provider_skipped_by_runtime_budget_count" in runtime_report
+    assert "slow_provider_attempts_count" in runtime_report
+
+
 def test_run_time_budget_exceeded_appears_in_completeness_report(tmp_path):
     run_pipeline(output_dir=tmp_path / "out", provider_mode="mock", profile="controller", max_run_seconds=0)
     report = (tmp_path / "out" / "data_completeness_report.md").read_text(encoding="utf-8")

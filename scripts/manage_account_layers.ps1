@@ -45,7 +45,11 @@ Push-Location $ProjectRoot
 $PreviousPythonPath = $env:PYTHONPATH
 $SrcPath = Join-Path $ProjectRoot 'src'
 $VenvSitePackages = Join-Path $ProjectRoot '.venv\Lib\site-packages'
+$BundledSitePackages = Join-Path (Split-Path -Parent $Python) 'Lib\site-packages'
 $PythonPathParts = @($SrcPath)
+if (Test-Path $BundledSitePackages) {
+    $PythonPathParts += $BundledSitePackages
+}
 if (Test-Path $VenvSitePackages) {
     $PythonPathParts += $VenvSitePackages
 }

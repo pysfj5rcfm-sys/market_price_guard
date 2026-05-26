@@ -780,6 +780,8 @@ def build_provider_capability_report(records: list[PriceRecord], runtime: dict[s
 def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
     attempts = _all_provider_attempts(records)
     per_provider = _per_provider_elapsed(attempts)
+    for provider, elapsed in (runtime.get("provider_elapsed_seconds") or {}).items():
+        per_provider[str(provider)] = max(per_provider.get(str(provider), 0.0), round(float(elapsed or 0.0), 3))
     yfinance_runtime_elapsed = runtime.get("yfinance_total_elapsed_seconds", "")
     if yfinance_runtime_elapsed != "":
         per_provider["yfinance"] = round(float(yfinance_runtime_elapsed or 0.0), 3)
@@ -820,6 +822,10 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- minute_yfinance_skipped_by_circuit_count: {runtime.get('minute_yfinance_skipped_by_circuit_count', 0)}",
         f"- yfinance_last_error: {runtime.get('yfinance_last_error', '')}",
         f"- provider_timeout_count: {sum(1 for record in records if record.provider_timeout)}",
+        f"- provider_skipped_by_runtime_budget_count: {_provider_skipped_by_runtime_budget_count(records)}",
+        f"- provider_skipped_by_failure_budget_count: {_provider_skipped_by_failure_budget_count(records)}",
+        f"- slow_provider_attempts_count: {len(slow_attempts)}",
+        f"- provider_runtime_budget_summary: {_provider_runtime_budget_summary(runtime, attempts)}",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', '')}",
         f"- layer_config_mismatch: {runtime.get('layer_manifest', {}).get('config_mismatch', '') if isinstance(runtime.get('layer_manifest'), dict) else ''}",
@@ -861,6 +867,8 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         lines.append("- 无")
     lines.extend(["", "## provider_call_cache"])
     lines.extend(_runtime_provider_cache_lines(records))
+    lines.extend(["", "## provider_runtime_budget"])
+    lines.extend(_provider_runtime_budget_lines(runtime, records))
     if runtime.get("provider_policy") == "diagnostic":
         lines.extend(["", "## provider_policy_note", "- diagnostic mode active: may run slower than fast mode."])
     return "\n".join(lines) + "\n"
@@ -1490,7 +1498,11 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
         lines.append(f"### {record.symbol}")
         lines.append(f"- provider_policy: {diagnostic.get('provider_policy', '')}")
         lines.append(f"- configured_provider_priority: {_format_symbols(diagnostic.get('configured_provider_priority', []))}")
+        lines.append(f"- provider_planned_chain: {_format_symbols(diagnostic.get('provider_planned_chain', diagnostic.get('effective_provider_chain', diagnostic.get('provider_priority', []))))}")
         lines.append(f"- effective_provider_chain: {_format_symbols(diagnostic.get('effective_provider_chain', diagnostic.get('provider_priority', [])))}")
+        lines.append(f"- actual_provider_attempted: {_format_symbols(diagnostic.get('actual_provider_attempted', []))}")
+        lines.append(f"- provider_skip_reasons: {_format_skip_reasons(diagnostic.get('provider_skip_reasons', {}))}")
+        lines.append(f"- normalized_symbol: {diagnostic.get('normalized_symbol', record.symbol)}")
         lines.append(f"- selected_provider: {diagnostic.get('selected_provider', record.source)}")
         lines.append(f"- selected_source: {diagnostic.get('selected_source', record.source)}")
         lines.append(f"- fallback_used: {diagnostic.get('fallback_used', False)}")
@@ -1503,6 +1515,7 @@ def _provider_attempts_by_symbol(records: list[PriceRecord]) -> list[str]:
         lines.append(f"- selection_reason: {diagnostic.get('selection_reason', '')}")
         blocking_reason = _blocking_reason(record)
         lines.append(f"- final_blocking_reason: {blocking_reason}")
+        lines.append(f"- provider_failure_reason: {_likely_reason(record)}")
         lines.append(f"- reconciliation_enabled: {record.reconciliation_enabled}")
         lines.append(f"- source_agreement_status: {record.source_agreement_status}")
         lines.append(f"- operation_candidate_agreed: {record.operation_candidate_agreed}")
@@ -1689,6 +1702,7 @@ def _index_issue_counts(records: list[PriceRecord], summary: CompletenessSummary
         "quote_time_missing": len(summary.quote_time_missing),
         "mock_fallback_not_usable": sum(1 for record in records if "mock_fallback_not_allowed" in record.quality_issues),
         "slow_provider_attempts": sum(1 for attempt in attempts if attempt.get("slow_provider_attempt")),
+        "provider_skipped_by_runtime_budget": _provider_skipped_by_runtime_budget_count(records),
         "fallback_used": sum(1 for record in records if record.provider_diagnostics.get("fallback_used")),
         "run_time_budget_exceeded": 1 if runtime.get("run_time_budget_exceeded") else 0,
     }
@@ -2016,6 +2030,22 @@ def _all_provider_attempts(records: list[PriceRecord]) -> list[dict[str, object]
     return attempts
 
 
+def _provider_skipped_by_runtime_budget_count(records: list[PriceRecord]) -> int:
+    return sum(
+        1
+        for attempt in _all_provider_attempts(records)
+        if attempt.get("reason") in {"provider_skipped_by_runtime_budget", "hk_akshare_skipped_after_fast_provider_failure_budget"}
+    )
+
+
+def _provider_skipped_by_failure_budget_count(records: list[PriceRecord]) -> int:
+    return sum(
+        1
+        for attempt in _all_provider_attempts(records)
+        if attempt.get("reason") == "provider_skipped_by_failure_budget"
+    )
+
+
 def _per_provider_elapsed(attempts: list[dict[str, object]]) -> dict[str, float]:
     elapsed: dict[str, float] = {}
     for attempt in attempts:
@@ -2043,6 +2073,82 @@ def _per_symbol_elapsed(records: list[PriceRecord]) -> dict[str, float]:
                 total += float(attempt.get("elapsed_seconds") or 0.0)
         elapsed[record.symbol] = round(total, 3)
     return elapsed
+
+
+def _provider_runtime_budget_summary(runtime: dict[str, Any], attempts: list[dict[str, object]] | None = None) -> str:
+    elapsed = runtime.get("provider_elapsed_seconds") or {}
+    attempted = runtime.get("provider_attempts") or {}
+    slow = runtime.get("provider_slow_attempts") or {}
+    failed = runtime.get("provider_failed_attempts") or {}
+    if attempts and not elapsed:
+        elapsed = _per_provider_elapsed(attempts)
+    if attempts and not slow:
+        slow = {}
+        for attempt in attempts:
+            if attempt.get("slow_provider_attempt"):
+                provider = str(attempt.get("provider", ""))
+                slow[provider] = slow.get(provider, 0) + 1
+    if attempts and not attempted:
+        attempted = {}
+        for attempt in attempts:
+            if attempt.get("status") != "skipped":
+                provider = str(attempt.get("provider", ""))
+                attempted[provider] = attempted.get(provider, 0) + 1
+    if attempts and not failed:
+        failed = {}
+        for attempt in attempts:
+            if attempt.get("status") == "failed":
+                provider = str(attempt.get("provider", ""))
+                failed[provider] = failed.get(provider, 0) + 1
+    if not elapsed and not slow and not failed:
+        return "none"
+    providers = sorted(set(elapsed) | set(attempted) | set(slow) | set(failed))
+    return "; ".join(
+        f"{provider}:attempts={attempted.get(provider, '')},elapsed={elapsed.get(provider, 0)},slow={slow.get(provider, 0)},failed={failed.get(provider, 0)}"
+        for provider in providers
+    )
+
+
+def _provider_runtime_budget_lines(runtime: dict[str, Any], records: list[PriceRecord]) -> list[str]:
+    elapsed = runtime.get("provider_elapsed_seconds") or {}
+    attempted = runtime.get("provider_attempts") or {}
+    slow = runtime.get("provider_slow_attempts") or {}
+    failed = runtime.get("provider_failed_attempts") or {}
+    attempts = _all_provider_attempts(records)
+    if not elapsed:
+        elapsed = _per_provider_elapsed(attempts)
+    if not slow:
+        slow = {}
+        for attempt in attempts:
+            if attempt.get("slow_provider_attempt"):
+                provider = str(attempt.get("provider", ""))
+                slow[provider] = slow.get(provider, 0) + 1
+    if not attempted:
+        attempted = {}
+        for attempt in attempts:
+            if attempt.get("status") != "skipped":
+                provider = str(attempt.get("provider", ""))
+                attempted[provider] = attempted.get(provider, 0) + 1
+    if not failed:
+        failed = {}
+        for attempt in attempts:
+            if attempt.get("status") == "failed":
+                provider = str(attempt.get("provider", ""))
+                failed[provider] = failed.get(provider, 0) + 1
+    lines = [
+        f"- provider_skipped_by_runtime_budget_count: {_provider_skipped_by_runtime_budget_count(records)}",
+        f"- provider_skipped_by_failure_budget_count: {_provider_skipped_by_failure_budget_count(records)}",
+    ]
+    providers = sorted(set(elapsed) | set(attempted) | set(slow) | set(failed))
+    if not providers:
+        lines.append("- provider_budget_by_provider: none")
+        return lines
+    lines.append("- provider_budget_by_provider:")
+    for provider in providers:
+        lines.append(
+            f"  - {provider}: attempts={attempted.get(provider, '')}, elapsed_seconds={elapsed.get(provider, 0)}, slow_attempts={slow.get(provider, 0)}, failed_attempts={failed.get(provider, 0)}"
+        )
+    return lines
 
 
 def _provider_routing_note_lines(records: list[PriceRecord]) -> list[str]:
@@ -2616,6 +2722,26 @@ def _provider_status(record: PriceRecord) -> str:
 
 def _likely_reason(record: PriceRecord) -> str:
     issues = set(record.quality_issues)
+    if any(
+        isinstance(attempt, dict) and attempt.get("reason") == "provider_timeout"
+        for attempt in record.provider_diagnostics.get("provider_attempts", []) or []
+    ):
+        return "provider_timeout"
+    if record.symbol.endswith(".HK") and not record.usable_for_reference:
+        return _hk_failure_reason(record)
+    if _a_share_route_exists(record) and not record.usable_for_reference:
+        if any(
+            isinstance(attempt, dict) and attempt.get("exception_type")
+            for attempt in record.provider_diagnostics.get("provider_attempts", []) or []
+        ):
+            return "a_share_provider_error"
+        if any(
+            isinstance(attempt, dict) and attempt.get("reason") in {"provider_skipped_by_runtime_budget", "provider_skipped_by_failure_budget"}
+            for attempt in record.provider_diagnostics.get("provider_attempts", []) or []
+        ):
+            return "a_share_provider_skipped_by_budget"
+    if _a_share_route_exists(record) and "symbol_not_found" in issues:
+        return "provider_symbol_not_found_after_a_share_route"
     if "symbol_not_found" in issues:
         return "provider_symbol_not_found" if record.registry_found else "unsupported_symbol"
     if "provider_error" in issues:
@@ -2631,6 +2757,30 @@ def _likely_reason(record: PriceRecord) -> str:
     if record.amount_unit == "unit_unknown" or record.volume_unit == "unit_unknown":
         return "unit_unknown"
     return "reference_available" if record.usable_for_reference else "check_required"
+
+
+def _hk_failure_reason(record: PriceRecord) -> str:
+    attempts = record.provider_diagnostics.get("provider_attempts", []) or []
+    if any(isinstance(attempt, dict) and attempt.get("reason") == "provider_timeout" for attempt in attempts):
+        return "hk_provider_timeout"
+    if any(isinstance(attempt, dict) and attempt.get("exception_type") for attempt in attempts):
+        return "hk_provider_error"
+    if not attempts:
+        return "unsupported_hk_provider"
+    return "hk_reference_unavailable"
+
+
+def _a_share_route_exists(record: PriceRecord) -> bool:
+    return record.symbol.endswith((".SH", ".SZ")) and any(
+        isinstance(attempt, dict) and attempt.get("provider") in {"eastmoney_direct", "akshare", "yfinance"}
+        for attempt in record.provider_diagnostics.get("provider_attempts", []) or []
+    )
+
+
+def _format_skip_reasons(value: object) -> str:
+    if not isinstance(value, dict) or not value:
+        return "none"
+    return ", ".join(f"{provider}={reason}" for provider, reason in value.items())
 
 
 def _suggested_next_step(record: PriceRecord) -> str:
