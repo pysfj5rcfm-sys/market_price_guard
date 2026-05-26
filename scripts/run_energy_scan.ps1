@@ -1,12 +1,21 @@
+param(
+    [string]$Mode = 'fast'
+)
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Continue'
+
+if ($Mode -notin @('fast', 'diagnostic')) {
+    Write-Host 'Invalid Mode. Valid values: fast, diagnostic.'
+    exit 1
+}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $Python = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
 $BundledPython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
 $UsingVenvPython = $false
-$OutputDir = 'outputs_energy_latest'
+$OutputDir = 'outputs_energy_scan_latest'
 $IndexPath = Join-Path $ProjectRoot ($OutputDir + '\index.md')
 
 if (Test-Path $Python) {
@@ -38,8 +47,10 @@ if (-not $Python) {
 }
 
 Write-Host 'profile: energy'
-Write-Host 'universe: energy_core'
+Write-Host 'universe: energy_scan'
 Write-Host 'provider-policy: fast'
+Write-Host 'quote-purpose: reference'
+Write-Host ('scan-mode: ' + $Mode)
 Write-Host ('output-dir: ' + $OutputDir)
 
 Push-Location $ProjectRoot
@@ -54,7 +65,7 @@ if ($PreviousPythonPath) {
     $PythonPathParts += $PreviousPythonPath
 }
 $env:PYTHONPATH = ($PythonPathParts -join [System.IO.Path]::PathSeparator)
-& $Python -m market_price_guard.main --profile energy --universe energy_core --provider-mode live --provider-policy fast --strict --output-dir $OutputDir
+& $Python -m market_price_guard.main --profile energy --universe energy_scan --provider-mode live --quote-purpose reference --provider-policy fast --scan-mode $Mode --output-dir outputs_energy_scan_latest
 $ExitCode = $LASTEXITCODE
 if ($PreviousPythonPath) {
     $env:PYTHONPATH = $PreviousPythonPath

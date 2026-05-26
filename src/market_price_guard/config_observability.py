@@ -26,6 +26,10 @@ LAYER_TO_ROOT_MIRROR = {
     "tech_operation_candidates": "operation_candidate",
     "tech_watchlist": "watchlist",
     "tech_scan_ai": "scan",
+    "energy_core": "operation",
+    "energy_operation_candidates": "operation_candidate",
+    "energy_watchlist": "watchlist",
+    "energy_scan": "scan",
 }
 
 TECH_LAYER_ORDER = [
@@ -99,9 +103,11 @@ def build_layer_manifest(
     source = Path(config_source_path) if not isinstance(config_source_path, Path) else config_source_path
     display_source = _display_path(source)
     source_exists = source.exists() if not str(config_source_path).startswith("derived_from_") else False
+    account = _account_from_layer_name(layer_name)
     missing = [symbol for symbol in configured_symbols if symbol not in loaded_symbols]
     extra = [symbol for symbol in loaded_symbols if symbol not in configured_symbols]
     manifest = {
+        "account": account,
         "layer_name": layer_name,
         "universe_name": universe_name,
         "universe_type": universe_type,
@@ -128,6 +134,8 @@ def build_layer_manifest(
         "config_mismatch": bool(missing or extra),
         "config_load_status": config_load_status,
         "config_load_warnings": config_load_warnings or [],
+        "root_mirror_match": _root_mirror_match(account, root_watchlist_layer_name or LAYER_TO_ROOT_MIRROR.get(layer_name), configured_symbols),
+        "account_bootstrapped": account_layer_paths(account).account_bootstrapped(PROJECT_ROOT),
     }
     if source_layer_manifest_path:
         manifest["source_layer_manifest_path"] = source_layer_manifest_path
@@ -192,6 +200,8 @@ def layer_manifest_from_records(records: list[Any], runtime: dict[str, Any]) -> 
         return build_minute_probe_manifest(loaded_symbols)
     if not runtime.get("registry_enabled") and str(runtime.get("profile")) == "tech":
         return load_target_layer_manifest("tech_core", loaded_symbols)
+    if not runtime.get("registry_enabled") and str(runtime.get("profile")) == "energy":
+        return load_target_layer_manifest("energy_core", loaded_symbols)
     return None
 
 
@@ -434,7 +444,26 @@ def _default_universe_type(layer_name: str) -> str:
         "tech_operation_candidates": "operation_candidate",
         "tech_watchlist": "candidate_watchlist",
         "tech_scan_ai": "scan_universe",
+        "energy_core": "core_holdings",
+        "energy_operation_candidates": "operation_candidate",
+        "energy_watchlist": "candidate_watchlist",
+        "energy_scan": "scan_universe",
     }.get(layer_name, "")
+
+
+def _account_from_layer_name(layer_name: str) -> str:
+    if str(layer_name).startswith("energy_"):
+        return "energy"
+    return "tech"
+
+
+def _root_mirror_match(account: str, root_layer_name: str | None, configured_symbols: list[str]) -> bool:
+    if not root_layer_name:
+        return False
+    warnings: list[str] = []
+    root_data = _read_yaml(WATCHLIST_PATH, warnings)
+    root_symbols = extract_account_root_symbols(root_data, account, root_layer_name)
+    return configured_symbols == root_symbols
 
 
 def _metadata_symbol_warnings(data: Any, layer: str) -> list[str]:

@@ -47,6 +47,23 @@ def test_current_tech_layer_manifest_counts():
 
 
 @pytest.mark.contract
+def test_current_energy_layer_manifest_counts():
+    expected = {
+        "energy_core": 4,
+        "energy_operation_candidates": 8,
+        "energy_watchlist": 24,
+        "energy_scan": 41,
+    }
+
+    for layer_name, count in expected.items():
+        manifest = load_target_layer_manifest(layer_name, [])
+        assert manifest["account"] == "energy"
+        assert manifest["configured_symbol_count"] == count
+        assert manifest["root_mirror_match"] is True
+        assert manifest["account_bootstrapped"] is True
+
+
+@pytest.mark.contract
 def test_config_check_root_mirror_and_registry(tmp_path):
     result = run_config_check(tmp_path)
 
@@ -73,6 +90,21 @@ def test_run_pipeline_writes_layer_manifest_and_reports(tmp_path):
     assert "Config Source / Layer Manifest" in (output_dir / "debug_bundle.md").read_text(encoding="utf-8")
     assert "Config Source / Layer Manifest" in (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
     assert "Config Source / Layer Manifest" in (output_dir / "runtime_diagnostics.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.contract
+def test_energy_pipeline_writes_layer_manifest_and_reports(tmp_path):
+    output_dir = tmp_path / "energy_scan"
+
+    run_pipeline(output_dir=output_dir, provider_mode="mock", profile="energy", quote_purpose="reference", universe="energy_scan")
+
+    manifest = json.loads((output_dir / "layer_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["account"] == "energy"
+    assert manifest["configured_symbol_count"] == 41
+    assert manifest["loaded_symbol_count"] == 41
+    assert manifest["config_mismatch"] is False
+    assert manifest["root_mirror_match"] is True
+    assert "Config Source / Layer Manifest" in (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
 
 
 @pytest.mark.contract

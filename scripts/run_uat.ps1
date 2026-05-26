@@ -11,11 +11,11 @@ $ProjectRoot = Split-Path -Parent $ScriptDir
 $SummaryPath = Join-Path $ProjectRoot 'outputs_uat_summary.md'
 $RunCacheDir = Join-Path $ProjectRoot 'outputs_uat_run_cache_latest'
 
-$AllowedModes = @('quick', 'intraday', 'full')
+$AllowedModes = @('quick', 'intraday', 'full', 'energy')
 $Mode = $Mode.ToLowerInvariant()
 if ($Mode -notin $AllowedModes) {
     Write-Host ('Invalid UAT mode: ' + $Mode)
-    Write-Host 'Valid modes: quick, intraday, full'
+    Write-Host 'Valid modes: quick, intraday, full, energy'
     exit 1
 }
 
@@ -47,12 +47,16 @@ $ModeItems = @{
         'diagnostic',
         'mock_strict'
     )
+    energy = @(
+        'energy_pipeline'
+    )
 }
 
 $ModeExplanation = @{
     quick = 'quick mode skips heavy live provider diagnostics. Use -Mode full for complete regression.'
     intraday = 'intraday mode runs minute probe and reference intraday metrics without heavy reconcile/scan/diagnostic live sweeps.'
     full = 'full mode runs the complete live provider regression and can be slow.'
+    energy = 'energy mode runs the energy account research pipeline bootstrap checks only.'
 }
 
 $Items = @(
@@ -112,6 +116,34 @@ $Items = @(
         Script = 'run_energy_fast_strict.ps1'
         OutputDir = 'outputs_energy_latest'
         PriceBlock = 'energy_price_block.md'
+    },
+    @{
+        Name = 'energy_operation_candidates'
+        Script = 'run_energy_operation_candidates.ps1'
+        OutputDir = 'outputs_energy_operation_candidates_latest'
+        PriceBlock = 'operation_candidate_report.md'
+        UniverseType = 'operation_candidate'
+    },
+    @{
+        Name = 'energy_watchlist'
+        Script = 'run_energy_watchlist.ps1'
+        OutputDir = 'outputs_energy_watchlist_latest'
+        PriceBlock = 'candidate_watchlist_report.md'
+        UniverseType = 'candidate_watchlist'
+    },
+    @{
+        Name = 'energy_scan'
+        Script = 'run_energy_scan.ps1'
+        OutputDir = 'outputs_energy_scan_latest'
+        PriceBlock = 'scan_universe_report.md'
+        UniverseType = 'scan_universe'
+    },
+    @{
+        Name = 'energy_pipeline'
+        Script = 'run_energy_research_pipeline.ps1'
+        OutputDir = 'outputs_energy_pipeline_latest'
+        PriceBlock = 'pipeline_summary.md'
+        Pipeline = $true
     },
     @{
         Name = 'all_fast_strict'
@@ -247,16 +279,25 @@ foreach ($Item in $Items) {
     $Stopwatch.Stop()
     $ElapsedSeconds = [Math]::Round($Stopwatch.Elapsed.TotalSeconds, 3)
     $OutputPath = Join-Path $ProjectRoot $Item.OutputDir
-    $RequiredFiles = @(
-        '0_upload_bundle.md',
-        'debug_bundle.md',
-        'index.md',
-        'data_completeness_report.md',
-        'provider_health_report.md',
-        'runtime_diagnostics.md',
-        'price_reconciliation_report.md',
-        $Item.PriceBlock
-    )
+    if ($Item.Pipeline) {
+        $RequiredFiles = @(
+            'pipeline_summary.md',
+            'pipeline_manifest.json',
+            'pipeline_layer_manifest.json',
+            'upload_manifest.md'
+        )
+    } else {
+        $RequiredFiles = @(
+            '0_upload_bundle.md',
+            'debug_bundle.md',
+            'index.md',
+            'data_completeness_report.md',
+            'provider_health_report.md',
+            'runtime_diagnostics.md',
+            'price_reconciliation_report.md',
+            $Item.PriceBlock
+        )
+    }
     $MissingFiles = @()
     foreach ($FileName in $RequiredFiles) {
         $FilePath = Join-Path $OutputPath $FileName
@@ -329,7 +370,7 @@ foreach ($Item in $Items) {
         $Status = 'failed'
         $AnyFailed = $true
     }
-    if ($Item.Name -in @('tech_watchlist', 'tech_scan_ai', 'tech_operation_candidates')) {
+    if ($Item.Name -in @('tech_watchlist', 'tech_scan_ai', 'tech_operation_candidates', 'energy_watchlist', 'energy_scan', 'energy_operation_candidates')) {
         $Status = 'passed'
         $WatchlistScanFailed = $false
         $Notes = @()
@@ -372,6 +413,42 @@ foreach ($Item in $Items) {
             $Status = 'failed'
             $AnyFailed = $true
         } else {
+            $MissingFiles = @()
+            $AdviceHits = @()
+        }
+    }
+    if ($Item.Name -eq 'energy_pipeline') {
+        $PipelineFailed = $false
+        $Notes = @()
+        if ($ExitCode -ne 0) {
+            $PipelineFailed = $true
+            $Notes += 'exit_code_not_zero'
+        }
+        foreach ($FileName in @('pipeline_summary.md', 'pipeline_layer_manifest.json')) {
+            if (-not (Test-Path (Join-Path $OutputPath $FileName))) {
+                $PipelineFailed = $true
+                $Notes += ($FileName + '_missing')
+            }
+        }
+        if (Test-Path (Join-Path $OutputPath 'pipeline_summary.md')) {
+            $PipelineContent = Get-Content (Join-Path $OutputPath 'pipeline_summary.md') -Raw -Encoding UTF8
+            foreach ($ForbiddenStep in @('tech_minute_probe', 'tech_intraday_metrics')) {
+                if ($PipelineContent.Contains($ForbiddenStep)) {
+                    $PipelineFailed = $true
+                    $Notes += ('forbidden_step:' + $ForbiddenStep)
+                }
+            }
+            if ($PipelineContent -notmatch '## Layer Config Summary') {
+                $PipelineFailed = $true
+                $Notes += 'layer_config_summary_missing'
+            }
+        }
+        if ($PipelineFailed) {
+            $Status = 'failed'
+            $AnyFailed = $true
+            $MissingFiles = $Notes
+        } else {
+            $Status = 'passed'
             $MissingFiles = @()
             $AdviceHits = @()
         }
@@ -509,7 +586,7 @@ foreach ($Result in $Results) {
     $Lines += ('- config_mismatch: ' + $Result.LayerConfigMismatch)
     $Lines += ('- missing_from_loaded: ' + ($(if ($Result.LayerMissing.Count -gt 0) { $Result.LayerMissing -join ', ' } else { 'none' })))
     $Lines += ('- extra_loaded_symbols: ' + ($(if ($Result.LayerExtra.Count -gt 0) { $Result.LayerExtra -join ', ' } else { 'none' })))
-    if ($Result.Name -in @('tech_watchlist', 'tech_scan_ai', 'tech_operation_candidates')) {
+    if ($Result.Name -in @('tech_watchlist', 'tech_scan_ai', 'tech_operation_candidates', 'energy_watchlist', 'energy_scan', 'energy_operation_candidates')) {
         $Lines += '- strict_pollution_isolation: candidate/scan/operation-candidate universes are non-strict reference outputs.'
     }
     if ($Result.MissingFiles.Count -gt 0) {

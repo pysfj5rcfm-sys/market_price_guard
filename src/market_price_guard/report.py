@@ -976,14 +976,16 @@ def build_scan_universe_report(records: list[PriceRecord], runtime: dict[str, An
 def build_operation_candidate_report(records: list[PriceRecord], runtime: dict[str, Any]) -> str:
     candidates = [record for record in records if record.universe_type == "operation_candidate"]
     scoped = candidates or records
+    profile = str(runtime.get("profile", "tech"))
+    universe_name = str(runtime.get("universe_name", f"{profile}_operation_candidates"))
     lines = [
-        "# Tech Operation Candidate Report",
+        f"# {profile.title()} Operation Candidate Report",
         "",
         "These are pre-trade verification candidates, not core holdings and not operation-grade.",
-        "They do not affect tech_fast_strict or outputs_tech_latest.",
+        f"They do not affect {profile}_fast_strict or outputs_{profile}_latest.",
         "This output is not trading advice.",
         "",
-        f"- universe_name: {runtime.get('universe_name', 'tech_operation_candidates')}",
+        f"- universe_name: {universe_name}",
         f"- universe_type: {runtime.get('universe_type', 'operation_candidate')}",
         "- quote_purpose: reference",
         "- required_for_operation: false",

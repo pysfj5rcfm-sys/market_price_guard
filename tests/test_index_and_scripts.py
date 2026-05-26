@@ -80,7 +80,11 @@ def test_index_utf8_readable_and_no_investment_action_terms(tmp_path):
 def test_scripts_exist_and_use_expected_arguments():
     scripts_dir = PROJECT_ROOT / "scripts"
     expected = {
-        "run_energy_fast_strict.ps1": ["--profile energy", "--provider-policy fast", "--strict", "outputs_energy_latest"],
+        "run_energy_fast_strict.ps1": ["--profile energy", "--universe energy_core", "--provider-policy fast", "--strict", "outputs_energy_latest"],
+        "run_energy_operation_candidates.ps1": ["--profile energy", "--universe energy_operation_candidates", "--provider-policy fast", "--quote-purpose reference", "outputs_energy_operation_candidates_latest"],
+        "run_energy_watchlist.ps1": ["--profile energy", "--universe energy_watchlist", "--provider-policy fast", "--quote-purpose reference", "outputs_energy_watchlist_latest"],
+        "run_energy_scan.ps1": ["--profile energy", "--universe energy_scan", "--provider-policy fast", "--quote-purpose reference", "--scan-mode", "outputs_energy_scan_latest"],
+        "run_energy_research_pipeline.ps1": ["run_energy_scan.ps1", "run_energy_watchlist.ps1", "run_energy_operation_candidates.ps1", "run_energy_fast_strict.ps1", "outputs_energy_pipeline_latest", "pipeline_summary.md", "pipeline_layer_manifest.json"],
         "run_tech_fast_strict.ps1": ["--profile tech", "--provider-policy fast", "--strict", "outputs_tech_latest"],
         "run_all_fast_strict.ps1": ["--profile all", "--provider-policy fast", "--strict", "outputs_all_latest"],
         "run_diagnostic.ps1": ["--profile all", "--provider-policy diagnostic", "outputs_diagnostic"],
@@ -99,7 +103,8 @@ def test_scripts_exist_and_use_expected_arguments():
         assert "”" not in content
         assert "`" not in content
         assert "$MyInvocation.MyCommand.Path" in content
-        assert ".venv\\Scripts\\python.exe" in content
+        if filename != "run_energy_research_pipeline.ps1":
+            assert ".venv\\Scripts\\python.exe" in content
         for snippet in snippets:
             assert snippet in content
     reference_content = (scripts_dir / "run_tech_fast_reference.ps1").read_text(encoding="utf-8")

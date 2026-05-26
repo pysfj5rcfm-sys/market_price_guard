@@ -26,7 +26,20 @@ def test_symbol_registry_contains_core_and_candidate_metadata():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("name", ["tech_core", "tech_watchlist", "tech_scan_ai", "tech_operation_candidates", "energy_core", "controller_core"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "tech_core",
+        "tech_watchlist",
+        "tech_scan_ai",
+        "tech_operation_candidates",
+        "energy_core",
+        "energy_operation_candidates",
+        "energy_watchlist",
+        "energy_scan",
+        "controller_core",
+    ],
+)
 def test_universe_files_load(name):
     spec = load_universe(name, UNIVERSES_DIR)
 
@@ -241,6 +254,9 @@ def test_watchlist_and_scan_scripts_are_reference_only():
         "run_tech_watchlist.ps1": ("--universe tech_watchlist", "outputs_tech_watchlist_latest"),
         "run_tech_scan_ai.ps1": ("--universe tech_scan_ai", "outputs_tech_scan_ai_latest"),
         "run_tech_operation_candidates.ps1": ("--universe tech_operation_candidates", "outputs_tech_operation_candidates_latest"),
+        "run_energy_watchlist.ps1": ("--universe energy_watchlist", "outputs_energy_watchlist_latest"),
+        "run_energy_scan.ps1": ("--universe energy_scan", "outputs_energy_scan_latest"),
+        "run_energy_operation_candidates.ps1": ("--universe energy_operation_candidates", "outputs_energy_operation_candidates_latest"),
     }
     for script, (universe_arg, output_dir) in scripts.items():
         content = (Path("scripts") / script).read_text(encoding="utf-8")
