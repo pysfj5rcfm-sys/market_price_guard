@@ -10,6 +10,54 @@ from market_price_guard.account_config import account_layer_paths, normalize_lay
 from market_price_guard.config_observability import run_config_check
 from market_price_guard.manage_account_layers import AccountLayerManager, main as account_main
 
+ENERGY_OPERATION = ["00883.HK", "601899.SH", "601985.SH", "003816.SZ"]
+ENERGY_OPERATION_CANDIDATES = [
+    "600938.SH",
+    "600900.SH",
+    "601088.SH",
+    "600489.SH",
+    "600547.SH",
+    "603993.SH",
+    "600188.SH",
+    "600795.SH",
+]
+ENERGY_WATCHLIST = [
+    *ENERGY_OPERATION,
+    *ENERGY_OPERATION_CANDIDATES,
+    "600028.SH",
+    "601857.SH",
+    "601225.SH",
+    "600011.SH",
+    "600027.SH",
+    "600905.SH",
+    "600886.SH",
+    "000975.SZ",
+    "000630.SZ",
+    "000878.SZ",
+    "600362.SH",
+    "601600.SH",
+]
+ENERGY_SCAN = [
+    *ENERGY_WATCHLIST,
+    "601808.SH",
+    "600583.SH",
+    "600256.SH",
+    "002128.SZ",
+    "000983.SZ",
+    "600348.SH",
+    "601001.SH",
+    "600985.SH",
+    "000933.SZ",
+    "600988.SH",
+    "603979.SH",
+    "600497.SH",
+    "000807.SZ",
+    "002155.SZ",
+    "600021.SH",
+    "600642.SH",
+    "000027.SZ",
+]
+
 
 def _copy_project_config(tmp_path: Path) -> Path:
     root = tmp_path / "project"
@@ -71,14 +119,14 @@ def test_account_config_check_energy_bootstrapped(tmp_path):
     result = run_config_check(tmp_path, account="energy")
 
     assert result["account"] == "energy"
-    assert result["scope_classification"] == "energy-only bootstrap"
+    assert result["scope_classification"] == "energy-only layer pool expansion"
     assert result["account_bootstrapped"] is True
     assert result["missing_account_config_files"] == []
     assert result["root_mirror_match"] is True
     assert result["universes"]["energy_core"]["configured_symbol_count"] == 4
-    assert result["universes"]["energy_operation_candidates"]["configured_symbol_count"] == 0
-    assert result["universes"]["energy_watchlist"]["configured_symbol_count"] == 4
-    assert result["universes"]["energy_scan"]["configured_symbol_count"] == 4
+    assert result["universes"]["energy_operation_candidates"]["configured_symbol_count"] == 8
+    assert result["universes"]["energy_watchlist"]["configured_symbol_count"] == 24
+    assert result["universes"]["energy_scan"]["configured_symbol_count"] == 41
     assert result["missing_registry_symbols"] == []
     assert "tech_core" not in result["universes"]
     assert (tmp_path / "energy_layer_config_check.md").exists()
@@ -106,8 +154,8 @@ def test_manage_account_layers_energy_does_not_fallback_to_tech(tmp_path):
 
     assert report["account"] == "energy"
     assert report["account_bootstrapped"] is True
-    assert report["after_counts"] == {"operation": 4, "operation_candidate": 0, "watchlist": 4, "scan": 4}
-    assert report["symbols"]["operation"] == ["00883.HK", "601899.SH", "601985.SH", "003816.SZ"]
+    assert report["after_counts"] == {"operation": 4, "operation_candidate": 8, "watchlist": 24, "scan": 41}
+    assert report["symbols"]["operation"] == ENERGY_OPERATION
     assert "159632.SZ" not in report["symbols"]["operation"]
     assert report["missing_account_config_files"] == []
 
@@ -151,17 +199,33 @@ def test_energy_bootstrap_config_files_and_registry_are_present():
     root = yaml.safe_load(Path("config/watchlist.yaml").read_text(encoding="utf-8"))
     registry = yaml.safe_load(Path("config/symbol_registry.yaml").read_text(encoding="utf-8"))
 
-    assert candidates["symbols"] == []
-    assert watchlist["symbols"] == core["symbols"]
-    assert scan["symbols"] == core["symbols"]
+    assert core["symbols"] == ENERGY_OPERATION
+    assert candidates["symbols"] == ENERGY_OPERATION_CANDIDATES
+    assert watchlist["symbols"] == ENERGY_WATCHLIST
+    assert scan["symbols"] == ENERGY_SCAN
     assert root["projects"]["energy"]["layer_universes"]["operation"] == core["symbols"]
     assert root["projects"]["energy"]["layer_universes"]["operation_candidate"] == candidates["symbols"]
     assert root["projects"]["energy"]["layer_universes"]["watchlist"] == watchlist["symbols"]
     assert root["projects"]["energy"]["layer_universes"]["scan"] == scan["symbols"]
-    for symbol in core["symbols"]:
+    for symbol in ENERGY_SCAN:
         assert symbol in registry
         assert registry[symbol]["project_scope"] == "energy"
+        assert "tech-only" not in str(registry[symbol]).lower()
         assert "energy" in registry[symbol].get("universe_tags", [])
+
+
+def test_account_manager_root_mirror_match_semantics_are_consistent(tmp_path):
+    root = _copy_project_config(tmp_path)
+
+    exit_code = account_main(["--project-root", str(root), "-Account", "energy", "show"])
+
+    report_text = (root / "outputs_config_manager_latest/config_manager_report.md").read_text(encoding="utf-8")
+    report_json = yaml.safe_load((root / "outputs_config_manager_latest/config_manager_report.json").read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert report_json["root_mirror_mismatch"] is False
+    assert report_json["root_mirror_match"] is True
+    assert "ROOT_MIRROR_MISMATCH: false" in report_text
+    assert "root_mirror_match: true" in report_text
 
 
 def test_manage_account_layers_dry_run_makes_no_config_changes(tmp_path):

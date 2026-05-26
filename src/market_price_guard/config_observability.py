@@ -19,6 +19,7 @@ REGISTRY_PATH = CONFIG_DIR / "symbol_registry.yaml"
 
 CONFIG_LOADER_NAME = "market_price_guard.config_observability"
 CONFIG_LOADER_VERSION = "v0.7.4"
+ENERGY_SCOPE_CLASSIFICATION = "energy-only layer pool expansion"
 
 LAYER_TO_ROOT_MIRROR = {
     "tech_core": "operation",
@@ -277,11 +278,7 @@ def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT, accoun
         bool(info.get("root_mirror_matches", False))
         for info in universe_results.values()
     )
-    scope_classification = (
-        "energy-only bootstrap"
-        if account == "energy" and account_bootstrapped
-        else "account-generic foundation"
-    )
+    scope_classification = ENERGY_SCOPE_CLASSIFICATION if account == "energy" and account_bootstrapped else "account-generic foundation"
     result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": status,

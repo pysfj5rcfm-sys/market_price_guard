@@ -159,6 +159,7 @@ class TechLayerManager:
             "override_scope": "",
             "override_reason": "",
             "root_mirror_mismatch": False,
+            "root_mirror_match": True,
             "root_mirror_synced": False,
             "backup_path": "",
             "symbols": {},
@@ -474,6 +475,7 @@ class TechLayerManager:
         return backup_dir
 
     def write_report(self, report: dict[str, Any]) -> None:
+        _normalize_root_mirror_fields(report)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         (self.output_dir / "config_manager_report.json").write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n",
@@ -508,6 +510,12 @@ def normalize_layer(value: str) -> str:
     if key not in LAYER_ALIASES:
         raise ManagerError(f"invalid layer: {value}")
     return LAYER_ALIASES[key]
+
+
+def _normalize_root_mirror_fields(report: dict[str, Any]) -> None:
+    mismatch = bool(report.get("root_mirror_mismatch", False))
+    report["root_mirror_mismatch"] = mismatch
+    report["root_mirror_match"] = not mismatch
 
 
 def normalize_symbol(value: str) -> str:
@@ -651,6 +659,7 @@ def _relevant_policy_warnings(policy_warnings: list[str], override_scope: str) -
 
 
 def _format_console(report: dict[str, Any]) -> str:
+    _normalize_root_mirror_fields(report)
     lines = [
         f"command: {report['command']}",
         f"dry_run: {str(report['dry_run']).lower()}",
@@ -681,6 +690,7 @@ def _format_console(report: dict[str, Any]) -> str:
 
 
 def _format_markdown_report(report: dict[str, Any]) -> str:
+    _normalize_root_mirror_fields(report)
     lines = [
         "# Tech Layer Config Manager Report",
         "",
@@ -691,6 +701,7 @@ def _format_markdown_report(report: dict[str, Any]) -> str:
         f"- before_counts: {report['before_counts']}",
         f"- after_counts: {report['after_counts']}",
         f"- ROOT_MIRROR_MISMATCH: {str(report.get('root_mirror_mismatch', False)).lower()}",
+        f"- root_mirror_match: {str(report.get('root_mirror_match', False)).lower()}",
         f"- policy_override_required: {str(report['policy_override_required']).lower()}",
         f"- policy_override_used: {str(report['policy_override_used']).lower()}",
         f"- override_scope: {report.get('override_scope', '')}",

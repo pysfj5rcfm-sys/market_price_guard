@@ -12,7 +12,7 @@ from typing import Any
 import yaml
 
 from .account_config import LAYER_ORDER, account_layer_paths, normalize_account, normalize_layer as normalize_account_layer
-from .config_observability import PROJECT_ROOT, run_config_check
+from .config_observability import ENERGY_SCOPE_CLASSIFICATION, PROJECT_ROOT, run_config_check
 from .manage_tech_layers import TechLayerManager, policy_warnings_for_symbol
 
 
@@ -85,10 +85,11 @@ class AccountLayerManager:
 
     def _add_account_fields(self, report: dict[str, Any]) -> dict[str, Any]:
         report = dict(report)
+        _normalize_root_mirror_fields(report)
         report.update(
             {
                 "account": self.account,
-                "scope_classification": "account-generic foundation",
+                "scope_classification": _scope_classification_for_account(self.account),
                 "account_project_path": self.paths.project_path,
                 "root_mirror_path": self.paths.root_mirror_path,
                 "account_bootstrapped": True,
@@ -103,7 +104,7 @@ class AccountLayerManager:
             "command": command,
             "dry_run": dry_run,
             "account": self.account,
-            "scope_classification": "energy-only bootstrap" if self.account == "energy" else "account-generic foundation",
+            "scope_classification": _scope_classification_for_account(self.account),
             "account_project_path": self.paths.project_path,
             "root_mirror_path": self.paths.root_mirror_path,
             "account_bootstrapped": True,
@@ -196,8 +197,7 @@ class AccountLayerManager:
         report["before_counts"] = _counts(state["root_layers"])
         report["after_counts"] = _counts(state["layers"])
         report["root_mirror"] = state["root_layers"]
-        report["root_mirror_mismatch"] = before_mismatch
-        report["root_mirror_match"] = not before_mismatch
+        _set_root_mirror_fields(report, before_mismatch)
         self.sync_root_mirror(state)
         report["root_mirror_synced"] = True
         report["changed_files"] = [_display(self.project_root / "config/watchlist.yaml", self.project_root)] if before_mismatch else []
@@ -483,7 +483,7 @@ class AccountLayerManager:
             "command": command,
             "dry_run": False,
             "account": self.account,
-            "scope_classification": "account-generic foundation",
+            "scope_classification": _scope_classification_for_account(self.account),
             "account_project_path": self.paths.project_path,
             "root_mirror_path": self.paths.root_mirror_path,
             "account_bootstrapped": False,
@@ -503,11 +503,13 @@ class AccountLayerManager:
             "override_scope": "",
             "override_reason": "",
             "root_mirror_mismatch": False,
+            "root_mirror_match": True,
             "root_mirror_synced": False,
             "backup_path": "",
         }
 
     def write_report(self, report: dict[str, Any]) -> None:
+        _normalize_root_mirror_fields(report)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         (self.output_dir / "config_manager_report.json").write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n",
@@ -518,6 +520,20 @@ class AccountLayerManager:
 
 def normalize_layer(value: str, account: str = "tech") -> str:
     return normalize_account_layer(value, account=account)
+
+
+def _scope_classification_for_account(account: str) -> str:
+    return ENERGY_SCOPE_CLASSIFICATION if account == "energy" else "account-generic foundation"
+
+
+def _set_root_mirror_fields(report: dict[str, Any], mismatch: bool) -> None:
+    report["root_mirror_mismatch"] = bool(mismatch)
+    report["root_mirror_match"] = not bool(mismatch)
+
+
+def _normalize_root_mirror_fields(report: dict[str, Any]) -> None:
+    mismatch = bool(report.get("root_mirror_mismatch", False))
+    _set_root_mirror_fields(report, mismatch)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -572,6 +588,7 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
 
 
 def _format_console(report: dict[str, Any]) -> str:
+    _normalize_root_mirror_fields(report)
     lines = [
         f"account: {report.get('account', '')}",
         f"command: {report.get('command', '')}",
@@ -605,6 +622,7 @@ def _format_console(report: dict[str, Any]) -> str:
 
 
 def _format_markdown_report(report: dict[str, Any]) -> str:
+    _normalize_root_mirror_fields(report)
     lines = [
         "# Account Layer Config Manager Report",
         "",

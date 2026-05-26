@@ -45,35 +45,99 @@ projects:
       required_for_operation: true
     layer_universes:
       note: Legacy-compatible mirror of config/universes/energy_*.yaml. Scripts should
-        prefer account universe files when available. Initial bootstrap mirrors operation
-        symbols into watchlist and scan only.
+        prefer account universe files when available.
       operation:
       - 00883.HK
       - 601899.SH
       - 601985.SH
       - 003816.SZ
-      operation_candidate: []
+      operation_candidate:
+      - 600938.SH
+      - 600900.SH
+      - 601088.SH
+      - 600489.SH
+      - 600547.SH
+      - 603993.SH
+      - 600188.SH
+      - 600795.SH
       watchlist:
       - 00883.HK
       - 601899.SH
       - 601985.SH
       - 003816.SZ
+      - 600938.SH
+      - 600900.SH
+      - 601088.SH
+      - 600489.SH
+      - 600547.SH
+      - 603993.SH
+      - 600188.SH
+      - 600795.SH
+      - 600028.SH
+      - 601857.SH
+      - 601225.SH
+      - 600011.SH
+      - 600027.SH
+      - 600905.SH
+      - 600886.SH
+      - 000975.SZ
+      - 000630.SZ
+      - 000878.SZ
+      - 600362.SH
+      - 601600.SH
       scan:
       - 00883.HK
       - 601899.SH
       - 601985.SH
       - 003816.SZ
+      - 600938.SH
+      - 600900.SH
+      - 601088.SH
+      - 600489.SH
+      - 600547.SH
+      - 603993.SH
+      - 600188.SH
+      - 600795.SH
+      - 600028.SH
+      - 601857.SH
+      - 601225.SH
+      - 600011.SH
+      - 600027.SH
+      - 600905.SH
+      - 600886.SH
+      - 000975.SZ
+      - 000630.SZ
+      - 000878.SZ
+      - 600362.SH
+      - 601600.SH
+      - 601808.SH
+      - 600583.SH
+      - 600256.SH
+      - 002128.SZ
+      - 000983.SZ
+      - 600348.SH
+      - 601001.SH
+      - 600985.SH
+      - 000933.SZ
+      - 600988.SH
+      - 603979.SH
+      - 600497.SH
+      - 000807.SZ
+      - 002155.SZ
+      - 600021.SH
+      - 600642.SH
+      - 000027.SZ
       counts:
         operation: 4
-        operation_candidate: 0
-        watchlist: 4
-        scan: 4
+        operation_candidate: 8
+        watchlist: 24
+        scan: 41
     layer_counts:
       operation: 4
-      operation_candidate: 0
-      watchlist: 4
-      scan: 4
-      all_layer_union: 4
+      operation_candidate: 8
+      watchlist: 24
+      scan: 41
+      all_layer_union: 41
   tech:
     display_name: 理财｜科技账户项目
     allow_full_detail: true

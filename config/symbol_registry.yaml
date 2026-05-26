@@ -333,6 +333,672 @@ GOLD_CNY:
     - akshare
   report_group: 能源账户核心价格
   enabled: true
+600938.SH:
+  symbol: 600938.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+600900.SH:
+  symbol: 600900.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+601088.SH:
+  symbol: 601088.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+600489.SH:
+  symbol: 600489.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+600547.SH:
+  symbol: 600547.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+603993.SH:
+  symbol: 603993.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+600188.SH:
+  symbol: 600188.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+600795.SH:
+  symbol: 600795.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+600028.SH:
+  symbol: 600028.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+601857.SH:
+  symbol: 601857.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+601225.SH:
+  symbol: 601225.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+600011.SH:
+  symbol: 600011.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+600027.SH:
+  symbol: 600027.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+600905.SH:
+  symbol: 600905.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+600886.SH:
+  symbol: 600886.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+000975.SZ:
+  symbol: 000975.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+000630.SZ:
+  symbol: 000630.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+000878.SZ:
+  symbol: 000878.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+600362.SH:
+  symbol: 600362.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+601600.SH:
+  symbol: 601600.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_layer_pool_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - layer_pool
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户关注池
+  enabled: true
+  notes: energy watchlist/scan pool symbol; not a trading candidate by default
+601808.SH:
+  symbol: 601808.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600583.SH:
+  symbol: 600583.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600256.SH:
+  symbol: 600256.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+002128.SZ:
+  symbol: 002128.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+000983.SZ:
+  symbol: 000983.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600348.SH:
+  symbol: 600348.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+601001.SH:
+  symbol: 601001.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600985.SH:
+  symbol: 600985.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+000933.SZ:
+  symbol: 000933.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600988.SH:
+  symbol: 600988.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+603979.SH:
+  symbol: 603979.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600497.SH:
+  symbol: 600497.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+000807.SZ:
+  symbol: 000807.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+002155.SZ:
+  symbol: 002155.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600021.SH:
+  symbol: 600021.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+600642.SH:
+  symbol: 600642.SH
+  name: unknown
+  market: SH
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
+000027.SZ:
+  symbol: 000027.SZ
+  name: unknown
+  market: SZ
+  asset_type: stock
+  project_scope: energy
+  role: energy_scan_equity
+  account_tags:
+  - energy
+  universe_tags:
+  - energy
+  - a_share
+  - scan
+  required_for_operation: false
+  default_quote_purpose: reference
+  report_group: 能源账户扫描池
+  enabled: true
+  notes: energy scan pool symbol; not a trading candidate by default
 USD_CNY:
   symbol: USD_CNY
   name: 美元兑人民币

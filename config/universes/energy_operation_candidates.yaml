@@ -4,11 +4,19 @@ universe_type: operation_candidate
 quote_purpose: reference
 required_for_operation: false
 affect_core_strict: false
-symbols: []
+symbols:
+- 600938.SH
+- 600900.SH
+- 601088.SH
+- 600489.SH
+- 600547.SH
+- 603993.SH
+- 600188.SH
+- 600795.SH
 metadata:
   account: energy
   layer: operation_candidate
-  scope_classification: energy-only bootstrap
+  scope_classification: energy-only layer pool expansion
   notes:
-  - Initial bootstrap file. No operation candidates are added by default.
-  - Use manage_account_layers.ps1 -Account energy add ... to maintain candidates.
+  - Energy operation candidates are review pool symbols only.
+  - Operation candidates are not a default buy list.

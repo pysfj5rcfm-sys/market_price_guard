@@ -9,9 +9,30 @@ symbols:
 - 601899.SH
 - 601985.SH
 - 003816.SZ
+- 600938.SH
+- 600900.SH
+- 601088.SH
+- 600489.SH
+- 600547.SH
+- 603993.SH
+- 600188.SH
+- 600795.SH
+- 600028.SH
+- 601857.SH
+- 601225.SH
+- 600011.SH
+- 600027.SH
+- 600905.SH
+- 600886.SH
+- 000975.SZ
+- 000630.SZ
+- 000878.SZ
+- 600362.SH
+- 601600.SH
 metadata:
   account: energy
   layer: watchlist
-  scope_classification: energy-only bootstrap
+  scope_classification: energy-only layer pool expansion
   notes:
-  - Initial bootstrap watchlist mirrors energy operation symbols only.
+  - Energy watchlist is for sector and peer observation only.
+  - Watchlist symbols are not direct trading candidates.

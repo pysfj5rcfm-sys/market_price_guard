@@ -9,10 +9,47 @@ symbols:
 - 601899.SH
 - 601985.SH
 - 003816.SZ
+- 600938.SH
+- 600900.SH
+- 601088.SH
+- 600489.SH
+- 600547.SH
+- 603993.SH
+- 600188.SH
+- 600795.SH
+- 600028.SH
+- 601857.SH
+- 601225.SH
+- 600011.SH
+- 600027.SH
+- 600905.SH
+- 600886.SH
+- 000975.SZ
+- 000630.SZ
+- 000878.SZ
+- 600362.SH
+- 601600.SH
+- 601808.SH
+- 600583.SH
+- 600256.SH
+- 002128.SZ
+- 000983.SZ
+- 600348.SH
+- 601001.SH
+- 600985.SH
+- 000933.SZ
+- 600988.SH
+- 603979.SH
+- 600497.SH
+- 000807.SZ
+- 002155.SZ
+- 600021.SH
+- 600642.SH
+- 000027.SZ
 metadata:
   account: energy
   layer: scan
-  scope_classification: energy-only bootstrap
+  scope_classification: energy-only layer pool expansion
   notes:
-  - Initial bootstrap scan mirrors energy operation symbols only.
-  - Do not treat scan symbols as trading candidates.
+  - Energy scan is broad observation for energy, resources, power, coal, nonferrous, gold, copper, and oil/gas.
+  - Scan symbols must not be automatically promoted to watchlist, candidate, or operation.
