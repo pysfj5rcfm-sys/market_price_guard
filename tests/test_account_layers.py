@@ -67,15 +67,21 @@ def test_account_config_check_tech_counts(tmp_path):
     assert (tmp_path / "tech_layer_config_check.md").exists()
 
 
-def test_account_config_check_energy_not_bootstrapped(tmp_path):
+def test_account_config_check_energy_bootstrapped(tmp_path):
     result = run_config_check(tmp_path, account="energy")
 
     assert result["account"] == "energy"
-    assert result["account_bootstrapped"] is False
-    assert "config/universes/energy_operation_candidates.yaml" in result["missing_account_config_files"]
-    assert "config/universes/energy_watchlist.yaml" in result["missing_account_config_files"]
-    assert "config/universes/energy_scan.yaml" in result["missing_account_config_files"]
+    assert result["scope_classification"] == "energy-only bootstrap"
+    assert result["account_bootstrapped"] is True
+    assert result["missing_account_config_files"] == []
+    assert result["root_mirror_match"] is True
+    assert result["universes"]["energy_core"]["configured_symbol_count"] == 4
+    assert result["universes"]["energy_operation_candidates"]["configured_symbol_count"] == 0
+    assert result["universes"]["energy_watchlist"]["configured_symbol_count"] == 4
+    assert result["universes"]["energy_scan"]["configured_symbol_count"] == 4
+    assert result["missing_registry_symbols"] == []
     assert "tech_core" not in result["universes"]
+    assert (tmp_path / "energy_layer_config_check.md").exists()
 
 
 def test_manage_account_layers_tech_show_validate_export(tmp_path):
@@ -99,21 +105,63 @@ def test_manage_account_layers_energy_does_not_fallback_to_tech(tmp_path):
     report = manager.run(Namespace(account="energy", command="show"))
 
     assert report["account"] == "energy"
-    assert report["account_bootstrapped"] is False
-    assert report["symbols"] == {}
-    assert "config/universes/energy_operation_candidates.yaml" in report["missing_account_config_files"]
+    assert report["account_bootstrapped"] is True
+    assert report["after_counts"] == {"operation": 4, "operation_candidate": 0, "watchlist": 4, "scan": 4}
+    assert report["symbols"]["operation"] == ["00883.HK", "601899.SH", "601985.SH", "003816.SZ"]
+    assert "159632.SZ" not in report["symbols"]["operation"]
+    assert report["missing_account_config_files"] == []
 
 
-def test_manage_account_layers_energy_validate_reports_missing_files(tmp_path):
+def test_manage_account_layers_energy_validate_export_and_sync_root(tmp_path):
     root = _copy_project_config(tmp_path)
 
     exit_code = account_main(["--project-root", str(root), "-Account", "energy", "validate"])
+    export_code = account_main(["--project-root", str(root), "-Account", "energy", "export"])
+    sync_code = account_main(["--project-root", str(root), "-Account", "energy", "sync-root", "-DryRun"])
 
     report_text = (root / "outputs_config_manager_latest/config_manager_report.md").read_text(encoding="utf-8")
-    assert exit_code == 1
+    export_json = root / "outputs_config_manager_latest/energy_layer_config_export.json"
+    export_md = root / "outputs_config_manager_latest/energy_layer_config_export.md"
+    export_csv = root / "outputs_config_manager_latest/energy_layer_config_export.csv"
+    assert exit_code == 0
+    assert export_code == 0
+    assert sync_code == 0
     assert "account: energy" in report_text
-    assert "account_bootstrapped: false" in report_text
-    assert "config/universes/energy_scan.yaml" in report_text
+    assert "account_bootstrapped: true" in report_text
+    assert "root_mirror_match: true" in report_text
+    assert export_json.exists()
+    assert export_md.exists()
+    assert export_csv.exists()
+
+
+def test_energy_bootstrap_config_files_and_registry_are_present():
+    energy_files = [
+        "config/universes/energy_core.yaml",
+        "config/universes/energy_operation_candidates.yaml",
+        "config/universes/energy_watchlist.yaml",
+        "config/universes/energy_scan.yaml",
+    ]
+    for relative in energy_files:
+        assert Path(relative).exists()
+
+    core = yaml.safe_load(Path("config/universes/energy_core.yaml").read_text(encoding="utf-8"))
+    candidates = yaml.safe_load(Path("config/universes/energy_operation_candidates.yaml").read_text(encoding="utf-8"))
+    watchlist = yaml.safe_load(Path("config/universes/energy_watchlist.yaml").read_text(encoding="utf-8"))
+    scan = yaml.safe_load(Path("config/universes/energy_scan.yaml").read_text(encoding="utf-8"))
+    root = yaml.safe_load(Path("config/watchlist.yaml").read_text(encoding="utf-8"))
+    registry = yaml.safe_load(Path("config/symbol_registry.yaml").read_text(encoding="utf-8"))
+
+    assert candidates["symbols"] == []
+    assert watchlist["symbols"] == core["symbols"]
+    assert scan["symbols"] == core["symbols"]
+    assert root["projects"]["energy"]["layer_universes"]["operation"] == core["symbols"]
+    assert root["projects"]["energy"]["layer_universes"]["operation_candidate"] == candidates["symbols"]
+    assert root["projects"]["energy"]["layer_universes"]["watchlist"] == watchlist["symbols"]
+    assert root["projects"]["energy"]["layer_universes"]["scan"] == scan["symbols"]
+    for symbol in core["symbols"]:
+        assert symbol in registry
+        assert registry[symbol]["project_scope"] == "energy"
+        assert "energy" in registry[symbol].get("universe_tags", [])
 
 
 def test_manage_account_layers_dry_run_makes_no_config_changes(tmp_path):

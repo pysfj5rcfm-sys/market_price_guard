@@ -43,6 +43,37 @@ projects:
       - yfinance
       - mock
       required_for_operation: true
+    layer_universes:
+      note: Legacy-compatible mirror of config/universes/energy_*.yaml. Scripts should
+        prefer account universe files when available. Initial bootstrap mirrors operation
+        symbols into watchlist and scan only.
+      operation:
+      - 00883.HK
+      - 601899.SH
+      - 601985.SH
+      - 003816.SZ
+      operation_candidate: []
+      watchlist:
+      - 00883.HK
+      - 601899.SH
+      - 601985.SH
+      - 003816.SZ
+      scan:
+      - 00883.HK
+      - 601899.SH
+      - 601985.SH
+      - 003816.SZ
+      counts:
+        operation: 4
+        operation_candidate: 0
+        watchlist: 4
+        scan: 4
+    layer_counts:
+      operation: 4
+      operation_candidate: 0
+      watchlist: 4
+      scan: 4
+      all_layer_union: 4
   tech:
     display_name: 理财｜科技账户项目
     allow_full_detail: true

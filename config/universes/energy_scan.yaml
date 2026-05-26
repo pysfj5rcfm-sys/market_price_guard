@@ -1,0 +1,18 @@
+name: energy_scan
+profile: energy
+universe_type: scan_universe
+quote_purpose: reference
+required_for_operation: false
+affect_core_strict: false
+symbols:
+- 00883.HK
+- 601899.SH
+- 601985.SH
+- 003816.SZ
+metadata:
+  account: energy
+  layer: scan
+  scope_classification: energy-only bootstrap
+  notes:
+  - Initial bootstrap scan mirrors energy operation symbols only.
+  - Do not treat scan symbols as trading candidates.

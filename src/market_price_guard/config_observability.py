@@ -273,21 +273,33 @@ def run_config_check(output_dir: Path, project_root: Path = PROJECT_ROOT, accoun
     warnings.extend(hard_rule_results["warnings"])
     policy_warnings = _policy_warnings(universe_results, registry if isinstance(registry, dict) else {})
     status = "failed" if errors else ("account_not_bootstrapped" if not account_bootstrapped else "ok")
+    root_mirror_match = all(
+        bool(info.get("root_mirror_matches", False))
+        for info in universe_results.values()
+    )
+    scope_classification = (
+        "energy-only bootstrap"
+        if account == "energy" and account_bootstrapped
+        else "account-generic foundation"
+    )
     result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": status,
         "account": account,
-        "scope_classification": "account-generic foundation",
+        "scope_classification": scope_classification,
         "account_project_path": paths.project_path,
         "account_bootstrapped": account_bootstrapped,
         "missing_account_config_files": missing_account_config_files,
+        "missing_config_files": missing_account_config_files,
         "universes": universe_results,
         "root_watchlist_path": _display_path_for_root(watchlist_path, project_root),
         "root_mirror_path": paths.root_mirror_path,
+        "root_mirror_match": root_mirror_match,
         "root_watchlist_hash_sha256": _sha256(watchlist_path),
         "symbol_registry_path": _display_path_for_root(registry_path, project_root),
         "symbol_registry_hash_sha256": _sha256(registry_path),
         "missing_registry_symbols": missing_registry,
+        "registry_missing_symbols": missing_registry,
         "duplicate_registry_entries": registry_duplicates,
         "hard_rule_check": hard_rule_results,
         "policy_warnings": policy_warnings,
@@ -312,8 +324,10 @@ def format_config_check_markdown(result: dict[str, Any]) -> str:
         f"- account_bootstrapped: {str(result.get('account_bootstrapped', False)).lower()}",
         f"- root_watchlist_path: {result.get('root_watchlist_path', '')}",
         f"- root_mirror_path: {result.get('root_mirror_path', '')}",
+        f"- root_mirror_match: {str(result.get('root_mirror_match', False)).lower()}",
         f"- symbol_registry_path: {result.get('symbol_registry_path', '')}",
         f"- missing_account_config_files: {_join_symbols(result.get('missing_account_config_files', []))}",
+        f"- missing_config_files: {_join_symbols(result.get('missing_config_files', []))}",
         "",
         "## Count Check",
         "",
@@ -332,6 +346,7 @@ def format_config_check_markdown(result: dict[str, Any]) -> str:
             "",
             "## Registry Check",
             f"- missing_registry_symbols: {_join_symbols(result.get('missing_registry_symbols', []))}",
+            f"- registry_missing_symbols: {_join_symbols(result.get('registry_missing_symbols', []))}",
             f"- duplicate_registry_entries: {_join_symbols(result.get('duplicate_registry_entries', []))}",
             "",
             "## Hard Rule Check",

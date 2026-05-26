@@ -1,0 +1,17 @@
+name: energy_watchlist
+profile: energy
+universe_type: candidate_watchlist
+quote_purpose: reference
+required_for_operation: false
+affect_core_strict: false
+symbols:
+- 00883.HK
+- 601899.SH
+- 601985.SH
+- 003816.SZ
+metadata:
+  account: energy
+  layer: watchlist
+  scope_classification: energy-only bootstrap
+  notes:
+  - Initial bootstrap watchlist mirrors energy operation symbols only.
