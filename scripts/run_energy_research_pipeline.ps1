@@ -23,18 +23,94 @@ $SummaryPath = Join-Path $OutputDir 'pipeline_summary.md'
 $ManifestPath = Join-Path $OutputDir 'pipeline_manifest.json'
 $LayerManifestPath = Join-Path $OutputDir 'pipeline_layer_manifest.json'
 $UploadManifestPath = Join-Path $OutputDir 'upload_manifest.md'
+$SnapshotRoot = Join-Path $OutputDir 'snapshots'
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+if (Test-Path $SnapshotRoot) {
+    Remove-Item -Recurse -Force -LiteralPath $SnapshotRoot -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Force -Path $SnapshotRoot | Out-Null
 if (Test-Path $QuoteCacheDir) {
     Remove-Item -Recurse -Force -LiteralPath $QuoteCacheDir -ErrorAction SilentlyContinue
 }
 New-Item -ItemType Directory -Force -Path $QuoteCacheDir | Out-Null
 $PipelineStartedAt = (Get-Date).ToUniversalTime()
 $GeneratedAt = $PipelineStartedAt.ToString('o')
+$PipelineRunId = [guid]::NewGuid().ToString()
 $PreviousUseQuoteCache = $env:MARKET_GUARD_USE_QUOTE_RUN_CACHE
 $PreviousQuoteCacheDir = $env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR
 $env:MARKET_GUARD_USE_QUOTE_RUN_CACHE = '1'
 $env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR = $QuoteCacheDir
+
+function Get-FileHashSha256 {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) {
+        return ''
+    }
+    return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+}
+
+function Copy-PipelineStepSnapshot {
+    param(
+        [hashtable]$Step,
+        [PSCustomObject]$Result,
+        [string]$PipelineRunId,
+        [string]$SnapshotRoot,
+        [string]$ProjectRoot
+    )
+    $StepOutputPath = Join-Path $ProjectRoot $Step['OutputDir']
+    $StepSnapshotDir = Join-Path $SnapshotRoot $Step['Name']
+    New-Item -ItemType Directory -Force -Path $StepSnapshotDir | Out-Null
+    $FilesToCopy = @(
+        'layer_manifest.json',
+        'data_completeness_report.md',
+        'runtime_diagnostics.md',
+        'provider_health_report.md',
+        '0_upload_bundle.md',
+        'prices_snapshot.csv',
+        'debug_bundle.md',
+        'index.md',
+        'scan_universe_report.md',
+        'candidate_watchlist_report.md',
+        'operation_candidate_report.md',
+        'energy_price_block.md'
+    )
+    $CopiedFiles = @()
+    foreach ($FileName in $FilesToCopy) {
+        $SourcePath = Join-Path $StepOutputPath $FileName
+        if (Test-Path $SourcePath) {
+            Copy-Item -LiteralPath $SourcePath -Destination (Join-Path $StepSnapshotDir $FileName) -Force
+            $CopiedFiles += $FileName
+        }
+    }
+    $LayerManifestSnapshotPath = Join-Path $StepSnapshotDir 'layer_manifest.json'
+    $PricesSnapshotPath = Join-Path $StepSnapshotDir 'prices_snapshot.csv'
+    $UploadBundlePath = Join-Path $StepSnapshotDir '0_upload_bundle.md'
+    $Metadata = [ordered]@{
+        pipeline_run_id = $PipelineRunId
+        source_run_id = $PipelineRunId
+        step_name = $Step['Name']
+        account = 'energy'
+        generated_at = $Result.finished_at
+        output_dir = $Step['OutputDir']
+        step_output_dir = $Step['OutputDir']
+        snapshot_dir = $StepSnapshotDir
+        step_snapshot_dir = $StepSnapshotDir
+        status = $Result.status
+        exit_code = $Result.exit_code
+        elapsed_seconds = $Result.elapsed_seconds
+        copied_files = $CopiedFiles
+        layer_manifest_path = $LayerManifestSnapshotPath
+        layer_manifest_hash_sha256 = Get-FileHashSha256 $LayerManifestSnapshotPath
+        prices_snapshot_hash_sha256 = Get-FileHashSha256 $PricesSnapshotPath
+        upload_bundle_hash_sha256 = Get-FileHashSha256 $UploadBundlePath
+    }
+    $MetadataPath = Join-Path $StepSnapshotDir 'snapshot_metadata.json'
+    $Metadata | ConvertTo-Json -Depth 6 | Set-Content $MetadataPath -Encoding UTF8
+    $Metadata['snapshot_metadata_path'] = $MetadataPath
+    $Metadata['snapshot_metadata_hash_sha256'] = Get-FileHashSha256 $MetadataPath
+    return [PSCustomObject]$Metadata
+}
 
 $Steps = @(
     @{ Name = 'energy_scan'; Script = 'run_energy_scan.ps1'; Args = [string[]]@('-Mode', $ScanMode); OutputDir = 'outputs_energy_scan_latest'; Skip = $SkipScan.IsPresent },
@@ -44,6 +120,7 @@ $Steps = @(
 )
 
 $Results = @()
+$SnapshotEntries = @()
 $Stopped = $false
 
 Push-Location $ProjectRoot
@@ -64,6 +141,14 @@ foreach ($Step in $Steps) {
             skip_reason = $SkipReason
             runtime_warning = $false
             max_run_seconds = ''
+            snapshot_dir = ''
+            snapshot_metadata_path = ''
+            source_run_id = $PipelineRunId
+            generated_at = ''
+            layer_manifest_path = ''
+            layer_manifest_hash_sha256 = ''
+            prices_snapshot_hash_sha256 = ''
+            upload_bundle_hash_sha256 = ''
         }
         continue
     }
@@ -104,7 +189,7 @@ foreach ($Step in $Steps) {
             $MaxRunSeconds = $Matches[1]
         }
     }
-    $Results += [PSCustomObject]@{
+    $Result = [PSCustomObject]@{
         name = $Step['Name']
         command = ($Step['Script'] + ' ' + (($StepArgs | ForEach-Object { [string]$_ }) -join ' ')).Trim()
         output_dir = $Step['OutputDir']
@@ -117,7 +202,24 @@ foreach ($Step in $Steps) {
         skip_reason = ''
         runtime_warning = $RuntimeWarning
         max_run_seconds = $MaxRunSeconds
+        snapshot_dir = ''
+        snapshot_metadata_path = ''
+        source_run_id = $PipelineRunId
+        generated_at = $FinishedAt.ToString('o')
+        layer_manifest_path = ''
+        layer_manifest_hash_sha256 = ''
+        prices_snapshot_hash_sha256 = ''
+        upload_bundle_hash_sha256 = ''
     }
+    $SnapshotEntry = Copy-PipelineStepSnapshot -Step $Step -Result $Result -PipelineRunId $PipelineRunId -SnapshotRoot $SnapshotRoot -ProjectRoot $ProjectRoot
+    $Result.snapshot_dir = $SnapshotEntry.step_snapshot_dir
+    $Result.snapshot_metadata_path = $SnapshotEntry.snapshot_metadata_path
+    $Result.layer_manifest_path = $SnapshotEntry.layer_manifest_path
+    $Result.layer_manifest_hash_sha256 = $SnapshotEntry.layer_manifest_hash_sha256
+    $Result.prices_snapshot_hash_sha256 = $SnapshotEntry.prices_snapshot_hash_sha256
+    $Result.upload_bundle_hash_sha256 = $SnapshotEntry.upload_bundle_hash_sha256
+    $Results += $Result
+    $SnapshotEntries += $SnapshotEntry
     if ($Status -eq 'failed' -and $StopOnFailure) {
         $Stopped = $true
     }
@@ -134,11 +236,18 @@ $Skipped = @($Results | Where-Object { $_.status -eq 'skipped_by_parameter' }).C
 $LayerManifests = @()
 $CompletenessRows = @()
 foreach ($Step in $Steps) {
-    $StepOutputPath = Join-Path $ProjectRoot $Step['OutputDir']
+    $StepResult = $Results | Where-Object { $_.name -eq $Step['Name'] } | Select-Object -First 1
+    $StepOutputPath = if ($StepResult -and $StepResult.snapshot_dir) { $StepResult.snapshot_dir } else { Join-Path $ProjectRoot $Step['OutputDir'] }
     $StepLayerManifestPath = Join-Path $StepOutputPath 'layer_manifest.json'
     if (Test-Path $StepLayerManifestPath) {
         try {
-            $LayerManifests += Get-Content $StepLayerManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $LayerData = Get-Content $StepLayerManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $LayerData | Add-Member -NotePropertyName pipeline_run_id -NotePropertyValue $PipelineRunId -Force
+            $LayerData | Add-Member -NotePropertyName source_run_id -NotePropertyValue $PipelineRunId -Force
+            $LayerData | Add-Member -NotePropertyName snapshot_dir -NotePropertyValue $StepOutputPath -Force
+            $LayerData | Add-Member -NotePropertyName layer_manifest_path -NotePropertyValue $StepLayerManifestPath -Force
+            $LayerData | Add-Member -NotePropertyName layer_manifest_hash_sha256 -NotePropertyValue (Get-FileHashSha256 $StepLayerManifestPath) -Force
+            $LayerManifests += $LayerData
         } catch {
             $LayerManifests += [PSCustomObject]@{
                 account = 'energy'
@@ -149,6 +258,11 @@ foreach ($Step in $Steps) {
                 config_mismatch = $true
                 missing_from_loaded = @()
                 extra_loaded_symbols = @()
+                pipeline_run_id = $PipelineRunId
+                source_run_id = $PipelineRunId
+                snapshot_dir = $StepOutputPath
+                layer_manifest_path = $StepLayerManifestPath
+                layer_manifest_hash_sha256 = ''
             }
         }
     } else {
@@ -161,6 +275,11 @@ foreach ($Step in $Steps) {
             config_mismatch = $true
             missing_from_loaded = @()
             extra_loaded_symbols = @()
+            pipeline_run_id = $PipelineRunId
+            source_run_id = $PipelineRunId
+            snapshot_dir = $StepOutputPath
+            layer_manifest_path = $StepLayerManifestPath
+            layer_manifest_hash_sha256 = ''
         }
     }
     $CsvPath = Join-Path $StepOutputPath 'prices_snapshot.csv'
@@ -200,6 +319,8 @@ $Lines = @()
 $Lines += '# Energy Research Pipeline Summary'
 $Lines += ''
 $Lines += ('- generated_at: ' + $GeneratedAt)
+$Lines += ('- pipeline_run_id: ' + $PipelineRunId)
+$Lines += ('- source_run_id: ' + $PipelineRunId)
 $Lines += '- account: energy'
 $Lines += '- pipeline_name: energy_research_pipeline'
 $Lines += '- version: v0.7.5'
@@ -217,10 +338,21 @@ $Lines += '- no trading advice'
 $Lines += ''
 $Lines += '## Steps'
 $Lines += ''
-$Lines += '| step | status | exit_code | elapsed_seconds | output_dir |'
-$Lines += '|---|---|---:|---:|---|'
+$Lines += '| step | status | exit_code | elapsed_seconds | output_dir | snapshot_dir | generated_at | source_run_id | layer_manifest_hash | prices_snapshot_hash | upload_bundle_hash |'
+$Lines += '|---|---|---:|---:|---|---|---|---|---|---|---|'
 foreach ($Result in $Results) {
-    $Lines += ('| ' + $Result.name + ' | ' + $Result.status + ' | ' + $Result.exit_code + ' | ' + $Result.elapsed_seconds + ' | ' + $Result.output_dir + ' |')
+    $Lines += ('| ' + $Result.name + ' | ' + $Result.status + ' | ' + $Result.exit_code + ' | ' + $Result.elapsed_seconds + ' | ' + $Result.output_dir + ' | ' + $Result.snapshot_dir + ' | ' + $Result.generated_at + ' | ' + $Result.source_run_id + ' | ' + $Result.layer_manifest_hash_sha256 + ' | ' + $Result.prices_snapshot_hash_sha256 + ' | ' + $Result.upload_bundle_hash_sha256 + ' |')
+}
+$Lines += ''
+$Lines += '## Pipeline Output Snapshots'
+$Lines += ''
+$Lines += ('- snapshots_root: ' + $SnapshotRoot)
+$Lines += '- snapshots are copied during this pipeline run and are not affected by later standalone layer runs.'
+$Lines += ''
+$Lines += '| step_name | account | output_dir | snapshot_dir | snapshot_metadata | layer_manifest_path | manifest_hash | source_run_id |'
+$Lines += '|---|---|---|---|---|---|---|---|'
+foreach ($Snapshot in $SnapshotEntries) {
+    $Lines += ('| ' + $Snapshot.step_name + ' | ' + $Snapshot.account + ' | ' + $Snapshot.step_output_dir + ' | ' + $Snapshot.step_snapshot_dir + ' | ' + $Snapshot.snapshot_metadata_path + ' | ' + $Snapshot.layer_manifest_path + ' | ' + $Snapshot.layer_manifest_hash_sha256 + ' | ' + $Snapshot.source_run_id + ' |')
 }
 $Lines += ''
 $Lines += '## Layer Config Summary'
@@ -313,9 +445,13 @@ $Manifest = New-Object PSObject -Property ([ordered]@{
     account = 'energy';
     pipeline_name = 'energy_research_pipeline';
     version = 'v0.7.5';
+    pipeline_run_id = $PipelineRunId;
+    source_run_id = $PipelineRunId;
     generated_at = $GeneratedAt;
+    snapshots_root = $SnapshotRoot;
     scan_mode = $ScanMode;
     steps = @($Results);
+    snapshot_steps = @($SnapshotEntries);
     layer_config_summary = @($LayerManifests);
     data_completeness_summary = @($CompletenessRows);
     summary = New-Object PSObject -Property ([ordered]@{
@@ -341,8 +477,12 @@ $PipelineLayerManifest = New-Object PSObject -Property ([ordered]@{
     account = 'energy';
     pipeline_name = 'energy_research_pipeline';
     version = 'v0.7.5';
+    pipeline_run_id = $PipelineRunId;
+    source_run_id = $PipelineRunId;
     generated_at = $GeneratedAt;
+    snapshots_root = $SnapshotRoot;
     layer_mismatch_count = $LayerMismatchCount;
+    snapshot_steps = @($SnapshotEntries);
     layers = @($LayerManifests);
 })
 $PipelineLayerManifest | ConvertTo-Json -Depth 8 | Set-Content $LayerManifestPath -Encoding UTF8

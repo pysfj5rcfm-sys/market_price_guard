@@ -95,7 +95,7 @@ Runtime diagnostics now include:
 
 ## Tech Status
 
-Tech layer counts remain:
+Historical tech layer counts at v0.7.4.4 validation time. These are no longer the current baseline after the user-confirmed v0.7.5.1 config update:
 
 - operation: `7`
 - operation_candidate: `11`

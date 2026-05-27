@@ -102,7 +102,7 @@ The check covers:
 
 ## 6. Current Counts
 
-Current `config/universes/*.yaml` counts:
+Historical `config/universes/*.yaml` counts at v0.7.3.2 validation time. These are no longer the current baseline after the user-confirmed v0.7.5.1 config update:
 
 | layer | count |
 |---|---:|
@@ -111,7 +111,7 @@ Current `config/universes/*.yaml` counts:
 | tech_watchlist | 16 |
 | tech_scan_ai | 30 |
 
-Current `config/watchlist.yaml projects.tech.layer_universes` mirror counts:
+Historical `config/watchlist.yaml projects.tech.layer_universes` mirror counts at v0.7.3.2 validation time:
 
 | root layer | count |
 |---|---:|
