@@ -139,7 +139,16 @@ def test_provider_health_and_runtime_contract(tmp_path):
 
     for expected in ["provider_policy", "selected_provider", "fallback_used", "usable_for_operation", "attempts"]:
         assert expected in health
-    for expected in ["total_elapsed_seconds", "profile", "provider_mode", "provider_policy", "run_time_budget_exceeded"]:
+    for expected in [
+        "total_elapsed_seconds",
+        "profile",
+        "provider_mode",
+        "provider_policy",
+        "run_time_budget_exceeded",
+        "runtime_warning_level",
+        "runtime_warning_reason",
+        "runtime_warnings_do_not_equal_failed",
+    ]:
         assert expected in runtime
 
 

@@ -130,6 +130,12 @@ def test_pipeline_summary_and_manifest_reference_snapshot_paths():
         assert "layer_manifest_path" in script
         assert "source_run_id" in script
         assert "generated_at" in script
+        assert "runtime_warning_level" in script
+        assert "runtime_warning_reason" in script
+        assert "runtime_warnings_do_not_equal_failed" in script
+        assert "soft_budget_exceeded" in script
+        assert "provider_timeout" in script
+        assert "provider_circuit_open" in script
         assert re.search(r"snapshot_steps\s*=\s*@\(\$SnapshotEntries\)", script)
 
 
@@ -141,3 +147,45 @@ def test_uat_summaries_remain_mode_specific():
     assert "uat_run_manifest.json" in script
     for mode in ["quick", "intraday", "energy"]:
         assert mode in script
+
+
+def test_uat_summaries_include_timeout_budget_policy():
+    script = _script("scripts/run_uat.ps1")
+
+    for expected in [
+        "$ModeRuntimePolicy",
+        "TimeoutSeconds",
+        "SoftBudgetSeconds",
+        "HardTimeoutSeconds",
+        "Invoke-UatStep",
+        "Wait-Job -Job $Job -Timeout $HardTimeoutSeconds",
+        "timed_out",
+        "runtime_budget_warning",
+        "RuntimeWarningLevel",
+        "soft_budget_exceeded",
+        "hard_timeout",
+    ]:
+        assert expected in script
+    assert "intraday = @{" in script
+    assert "HardTimeoutSeconds = 900" in script
+
+
+def test_acceptance_summary_script_contract():
+    script = _script("scripts/build_acceptance_summary.ps1")
+
+    for expected in [
+        "outputs_acceptance_latest",
+        "acceptance_summary.md",
+        "acceptance_summary.json",
+        "v0.7.5.3",
+        "tech_baseline",
+        "energy_baseline",
+        "snapshot_path",
+        "pipeline_summary_path",
+        "outputs_uat_latest/uat_run_manifest.json",
+        "config_diff_status",
+        "no_advice_scan",
+        "QDII premium not implemented",
+        "energy commodity reference not implemented",
+    ]:
+        assert expected in script

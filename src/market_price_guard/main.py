@@ -411,6 +411,8 @@ def _runtime_diagnostics(
         "max_run_seconds": max_run_seconds,
         "max_data_lag_seconds": max_data_lag_seconds,
         "run_time_budget_exceeded": total_elapsed_seconds > max_run_seconds,
+        "runtime_warning_level": "soft_budget_exceeded" if total_elapsed_seconds > max_run_seconds else "runtime_info",
+        "runtime_warning_reason": "run_time_budget_exceeded" if total_elapsed_seconds > max_run_seconds else "within_runtime_policy",
         "max_quote_lag_seconds": "" if max_quote_lag is None else round(max_quote_lag, 3),
         "provider_elapsed_seconds": dict(provider_runtime_budget.elapsed_by_provider) if provider_runtime_budget else {},
         "provider_attempts": dict(provider_runtime_budget.attempts_by_provider) if provider_runtime_budget else {},

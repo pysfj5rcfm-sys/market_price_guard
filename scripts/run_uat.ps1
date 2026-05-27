@@ -65,6 +65,89 @@ $ModeExplanation = @{
     energy = 'energy mode runs the energy account research pipeline bootstrap checks only.'
 }
 
+$ModeRuntimePolicy = @{
+    quick = @{
+        TimeoutSeconds = 360
+        SoftBudgetSeconds = 120
+        HardTimeoutSeconds = 360
+    }
+    intraday = @{
+        TimeoutSeconds = 900
+        SoftBudgetSeconds = 420
+        HardTimeoutSeconds = 900
+    }
+    full = @{
+        TimeoutSeconds = 1200
+        SoftBudgetSeconds = 900
+        HardTimeoutSeconds = 1200
+    }
+    energy = @{
+        TimeoutSeconds = 900
+        SoftBudgetSeconds = 420
+        HardTimeoutSeconds = 900
+    }
+}
+$RuntimePolicy = $ModeRuntimePolicy[$Mode]
+
+function Invoke-UatStep {
+    param(
+        [string]$ScriptPath,
+        [int]$HardTimeoutSeconds
+    )
+    $Job = Start-Job -ScriptBlock {
+        param([string]$Path)
+        & $Path
+        return $LASTEXITCODE
+    } -ArgumentList $ScriptPath
+    $Completed = Wait-Job -Job $Job -Timeout $HardTimeoutSeconds
+    if ($null -eq $Completed) {
+        Stop-Job -Job $Job -ErrorAction SilentlyContinue
+        Remove-Job -Job $Job -Force -ErrorAction SilentlyContinue
+        return [PSCustomObject]@{
+            ExitCode = 124
+            TimedOut = $true
+        }
+    }
+    $Received = @(Receive-Job -Job $Job)
+    Remove-Job -Job $Job -Force -ErrorAction SilentlyContinue
+    $JobExitCode = 1
+    if ($Received.Count -gt 0) {
+        $Last = $Received[-1]
+        if ($Last -is [int]) {
+            $JobExitCode = [int]$Last
+        } elseif ($Last -match '^-?\d+$') {
+            $JobExitCode = [int]$Last
+        }
+    }
+    return [PSCustomObject]@{
+        ExitCode = $JobExitCode
+        TimedOut = $false
+    }
+}
+
+function Get-UatRuntimeWarningLevel {
+    param(
+        [bool]$TimedOut,
+        [double]$ElapsedSeconds,
+        [double]$SoftBudgetSeconds,
+        [int]$ExitCode,
+        [string]$Status
+    )
+    if ($TimedOut) {
+        return 'hard_timeout'
+    }
+    if ($Status -eq 'failed' -or ($ExitCode -ne 0 -and $ExitCode -ne 2)) {
+        return 'failed'
+    }
+    if ($Status -eq 'strict_blocked_but_reported') {
+        return 'strict_blocked_but_reported'
+    }
+    if ($ElapsedSeconds -gt $SoftBudgetSeconds) {
+        return 'soft_budget_exceeded'
+    }
+    return 'runtime_info'
+}
+
 $Items = @(
     @{
         Name = 'tech_fast_strict'
@@ -244,6 +327,12 @@ foreach ($Item in $Items) {
             MissingFiles = @()
             AdviceHits = @()
             ElapsedSeconds = ''
+            TimeoutSeconds = $RuntimePolicy.TimeoutSeconds
+            SoftBudgetSeconds = $RuntimePolicy.SoftBudgetSeconds
+            HardTimeoutSeconds = $RuntimePolicy.HardTimeoutSeconds
+            TimedOut = $false
+            RuntimeBudgetWarning = $false
+            RuntimeWarningLevel = 'runtime_info'
             Mode = $Mode
             SkipReason = ('skipped in ' + $Mode + ' mode')
         }
@@ -272,6 +361,12 @@ foreach ($Item in $Items) {
             MissingFiles = @('script_missing:' + $Item.Script)
             AdviceHits = @()
             ElapsedSeconds = 0
+            TimeoutSeconds = $RuntimePolicy.TimeoutSeconds
+            SoftBudgetSeconds = $RuntimePolicy.SoftBudgetSeconds
+            HardTimeoutSeconds = $RuntimePolicy.HardTimeoutSeconds
+            TimedOut = $false
+            RuntimeBudgetWarning = $false
+            RuntimeWarningLevel = 'failed'
             Mode = $Mode
             SkipReason = ''
         }
@@ -280,8 +375,9 @@ foreach ($Item in $Items) {
     }
 
     $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    & $ScriptPath
-    $ExitCode = $LASTEXITCODE
+    $Invocation = Invoke-UatStep -ScriptPath $ScriptPath -HardTimeoutSeconds $RuntimePolicy.HardTimeoutSeconds
+    $ExitCode = $Invocation.ExitCode
+    $TimedOut = [bool]$Invocation.TimedOut
     $Stopwatch.Stop()
     $ElapsedSeconds = [Math]::Round($Stopwatch.Elapsed.TotalSeconds, 3)
     $OutputPath = Join-Path $ProjectRoot $Item.OutputDir
@@ -369,7 +465,10 @@ foreach ($Item in $Items) {
     }
 
     $Status = 'passed'
-    if ($ExitCode -eq 2) {
+    if ($TimedOut) {
+        $Status = 'failed'
+        $AnyFailed = $true
+    } elseif ($ExitCode -eq 2) {
         $Status = 'strict_blocked_but_reported'
     }
     if (($ExitCode -ne 0 -and $ExitCode -ne 2) -or $MissingFiles.Count -gt 0 -or $AdviceHits.Count -gt 0) {
@@ -380,6 +479,10 @@ foreach ($Item in $Items) {
         $Status = 'passed'
         $WatchlistScanFailed = $false
         $Notes = @()
+        if ($TimedOut) {
+            $WatchlistScanFailed = $true
+            $Notes += 'hard_timeout'
+        }
         if ($ExitCode -ne 0) {
             $WatchlistScanFailed = $true
             $Notes += 'exit_code_not_zero'
@@ -426,6 +529,10 @@ foreach ($Item in $Items) {
     if ($Item.Name -eq 'energy_pipeline') {
         $PipelineFailed = $false
         $Notes = @()
+        if ($TimedOut) {
+            $PipelineFailed = $true
+            $Notes += 'hard_timeout'
+        }
         if ($ExitCode -ne 0) {
             $PipelineFailed = $true
             $Notes += 'exit_code_not_zero'
@@ -460,11 +567,19 @@ foreach ($Item in $Items) {
         }
     }
 
+    $RuntimeWarningLevel = Get-UatRuntimeWarningLevel -TimedOut $TimedOut -ElapsedSeconds $ElapsedSeconds -SoftBudgetSeconds $RuntimePolicy.SoftBudgetSeconds -ExitCode $ExitCode -Status $Status
+    $RuntimeBudgetWarning = $RuntimeWarningLevel -in @('soft_budget_exceeded', 'hard_timeout')
     $Results += [PSCustomObject]@{
         Name = $Item.Name
         Script = $Item.Script
         ExitCode = $ExitCode
         Status = $Status
+        TimeoutSeconds = $RuntimePolicy.TimeoutSeconds
+        SoftBudgetSeconds = $RuntimePolicy.SoftBudgetSeconds
+        HardTimeoutSeconds = $RuntimePolicy.HardTimeoutSeconds
+        TimedOut = $TimedOut
+        RuntimeBudgetWarning = $RuntimeBudgetWarning
+        RuntimeWarningLevel = $RuntimeWarningLevel
         OutputDir = $Item.OutputDir
         IndexExists = Test-Path (Join-Path $OutputPath 'index.md')
         UploadBundleExists = Test-Path (Join-Path $OutputPath '0_upload_bundle.md')
@@ -500,6 +615,15 @@ $StrictBlocked = @($Results | Where-Object { $_.Status -eq 'strict_blocked_but_r
 $Failed = @($Results | Where-Object { $_.Status -eq 'failed' }).Count
 $SkippedByProfile = @($Results | Where-Object { $_.Status -eq 'skipped_by_profile' }).Count
 $RunCount = @($Results | Where-Object { $_.Status -ne 'skipped_by_profile' }).Count
+$TimedOutCount = @($Results | Where-Object { $_.TimedOut }).Count
+$RuntimeBudgetWarningCount = @($Results | Where-Object { $_.RuntimeBudgetWarning }).Count
+$RunElapsedSeconds = 0.0
+foreach ($Result in @($Results | Where-Object { $_.Status -ne 'skipped_by_profile' })) {
+    if ($Result.ElapsedSeconds -ne '') {
+        $RunElapsedSeconds += [double]$Result.ElapsedSeconds
+    }
+}
+$RunElapsedSeconds = [Math]::Round($RunElapsedSeconds, 3)
 $AnyFailed = $Failed -gt 0
 $CacheManifestPath = Join-Path $RunCacheDir 'cache_manifest.json'
 $CacheManifest = $null
@@ -523,6 +647,9 @@ $Lines += ''
 $Lines += ('- generated_at: ' + $GeneratedAt)
 $Lines += ('- mode: ' + $Mode)
 $Lines += ('- profile_explanation: ' + $ModeExplanation[$Mode])
+$Lines += ('- timeout_seconds: ' + $RuntimePolicy.TimeoutSeconds)
+$Lines += ('- soft_budget_seconds: ' + $RuntimePolicy.SoftBudgetSeconds)
+$Lines += ('- hard_timeout_seconds: ' + $RuntimePolicy.HardTimeoutSeconds)
 $Lines += ('- use_run_cache: ' + $UseRunCache.IsPresent.ToString().ToLowerInvariant())
 $Lines += ('- run_cache_dir: ' + ($(if ($UseRunCache) { $RunCacheDir } else { '' })))
 $Lines += '- cache_scope: uat_run'
@@ -537,12 +664,15 @@ $Lines += ('- total_defined: ' + $Results.Count)
 $Lines += ('- run_count: ' + $RunCount)
 $Lines += ('- passed: ' + $Passed)
 $Lines += ('- strict_blocked_but_reported: ' + $StrictBlocked)
+$Lines += ('- timeout_but_reported: ' + $TimedOutCount)
+$Lines += ('- runtime_budget_warning: ' + $RuntimeBudgetWarningCount)
 $Lines += ('- failed: ' + $Failed)
 $Lines += ('- skipped_by_profile: ' + $SkippedByProfile)
 $Lines += ('- total: ' + $Results.Count)
 $Lines += ''
 $Lines += 'strict=2 means the price guard blocked operation; it is not a UAT failure when reports are generated and blocking is explained.'
 $Lines += 'skipped_by_profile means the item is intentionally skipped by the selected UAT mode and is not a failure.'
+$Lines += 'runtime_budget_warning means a step crossed the soft runtime budget or hard timeout boundary; soft_budget_exceeded is not a failure.'
 $Lines += ''
 $Lines += '## Slowest Items'
 $Lines += ''
@@ -566,6 +696,12 @@ foreach ($Result in $Results) {
     $Lines += ('- status: ' + $Result.Status)
     $Lines += ('- mode: ' + $Result.Mode)
     $Lines += ('- elapsed_seconds: ' + $Result.ElapsedSeconds)
+    $Lines += ('- timeout_seconds: ' + $Result.TimeoutSeconds)
+    $Lines += ('- soft_budget_seconds: ' + $Result.SoftBudgetSeconds)
+    $Lines += ('- hard_timeout_seconds: ' + $Result.HardTimeoutSeconds)
+    $Lines += ('- timed_out: ' + ([string]$Result.TimedOut).ToLowerInvariant())
+    $Lines += ('- runtime_budget_warning: ' + ([string]$Result.RuntimeBudgetWarning).ToLowerInvariant())
+    $Lines += ('- runtime_warning_level: ' + $Result.RuntimeWarningLevel)
     $Lines += ('- item_cache_status: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { 'not_collected' } else { '' })))
     $Lines += ('- item_cache_note: ' + ($(if ($UseRunCache -and $Result.Status -ne 'skipped_by_profile') { 'see run-level cache summary' } else { '' })))
     if ($Result.Status -eq 'skipped_by_profile') {
@@ -615,6 +751,12 @@ $SummaryObject = [ordered]@{
     generated_at = $GeneratedAt
     mode = $Mode
     use_run_cache = $UseRunCache.IsPresent
+    timeout_seconds = $RuntimePolicy.TimeoutSeconds
+    soft_budget_seconds = $RuntimePolicy.SoftBudgetSeconds
+    hard_timeout_seconds = $RuntimePolicy.HardTimeoutSeconds
+    elapsed_seconds = $RunElapsedSeconds
+    timed_out = $TimedOutCount -gt 0
+    runtime_budget_warning = $RuntimeBudgetWarningCount
     run_count = $RunCount
     passed = $Passed
     failed = $Failed
@@ -630,6 +772,7 @@ $Manifest = [ordered]@{
     generated_at = $GeneratedAt
     latest_mode = $Mode
     root_latest_summary_path = $RootSummaryPath
+    runtime_policy_by_mode = $ModeRuntimePolicy
     modes = [ordered]@{}
 }
 foreach ($KnownMode in $AllowedModes) {
@@ -638,6 +781,9 @@ foreach ($KnownMode in $AllowedModes) {
         summary_md = (Join-Path $KnownDir 'outputs_uat_summary.md')
         summary_json = (Join-Path $KnownDir 'outputs_uat_summary.json')
         exists = (Test-Path (Join-Path $KnownDir 'outputs_uat_summary.md'))
+        timeout_seconds = $ModeRuntimePolicy[$KnownMode].TimeoutSeconds
+        soft_budget_seconds = $ModeRuntimePolicy[$KnownMode].SoftBudgetSeconds
+        hard_timeout_seconds = $ModeRuntimePolicy[$KnownMode].HardTimeoutSeconds
     }
 }
 $Manifest | ConvertTo-Json -Depth 6 | Set-Content $ManifestPath -Encoding UTF8

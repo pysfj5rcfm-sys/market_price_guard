@@ -67,6 +67,31 @@ function Get-FileHashSha256 {
     return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
 }
 
+function Get-StepRuntimeClassification {
+    param(
+        [string]$Status,
+        [bool]$RuntimeWarning,
+        [int]$ProviderTimeoutCount,
+        [int]$ProviderCircuitOpenCount
+    )
+    if ($Status -eq 'failed') {
+        return [PSCustomObject]@{ Level = 'failed'; Reason = 'command_failed_or_required_output_missing' }
+    }
+    if ($Status -eq 'strict_blocked_but_reported') {
+        return [PSCustomObject]@{ Level = 'strict_blocked_but_reported'; Reason = 'strict_blocked_with_reports' }
+    }
+    if ($RuntimeWarning) {
+        return [PSCustomObject]@{ Level = 'soft_budget_exceeded'; Reason = 'step_elapsed_exceeded_soft_runtime_budget' }
+    }
+    if ($ProviderCircuitOpenCount -gt 0) {
+        return [PSCustomObject]@{ Level = 'provider_circuit_open'; Reason = 'provider_circuit_open_reported' }
+    }
+    if ($ProviderTimeoutCount -gt 0) {
+        return [PSCustomObject]@{ Level = 'provider_timeout'; Reason = 'provider_timeout_reported' }
+    }
+    return [PSCustomObject]@{ Level = 'runtime_info'; Reason = 'within_runtime_policy' }
+}
+
 function Copy-PipelineStepSnapshot {
     param(
         [hashtable]$Step,
@@ -191,6 +216,8 @@ foreach ($Step in $Steps) {
             skipped = $true
             skip_reason = $SkipReason
             runtime_warning = $false
+            runtime_warning_level = 'runtime_info'
+            runtime_warning_reason = 'skipped_by_parameter'
             max_run_seconds = ''
             snapshot_dir = ''
             snapshot_metadata_path = ''
@@ -244,6 +271,13 @@ foreach ($Step in $Steps) {
             $MaxRunSeconds = $Matches[1]
         }
     }
+    $ProviderTimeoutCount = 0
+    $ProviderCircuitOpenCount = 0
+    if (Test-Path $RuntimePath) {
+        if ($RuntimeContent -match 'provider_timeout_count:\s*(\d+)') { $ProviderTimeoutCount = [int]$Matches[1] }
+        if ($RuntimeContent -match 'provider_circuit_open_count:\s*(\d+)') { $ProviderCircuitOpenCount = [int]$Matches[1] }
+    }
+    $RuntimeClassification = Get-StepRuntimeClassification -Status $Status -RuntimeWarning $RuntimeWarning -ProviderTimeoutCount $ProviderTimeoutCount -ProviderCircuitOpenCount $ProviderCircuitOpenCount
     $Result = [PSCustomObject]@{
         name = $Step['Name']
         command = ($Step['Script'] + ' ' + (($StepArgs | ForEach-Object { [string]$_ }) -join ' ')).Trim()
@@ -256,6 +290,8 @@ foreach ($Step in $Steps) {
         skipped = $false
         skip_reason = ''
         runtime_warning = $RuntimeWarning
+        runtime_warning_level = $RuntimeClassification.Level
+        runtime_warning_reason = $RuntimeClassification.Reason
         max_run_seconds = $MaxRunSeconds
         snapshot_dir = ''
         snapshot_metadata_path = ''
@@ -317,6 +353,7 @@ $Failed = @($Results | Where-Object { $_.status -eq 'failed' }).Count
 $StrictBlocked = @($Results | Where-Object { $_.status -eq 'strict_blocked_but_reported' }).Count
 $Skipped = @($Results | Where-Object { $_.status -eq 'skipped_by_parameter' }).Count
 $RunSteps = @($Results | Where-Object { $_.status -ne 'skipped_by_parameter' }).Count
+$RuntimeWarningCount = @($Results | Where-Object { $_.runtime_warning_level -notin @('runtime_info', 'strict_blocked_but_reported') }).Count
 
 $LayerManifests = @()
 foreach ($Step in $Steps) {
@@ -385,14 +422,17 @@ $Lines += ('- skipped_steps: ' + $Skipped)
 $Lines += ('- passed: ' + $Passed)
 $Lines += ('- strict_blocked_but_reported: ' + $StrictBlocked)
 $Lines += ('- failed: ' + $Failed)
+$Lines += ('- runtime_warnings: ' + $RuntimeWarningCount)
 $Lines += ('- total_elapsed_seconds: ' + $TotalElapsedSeconds)
+$Lines += '- runtime_warning_policy: runtime_info, runtime_warning, soft_budget_exceeded, hard_timeout, provider_timeout, provider_circuit_open, strict_blocked_but_reported, failed'
+$Lines += '- runtime_warnings_do_not_equal_failed: true'
 $Lines += ''
 $Lines += '## Steps'
 $Lines += ''
-$Lines += '| step | status | exit_code | elapsed_seconds | output_dir | snapshot_dir | generated_at | source_run_id | layer_manifest_hash | prices_snapshot_hash | upload_bundle_hash |'
-$Lines += '|---|---|---:|---:|---|---|---|---|---|---|---|'
+$Lines += '| step | status | exit_code | elapsed_seconds | runtime_warning_level | output_dir | snapshot_dir | generated_at | source_run_id | layer_manifest_hash | prices_snapshot_hash | upload_bundle_hash |'
+$Lines += '|---|---|---:|---:|---|---|---|---|---|---|---|---|'
 foreach ($Result in $Results) {
-    $Lines += ('| ' + $Result.name + ' | ' + $Result.status + ' | ' + $Result.exit_code + ' | ' + $Result.elapsed_seconds + ' | ' + $Result.output_dir + ' | ' + $Result.snapshot_dir + ' | ' + $Result.generated_at + ' | ' + $Result.source_run_id + ' | ' + $Result.layer_manifest_hash_sha256 + ' | ' + $Result.prices_snapshot_hash_sha256 + ' | ' + $Result.upload_bundle_hash_sha256 + ' |')
+    $Lines += ('| ' + $Result.name + ' | ' + $Result.status + ' | ' + $Result.exit_code + ' | ' + $Result.elapsed_seconds + ' | ' + $Result.runtime_warning_level + ' | ' + $Result.output_dir + ' | ' + $Result.snapshot_dir + ' | ' + $Result.generated_at + ' | ' + $Result.source_run_id + ' | ' + $Result.layer_manifest_hash_sha256 + ' | ' + $Result.prices_snapshot_hash_sha256 + ' | ' + $Result.upload_bundle_hash_sha256 + ' |')
 }
 $Lines += ''
 $Lines += '## Pipeline Output Snapshots'
@@ -463,8 +503,8 @@ if ($Warnings.Count -eq 0) {
 $Lines += ''
 $Lines += '## Runtime Budget Summary'
 $Lines += ''
-$Lines += '| step | run_time_budget_exceeded | provider_timeout_count | skipped_by_runtime_budget | circuit_open_count |'
-$Lines += '|---|---|---:|---:|---:|'
+$Lines += '| step | runtime_warning_level | runtime_warning_reason | run_time_budget_exceeded | provider_timeout_count | skipped_by_runtime_budget | circuit_open_count |'
+$Lines += '|---|---|---|---|---:|---:|---:|'
 foreach ($Result in $Results) {
     $RuntimePath = Join-Path (Join-Path $ProjectRoot $Result.output_dir) 'runtime_diagnostics.md'
     $BudgetExceeded = 'unknown'
@@ -478,7 +518,7 @@ foreach ($Result in $Results) {
         if ($RuntimeContent -match 'provider_skipped_by_runtime_budget_count:\s*(\d+)') { $SkippedBudget = $Matches[1] }
         if ($RuntimeContent -match 'provider_circuit_open_count:\s*(\d+)') { $CircuitCount = $Matches[1] }
     }
-    $Lines += ('| ' + $Result.name + ' | ' + $BudgetExceeded + ' | ' + $TimeoutCount + ' | ' + $SkippedBudget + ' | ' + $CircuitCount + ' |')
+    $Lines += ('| ' + $Result.name + ' | ' + $Result.runtime_warning_level + ' | ' + $Result.runtime_warning_reason + ' | ' + $BudgetExceeded + ' | ' + $TimeoutCount + ' | ' + $SkippedBudget + ' | ' + $CircuitCount + ' |')
 }
 $Lines += ''
 $Lines += '## Provider Health Summary'
@@ -520,6 +560,7 @@ $Manifest = New-Object PSObject -Property ([ordered]@{
         passed = $Passed;
         failed = $Failed;
         strict_blocked_but_reported = $StrictBlocked;
+        runtime_warnings = $RuntimeWarningCount;
         skipped_by_parameter = $Skipped;
         run_cache_hit_count = $RunCacheHitCount;
         run_cache_miss_count = $RunCacheMissCount;
