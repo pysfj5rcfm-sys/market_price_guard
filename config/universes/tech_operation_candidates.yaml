@@ -4,7 +4,8 @@ universe_type: operation_candidate
 quote_purpose: reference
 required_for_operation: false
 affect_core_strict: false
-description: 科技 operation_candidate 层：下周可能重点观察/条件触发的候选层；不是默认买入清单。159516 仅保留为失败试错观察身份，禁补禁T，不作为补仓候选。
+description: 科技 operation_candidate 层：用户指定的候选/重点观察层；不是默认买入清单。特殊标的只触发 policy warning
+  与 ConfirmPolicyOverride 记录，不再作为永久 hard-block。
 rules:
   required_for_operation: false
   default_quote_purpose: reference
@@ -13,15 +14,22 @@ rules:
   ranking_is_trading_advice: false
   output_is_trading_advice: false
   not_default_buy_list: true
-  forbidden_as_candidate_by_default:
-  - 002463.SZ
-  - 513300.SH
-  - 510300.SH
-  - GOLD_CNY
   qdii_premium_required_for_nasdaq_add: true
   restricted_candidate_symbols:
     159516.SZ: failed_trial_observation_only; no_add_no_t; not_repair_candidate; any
       new trade requires full re-evaluation
+  policy_warning_not_hard_block: true
+  special_policy_symbols:
+    159516.SZ: failed_trial_observation_only; no_add_no_t; not_repair_candidate; new_trade_requires_full_re_evaluation
+    002463.SZ: event_stock_candidate_warning; requires_event_state_machine_review;
+      user_selected_candidate
+    002938.SZ: pcb/server_chain_candidate_warning; user_selected_candidate
+    600183.SH: ai_pcb_materials_candidate_warning; user_selected_candidate
+    002281.SZ: cpo_optical_module_candidate_warning; user_selected_candidate
+    513180.SH: cross_border_hk_tech_qdii_or_hk_tech_warning; premium module not implemented
+    513130.SH: cross_border_hk_tech_warning; name/provider validation recommended
+    513150.SH: cross_border_hk_internet_warning; premium module not implemented
+    513020.SH: cross_border_hk_tech_internet_warning; name/provider validation recommended
 symbols:
 - 159819.SZ
 - 515880.SH
@@ -34,6 +42,14 @@ symbols:
 - 159558.SZ
 - 515050.SH
 - 159994.SZ
+- 513180.SH
+- 513130.SH
+- 513150.SH
+- 513020.SH
+- 002463.SZ
+- 002938.SZ
+- 600183.SH
+- 002281.SZ
 priority:
   p1_current_direction_candidates:
   - 515880.SH
@@ -50,3 +66,13 @@ priority:
   p3_communication_peer_candidates:
   - 515050.SH
   - 159994.SZ
+  p4_hk_tech_or_cross_border_candidates:
+  - 513180.SH
+  - 513130.SH
+  - 513150.SH
+  - 513020.SH
+  p5_event_stock_candidates:
+  - 002463.SZ
+  - 002938.SZ
+  - 600183.SH
+  - 002281.SZ

@@ -32,7 +32,7 @@ def test_layer_manifest_extracts_top_level_symbols_only():
 def test_layer_manifest_detects_loaded_mismatch():
     manifest = load_target_layer_manifest("tech_operation_candidates", ["159819.SZ"])
 
-    assert manifest["configured_symbol_count"] == 11
+    assert manifest["configured_symbol_count"] == 19
     assert manifest["loaded_symbol_count"] == 1
     assert manifest["config_mismatch"] is True
     assert "515880.SH" in manifest["missing_from_loaded"]
@@ -41,9 +41,9 @@ def test_layer_manifest_detects_loaded_mismatch():
 
 @pytest.mark.contract
 def test_current_tech_layer_manifest_counts():
-    assert load_target_layer_manifest("tech_operation_candidates", [])["configured_symbol_count"] == 11
-    assert load_target_layer_manifest("tech_watchlist", [])["configured_symbol_count"] == 16
-    assert load_target_layer_manifest("tech_scan_ai", [])["configured_symbol_count"] == 30
+    assert load_target_layer_manifest("tech_operation_candidates", [])["configured_symbol_count"] == 19
+    assert load_target_layer_manifest("tech_watchlist", [])["configured_symbol_count"] == 28
+    assert load_target_layer_manifest("tech_scan_ai", [])["configured_symbol_count"] == 40
 
 
 @pytest.mark.contract
@@ -83,8 +83,8 @@ def test_run_pipeline_writes_layer_manifest_and_reports(tmp_path):
     run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", quote_purpose="reference", universe="tech_operation_candidates")
 
     manifest = json.loads((output_dir / "layer_manifest.json").read_text(encoding="utf-8"))
-    assert manifest["configured_symbol_count"] == 11
-    assert manifest["loaded_symbol_count"] == 11
+    assert manifest["configured_symbol_count"] == 19
+    assert manifest["loaded_symbol_count"] == 19
     assert manifest["config_mismatch"] is False
     assert "Config Source / Layer Manifest" in (output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
     assert "Config Source / Layer Manifest" in (output_dir / "debug_bundle.md").read_text(encoding="utf-8")

@@ -9,7 +9,7 @@ import pandas as pd
 from market_price_guard.freshness import now_utc
 from market_price_guard.models import RawPrice
 from market_price_guard.providers.base import PriceProvider
-from market_price_guard.uat_run_cache import is_uat_run_cache_enabled, read_cached_dataframe, write_cached_dataframe
+from market_price_guard.uat_run_cache import is_uat_run_cache_enabled, read_cached_dataframe, write_cached_dataframe, write_cached_failure
 
 
 HK_STOCK_SYMBOLS = {"00883.HK"}
@@ -413,7 +413,11 @@ class AkshareProvider(PriceProvider):
             attempt["cache_status"] = "miss"
             attempt["cache_provider"] = "akshare"
             attempt["cache_function"] = function_name
-            write_attempt = write_cached_dataframe(function_name, df)
+            if df is None:
+                write_attempt = write_cached_failure(function_name, attempt)
+                attempt["cache_status"] = "miss_failure_cached"
+            else:
+                write_attempt = write_cached_dataframe(function_name, df)
             attempt["cache_file"] = write_attempt.get("cache_file", "")
             attempt["cache_note"] = write_attempt.get("reason", "")
         self._call_cache[function_name] = (df, dict(attempt))

@@ -338,6 +338,9 @@ def test_runtime_diagnostics_include_provider_budget_counts(tmp_path):
     assert "provider_runtime_budget" in runtime_report
     assert "provider_skipped_by_runtime_budget_count" in runtime_report
     assert "slow_provider_attempts_count" in runtime_report
+    assert "## Cache / Reuse Summary" in runtime_report
+    assert "quote_cache_hit_count" in runtime_report
+    assert "repeated_provider_call_prevented_count" in runtime_report
 
 
 def test_run_time_budget_exceeded_appears_in_completeness_report(tmp_path):

@@ -37,7 +37,7 @@ def test_show_does_not_modify_files(tmp_path):
 
     report = TechLayerManager(root).show()
 
-    assert report["before_counts"] == {"operation": 7, "operation_candidate": 11, "watchlist": 16, "scan": 30}
+    assert report["before_counts"] == {"operation": 7, "operation_candidate": 19, "watchlist": 28, "scan": 40}
     assert report["root_mirror_mismatch"] is False
     assert (root / "config/watchlist.yaml").read_bytes() == before
 
@@ -55,11 +55,11 @@ def test_add_symbol_to_watchlist_updates_universe_and_root(tmp_path):
     root = _copy_project_config(tmp_path)
     manager = TechLayerManager(root)
 
-    report = manager.add("513180.SH", "watchlist", dry_run=False, backup=False, confirm_policy_override=True, allow_operation_layer=False)
+    report = manager.add("513310.SH", "watchlist", dry_run=False, backup=False, confirm_policy_override=True, allow_operation_layer=False)
 
     assert report["errors"] == []
-    assert "513180.SH" in _read_symbols(root, "config/universes/tech_watchlist.yaml")
-    assert "513180.SH" in _read_root_layer(root, "watchlist")
+    assert "513310.SH" in _read_symbols(root, "config/universes/tech_watchlist.yaml")
+    assert "513310.SH" in _read_root_layer(root, "watchlist")
 
 
 def test_add_duplicate_symbol_is_noop(tmp_path):
@@ -129,6 +129,7 @@ def test_operation_add_requires_allow_operation_layer(tmp_path):
 def test_policy_warning_symbol_requires_override_for_actual_candidate_change(tmp_path):
     root = _copy_project_config(tmp_path)
 
+    TechLayerManager(root).remove("002463.SZ", "operation_candidate", dry_run=False, backup=False, allow_operation_layer=False)
     blocked = TechLayerManager(root).add("002463.SZ", "operation_candidate", dry_run=False, backup=False, confirm_policy_override=False, allow_operation_layer=False)
     allowed = TechLayerManager(root).add("002463.SZ", "operation_candidate", dry_run=False, backup=False, confirm_policy_override=True, allow_operation_layer=False)
 
@@ -184,8 +185,8 @@ def test_show_and_export_report_counts(tmp_path):
     show = manager.show()
     export = manager.export()
 
-    assert show["after_counts"]["scan"] == 30
-    assert export["after_counts"]["watchlist"] == 16
+    assert show["after_counts"]["scan"] == 40
+    assert export["after_counts"]["watchlist"] == 28
     data = json.loads((root / "outputs_config_manager_latest/tech_layer_config_export.json").read_text(encoding="utf-8"))
     assert len(data["layers"]["operation"]) == 7
 
@@ -200,7 +201,7 @@ def test_manage_script_declared():
 def test_main_accepts_powershell_style_options(tmp_path):
     root = _copy_project_config(tmp_path)
 
-    exit_code = main(["--project-root", str(root), "add", "513180.SH", "-Layer", "watchlist", "-DryRun"])
+    exit_code = main(["--project-root", str(root), "add", "513310.SH", "-Layer", "watchlist", "-DryRun"])
 
     assert exit_code == 0
-    assert "513180.SH" not in _read_symbols(root, "config/universes/tech_watchlist.yaml")
+    assert "513310.SH" not in _read_symbols(root, "config/universes/tech_watchlist.yaml")

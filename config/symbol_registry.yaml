@@ -6,17 +6,17 @@
   project_scope: tech
   role: nasdaq_or_overseas_tech_etf
   universe_tags:
-  - etf
-  - qdii
-  - tech_core
-  - nasdaq
   - watchlist
-  - overseas
-  - operation
+  - etf
   - core
-  - tech
-  - scan
+  - nasdaq
+  - qdii
+  - operation
   - premium_compare
+  - scan
+  - tech_core
+  - tech
+  - overseas
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
@@ -37,6 +37,7 @@
   notes: 科技账户核心纳指相关 ETF; current holding; nasdaq primary anchor; QDII premium must
     be checked externally until premium module is implemented
   qdii_premium_required: true
+  usable_for_operation: true
 513300.SH:
   symbol: 513300.SH
   name: 纳指ETF
@@ -45,17 +46,17 @@
   project_scope: tech
   role: nasdaq_or_overseas_tech_etf
   universe_tags:
-  - etf
-  - qdii
-  - tech_core
-  - nasdaq
   - watchlist
-  - overseas
-  - operation
+  - etf
   - core
-  - tech
-  - scan
+  - nasdaq
+  - qdii
+  - operation
   - premium_compare
+  - scan
+  - tech_core
+  - tech
+  - overseas
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
@@ -76,6 +77,7 @@
   notes: current holding; nasdaq anchor but add priority lower than 159632 unless
     premium is materially better
   qdii_premium_required: true
+  usable_for_operation: true
 159819.SZ:
   symbol: 159819.SZ
   name: 人工智能ETF
@@ -84,18 +86,19 @@
   project_scope: tech
   role: ai_tech_equity
   universe_tags:
-  - etf
-  - tech_core
   - watchlist
-  - computing_power
-  - artificial_intelligence
-  - layer3
   - ai
+  - etf
+  - core
+  - computing_power
   - operation
   - candidate
-  - core
-  - tech
   - scan
+  - artificial_intelligence
+  - tech
+  - tech_core
+  - operation_candidate
+  - layer3
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
@@ -116,6 +119,7 @@
   notes: already in tech core; included in scan universe for comparison only; current
     holding; AI second observation satellite; candidate only after AI group resonance
     and support confirmation
+  usable_for_operation: true
 515880.SH:
   symbol: 515880.SH
   name: 通信ETF
@@ -124,18 +128,19 @@
   project_scope: tech
   role: communication_tech_equity
   universe_tags:
-  - etf
-  - tech_core
   - watchlist
-  - layer2
-  - communication
-  - scan
-  - operation
-  - cpo
-  - candidate
+  - etf
   - core
+  - cpo
+  - operation
+  - candidate
+  - layer2
+  - scan
+  - tech_core
   - tech
+  - operation_candidate
   - optical_module
+  - communication
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
@@ -156,6 +161,7 @@
   notes: already in tech core; included in scan universe for comparison only; current
     holding; communication/CPO first observation satellite; candidate only after pullback/support
     confirmation
+  usable_for_operation: true
 510300.SH:
   symbol: 510300.SH
   name: 沪深300ETF
@@ -164,12 +170,12 @@
   project_scope: tech
   role: non_tech_broad_base_etf
   universe_tags:
-  - tech_core
-  - non_tech
-  - hs300
   - broad_base
   - operation
   - scan
+  - non_tech
+  - hs300
+  - tech_core
   required_for_operation: false
   default_quote_purpose: operation
   provider_preference:
@@ -189,6 +195,7 @@
   enabled: true
   notes: current holding; non-tech broad-base risk appetite reference; not a tech
     budget candidate
+  usable_for_operation: false
 GOLD_CNY:
   symbol: GOLD_CNY
   name: 黄金持仓参考价
@@ -197,13 +204,13 @@ GOLD_CNY:
   project_scope: tech
   role: defense_or_potential_tech_funding
   universe_tags:
-  - tech_core
-  - defense
-  - operation
   - core
-  - tech
-  - scan
+  - defense
   - gold
+  - operation
+  - scan
+  - tech_core
+  - tech
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
@@ -217,6 +224,7 @@ GOLD_CNY:
   enabled: true
   notes: manual reference only; defensive/potential tech funding; does not overwrite
     formal gold asset amount; no intraday VWAP support
+  usable_for_operation: true
 00883.HK:
   symbol: 00883.HK
   name: 中海油H
@@ -350,7 +358,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 600900.SH:
   symbol: 600900.SH
   name: unknown
@@ -368,7 +377,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 601088.SH:
   symbol: 601088.SH
   name: unknown
@@ -386,7 +396,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 600489.SH:
   symbol: 600489.SH
   name: unknown
@@ -404,7 +415,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 600547.SH:
   symbol: 600547.SH
   name: unknown
@@ -422,7 +434,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 603993.SH:
   symbol: 603993.SH
   name: unknown
@@ -440,7 +453,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 600188.SH:
   symbol: 600188.SH
   name: unknown
@@ -458,7 +472,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 600795.SH:
   symbol: 600795.SH
   name: unknown
@@ -476,7 +491,8 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
+    list item
 600028.SH:
   symbol: 600028.SH
   name: unknown
@@ -1070,17 +1086,18 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
   - watchlist
-  - chip
-  - layer1
   - semiconductor
+  - etf
+  - layer1
   - candidate
-  - tech
+  - chip
   - scan
+  - tech
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: &id001
+  provider_preference:
     operation:
     - akshare
     - mock
@@ -1098,6 +1115,7 @@ IXIC:
   notes: scan candidate; existing candidate expanded into layer1; 半导体整体强弱验证；可作为新交易候选
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 159995.SZ:
   symbol: 159995.SZ
   name: 芯片ETF
@@ -1106,22 +1124,36 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
   - watchlist
-  - chip
-  - layer1
   - semiconductor
+  - etf
+  - layer1
   - candidate
-  - tech
+  - chip
   - scan
+  - tech
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
   notes: scan candidate; existing candidate expanded into layer1; 芯片方向强弱验证；可作为新交易候选
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 588200.SH:
   symbol: 588200.SH
   name: 科创芯片ETF
@@ -1130,23 +1162,37 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
   - watchlist
-  - chip
-  - layer1
   - semiconductor
+  - etf
+  - layer1
   - candidate
-  - tech
+  - chip
   - scan
+  - tech
   - sci_tech_chip
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
   notes: scan candidate; existing candidate expanded into layer1; 科创芯片弹性验证；可作为新交易候选
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 159516.SZ:
   symbol: 159516.SZ
   name: 半导体设备ETF
@@ -1155,19 +1201,20 @@ IXIC:
   project_scope: tech
   role: semiconductor_equipment_core_etf
   universe_tags:
-  - etf
-  - candidate
-  - tech_core
-  - watchlist
-  - layer1
-  - semiconductor_equipment
-  - equipment
-  - semiconductor
-  - operation
   - failed_trial_observation
+  - watchlist
+  - semiconductor
+  - etf
+  - layer1
   - core
-  - tech
+  - equipment
+  - operation
+  - candidate
+  - semiconductor_equipment
   - scan
+  - tech_core
+  - tech
+  - operation_candidate
   required_for_operation: true
   default_quote_purpose: operation
   provider_preference:
@@ -1190,6 +1237,7 @@ IXIC:
     trade requires full re-evaluation
   not_candidate_by_default: true
   candidate_restriction: no_add_no_t; not_repair_candidate; new_trade_requires_full_re_evaluation
+  usable_for_operation: true
 159558.SZ:
   symbol: 159558.SZ
   name: 半导体设备ETF易方达
@@ -1198,23 +1246,37 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
   - watchlist
-  - layer1
-  - semiconductor_equipment
-  - equipment
   - semiconductor
+  - etf
+  - layer1
+  - equipment
+  - semiconductor_equipment
   - candidate
-  - tech
   - scan
+  - tech
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
   notes: scan candidate; fund name should be validated by provider; 159516同类设备验证；不得用于补159516；不作为当前candidate
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 588170.SH:
   symbol: 588170.SH
   name: 科创半导体ETF
@@ -1223,22 +1285,36 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
   - watchlist
+  - semiconductor
+  - etf
   - layer1
   - sci_tech_semiconductor
-  - semiconductor
   - candidate
-  - tech
   - scan
+  - tech
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
   notes: scan candidate; fund name should be validated by provider; 科创半导体强弱验证；当前不列入candidate，可用于同组验证
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 588890.SH:
   symbol: 588890.SH
   name: 科创芯片相关ETF
@@ -1247,15 +1323,16 @@ IXIC:
   project_scope: tech
   role: candidate_tech_etf
   universe_tags:
-  - etf
   - watchlist
-  - layer1
   - semiconductor
+  - etf
+  - layer1
   - name_needs_provider_validation
   - candidate
-  - tech
   - scan
+  - tech
   - sci_tech_chip
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1274,6 +1351,7 @@ IXIC:
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
   notes: scan candidate; fund name should be validated by provider
+  usable_for_operation: false
 515050.SH:
   symbol: 515050.SH
   name: 通信ETF华夏
@@ -1282,25 +1360,39 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
   - watchlist
+  - etf
   - 5g
-  - layer2
-  - communication
-  - scan
   - cpo
-  - candidate
-  - tech
-  - optical_module
   - name_needs_provider_validation
+  - candidate
+  - layer2
+  - scan
+  - tech
+  - operation_candidate
+  - optical_module
+  - communication
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 通信 / CPO / 光模块
   enabled: true
   notes: scan candidate; fund name should be validated by provider; 同组验证；若明显强于515880且同组共振，才作为候选；不默认买
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 159994.SZ:
   symbol: 159994.SZ
   name: 通信ETF银华
@@ -1309,23 +1401,37 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
   - watchlist
-  - layer2
-  - communication
-  - scan
+  - etf
   - cpo
   - candidate
+  - layer2
+  - scan
   - tech
+  - operation_candidate
   - optical_module
+  - communication
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 通信 / CPO / 光模块
   enabled: true
   notes: scan candidate; fund name should be validated by provider; 同组验证；若明显强于515880且同组共振，才作为候选；不默认买
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 300308.SZ:
   symbol: 300308.SZ
   name: 中际旭创
@@ -1334,15 +1440,15 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - ai_infrastructure
   - watchlist
-  - stock
-  - communication
-  - layer2
-  - scan
   - cpo
+  - layer2
+  - stock
+  - ai_infrastructure
+  - scan
   - tech
   - optical_module
+  - communication
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1362,6 +1468,7 @@ IXIC:
   enabled: true
   notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
     with ETFs
+  usable_for_operation: false
 300502.SZ:
   symbol: 300502.SZ
   name: 新易盛
@@ -1370,15 +1477,15 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - ai_infrastructure
   - watchlist
-  - stock
-  - communication
-  - layer2
-  - scan
   - cpo
+  - layer2
+  - stock
+  - ai_infrastructure
+  - scan
   - tech
   - optical_module
+  - communication
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1398,6 +1505,7 @@ IXIC:
   enabled: true
   notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
     with ETFs
+  usable_for_operation: false
 159363.SZ:
   symbol: 159363.SZ
   name: 创业板人工智能ETF
@@ -1406,23 +1514,36 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
+  - ai
   - etf
   - computing_power
-  - sci_tech_ai
-  - artificial_intelligence
-  - layer3
-  - ai
-  - tech
-  - scan
   - name_needs_provider_validation
+  - artificial_intelligence
+  - scan
+  - sci_tech_ai
+  - tech
+  - layer3
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: AI / 算力 / 科创AI / 云计算
   enabled: true
   notes: scan candidate; fund name should be validated by provider; AI弹性验证；若明显强于159819且AI同组共振，才作为候选
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 588760.SH:
   symbol: 588760.SH
   name: 科创人工智能ETF广发
@@ -1431,21 +1552,34 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - etf
-  - sci_tech_ai
-  - artificial_intelligence
-  - layer3
   - ai
-  - tech
+  - etf
+  - artificial_intelligence
   - scan
+  - sci_tech_ai
+  - tech
+  - layer3
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: AI / 算力 / 科创AI / 云计算
   enabled: true
   notes: scan candidate; fund name should be validated by provider; 科创AI验证；若明显强于159819且AI同组共振，才作为候选
   affect_core_strict: false
   qdii_premium_required: false
+  usable_for_operation: false
 588930.SH:
   symbol: 588930.SH
   name: 科创AI相关ETF
@@ -1454,14 +1588,14 @@ IXIC:
   project_scope: tech
   role: candidate_tech_etf
   universe_tags:
-  - etf
-  - sci_tech_ai
-  - artificial_intelligence
-  - layer3
   - ai
-  - tech
-  - scan
+  - etf
   - name_needs_provider_validation
+  - artificial_intelligence
+  - scan
+  - sci_tech_ai
+  - tech
+  - layer3
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1480,6 +1614,7 @@ IXIC:
   report_group: AI / 算力 / 科创AI / 云计算
   enabled: true
   notes: scan candidate; fund name should be validated by provider
+  usable_for_operation: false
 515980.SH:
   symbol: 515980.SH
   name: 人工智能相关ETF
@@ -1488,14 +1623,14 @@ IXIC:
   project_scope: tech
   role: candidate_tech_etf
   universe_tags:
+  - ai
   - etf
   - computing_power
-  - artificial_intelligence
-  - layer3
-  - ai
-  - tech
-  - scan
   - name_needs_provider_validation
+  - artificial_intelligence
+  - scan
+  - tech
+  - layer3
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1514,6 +1649,7 @@ IXIC:
   report_group: AI / 算力 / 科创AI / 云计算
   enabled: true
   notes: scan candidate; fund name should be validated by provider
+  usable_for_operation: false
 516510.SH:
   symbol: 516510.SH
   name: 云计算ETF
@@ -1522,14 +1658,14 @@ IXIC:
   project_scope: tech
   role: candidate_tech_etf
   universe_tags:
-  - ai_infrastructure
   - etf
   - computing_power
-  - layer3
   - cloud
+  - scan
+  - ai_infrastructure
   - tech
   - cloud_computing
-  - scan
+  - layer3
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1548,6 +1684,7 @@ IXIC:
   report_group: AI / 算力 / 科创AI / 云计算
   enabled: true
   notes: scan candidate; fund name should be validated by provider
+  usable_for_operation: false
 688256.SH:
   symbol: 688256.SH
   name: 寒武纪
@@ -1556,15 +1693,15 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - ai_chip
   - watchlist
-  - computing_power
-  - stock
-  - layer3
   - ai
   - semiconductor
-  - tech
+  - computing_power
+  - stock
   - scan
+  - tech
+  - ai_chip
+  - layer3
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1584,6 +1721,7 @@ IXIC:
   enabled: true
   notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
     with ETFs
+  usable_for_operation: false
 513180.SH:
   symbol: 513180.SH
   name: 恒生科技指数ETF
@@ -1592,14 +1730,17 @@ IXIC:
   project_scope: tech
   role: scan_candidate_qdii_etf
   universe_tags:
+  - watchlist
   - etf
   - qdii
-  - hang_seng_tech
-  - hk_tech
   - layer4
-  - tech
-  - scan
+  - candidate
   - cross_border
+  - hk_tech
+  - scan
+  - tech
+  - operation_candidate
+  - hang_seng_tech
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1618,6 +1759,7 @@ IXIC:
   report_group: 港股科技 / 中韩半导体 / 港股互联网
   enabled: true
   notes: cross-border/HK tech scan candidate; premium module not yet available
+  usable_for_operation: false
 513130.SH:
   symbol: 513130.SH
   name: 恒生科技相关ETF
@@ -1626,15 +1768,18 @@ IXIC:
   project_scope: tech
   role: scan_candidate_qdii_etf
   universe_tags:
+  - watchlist
   - etf
   - qdii
-  - hang_seng_tech
-  - hk_tech
   - layer4
-  - tech
-  - scan
   - name_needs_provider_validation
+  - candidate
   - cross_border
+  - hk_tech
+  - scan
+  - tech
+  - operation_candidate
+  - hang_seng_tech
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1653,6 +1798,7 @@ IXIC:
   report_group: 港股科技 / 中韩半导体 / 港股互联网
   enabled: true
   notes: cross-border/HK tech scan candidate; fund name should be validated by provider
+  usable_for_operation: false
 513310.SH:
   symbol: 513310.SH
   name: 中韩半导体ETF
@@ -1661,14 +1807,14 @@ IXIC:
   project_scope: tech
   role: scan_candidate_qdii_etf
   universe_tags:
+  - semiconductor
   - etf
   - qdii
-  - korea_semiconductor
   - layer4
-  - semiconductor
-  - tech
-  - scan
   - cross_border
+  - scan
+  - tech
+  - korea_semiconductor
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1687,6 +1833,7 @@ IXIC:
   report_group: 港股科技 / 中韩半导体 / 港股互联网
   enabled: true
   notes: cross-border semiconductor ETF; premium/reference module not yet available
+  usable_for_operation: false
 513150.SH:
   symbol: 513150.SH
   name: 港股互联网ETF
@@ -1695,14 +1842,17 @@ IXIC:
   project_scope: tech
   role: scan_candidate_qdii_etf
   universe_tags:
+  - watchlist
   - etf
-  - qdii
   - hk_internet
-  - hk_tech
+  - qdii
   - layer4
-  - tech
-  - scan
+  - candidate
   - cross_border
+  - hk_tech
+  - scan
+  - tech
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1721,6 +1871,7 @@ IXIC:
   report_group: 港股科技 / 中韩半导体 / 港股互联网
   enabled: true
   notes: cross-border/HK internet scan candidate; premium module not yet available
+  usable_for_operation: false
 513020.SH:
   symbol: 513020.SH
   name: 港股科技互联网相关ETF
@@ -1729,15 +1880,18 @@ IXIC:
   project_scope: tech
   role: scan_candidate_qdii_etf
   universe_tags:
+  - watchlist
   - etf
-  - qdii
   - hk_internet
-  - hk_tech
+  - qdii
   - layer4
-  - tech
-  - scan
   - name_needs_provider_validation
+  - candidate
   - cross_border
+  - hk_tech
+  - scan
+  - tech
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1756,6 +1910,7 @@ IXIC:
   report_group: 港股科技 / 中韩半导体 / 港股互联网
   enabled: true
   notes: cross-border/HK tech scan candidate; fund name should be validated by provider
+  usable_for_operation: false
 159792.SZ:
   symbol: 159792.SZ
   name: 港股通互联网相关ETF
@@ -1766,12 +1921,12 @@ IXIC:
   universe_tags:
   - etf
   - hk_internet
-  - hk_tech
   - layer4
-  - tech
-  - scan
   - name_needs_provider_validation
   - cross_border
+  - hk_tech
+  - scan
+  - tech
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1790,6 +1945,7 @@ IXIC:
   report_group: 港股科技 / 中韩半导体 / 港股互联网
   enabled: true
   notes: scan candidate; verify whether QDII or HK-stock-connect ETF
+  usable_for_operation: false
 513320.SH:
   symbol: 513320.SH
   name: 港股科技互联网相关ETF
@@ -1798,15 +1954,16 @@ IXIC:
   project_scope: tech
   role: scan_candidate_qdii_etf
   universe_tags:
+  - watchlist
   - etf
-  - qdii
   - hk_internet
-  - hk_tech
+  - qdii
   - layer4
-  - tech
-  - scan
   - name_needs_provider_validation
   - cross_border
+  - hk_tech
+  - scan
+  - tech
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1825,6 +1982,7 @@ IXIC:
   report_group: 港股科技 / 中韩半导体 / 港股互联网
   enabled: true
   notes: cross-border/HK tech scan candidate; fund name should be validated by provider
+  usable_for_operation: false
 513100.SH:
   symbol: 513100.SH
   name: 纳指ETF
@@ -1842,7 +2000,19 @@ IXIC:
   - etf
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id001
+  provider_preference: &id001
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 纳指QDII溢价比较池
   enabled: true
   notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet;
@@ -1929,10 +2099,48 @@ IXIC:
   project_scope: tech
   role: event_watch_stock
   universe_tags:
-  - tech
+  - watchlist
   - ai_pcb
-  - server_pcb
   - event_watch
+  - candidate
+  - server_pcb
+  - scan
+  - tech
+  - operation_candidate
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI PCB / 服务器链
+  enabled: true
+  notes: sell-fly review observation only; not candidate by default; requires user
+    authorization and event-position state machine; now user-selected operation_candidate;
+    event_stock_candidate_warning; requires event state-machine review; policy override
+    is user-driven, not trading advice
+  usable_for_operation: false
+601138.SH:
+  symbol: 601138.SH
+  name: 工业富联
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: scan_candidate_stock
+  universe_tags:
+  - tech
+  - ai_server
+  - computing_power
+  - server_chain
   - scan
   - watchlist
   required_for_operation: false
@@ -1952,28 +2160,6 @@ IXIC:
     - akshare
   report_group: AI PCB / 服务器链
   enabled: true
-  notes: sell-fly review observation only; not candidate by default; requires user
-    authorization and event-position state machine
-  usable_for_operation: false
-601138.SH:
-  symbol: 601138.SH
-  name: 工业富联
-  market: SH
-  asset_type: stock
-  project_scope: tech
-  role: scan_candidate_stock
-  universe_tags:
-  - tech
-  - ai_server
-  - computing_power
-  - server_chain
-  - scan
-  - watchlist
-  required_for_operation: false
-  default_quote_purpose: reference
-  provider_preference: *id002
-  report_group: AI PCB / 服务器链
-  enabled: true
   notes: mainline strength verification only; not default buy object
   usable_for_operation: false
 300476.SZ:
@@ -1984,14 +2170,25 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - tech
   - ai_pcb
   - server_pcb
   - scan
-  - watchlist
+  - tech
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id002
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: AI PCB / 服务器链
   enabled: true
   notes: AI PCB strength verification only; not default buy object
@@ -2024,15 +2221,26 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - tech
-  - communication
   - cpo
-  - optical_module
   - scan
-  - watchlist
+  - tech
+  - optical_module
+  - communication
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id002
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: 通信 / CPO / 光模块
   enabled: true
   notes: CPO/optical device strength verification only; not default buy object
@@ -2045,13 +2253,25 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - tech
-  - ai_pcb
   - server_pcb
+  - ai_pcb
+  - tech
   - scan
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id002
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: AI PCB / 服务器链
   enabled: true
   notes: AI PCB/server PCB scan only; not candidate by default
@@ -2064,16 +2284,32 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - tech
-  - pcb
+  - watchlist
   - server_chain
+  - pcb
+  - candidate
   - scan
+  - tech
+  - operation_candidate
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id002
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: AI PCB / 服务器链
   enabled: true
-  notes: PCB/server chain scan only; not candidate by default
+  notes: PCB/server chain scan only; not candidate by default; now user-selected operation_candidate/watchlist;
+    PCB/server chain strength verification; policy warning only
   usable_for_operation: false
 603228.SH:
   symbol: 603228.SH
@@ -2083,12 +2319,25 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - tech
   - pcb
+  - watchlist
   - scan
+  - tech
   required_for_operation: false
   default_quote_purpose: reference
-  provider_preference: *id002
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
   report_group: AI PCB / 服务器链
   enabled: true
   notes: PCB scan only; not candidate by default
@@ -2364,3 +2613,145 @@ DX-Y.NYB:
   notes: DXY reference only; provider validation required; reference-only; provider_validation_required
   usable_for_operation: false
   provider_validation_required: true
+600183.SH:
+  symbol: 600183.SH
+  name: 生益科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: event_watch_stock
+  universe_tags:
+  - watchlist
+  - ai_pcb
+  - server_chain
+  - event_watch
+  - pcb_material
+  - candidate
+  - scan
+  - tech
+  - operation_candidate
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI PCB / 服务器链
+  enabled: true
+  notes: AI PCB/materials event-watch candidate; policy warning only; not default
+    trading advice; now user-selected operation_candidate/watchlist; AI PCB/materials
+    event-watch candidate; policy warning only
+  usable_for_operation: false
+002281.SZ:
+  symbol: 002281.SZ
+  name: 光迅科技
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: event_watch_stock
+  universe_tags:
+  - watchlist
+  - event_watch
+  - cpo
+  - candidate
+  - scan
+  - tech
+  - operation_candidate
+  - optical_module
+  - communication
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 通信 / CPO / 光模块
+  enabled: true
+  notes: CPO/optical module event-watch candidate; policy warning only; not default
+    trading advice; now user-selected operation_candidate/watchlist; CPO/optical module
+    strength verification; policy warning only
+  usable_for_operation: false
+515000.SH:
+  symbol: 515000.SH
+  name: 科技ETF华宝
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - watchlist
+  - etf
+  - science_technology
+  - broad_tech
+  - scan
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 科技宽基 / AI / 算力扩散
+  enabled: true
+  notes: broad technology ETF watch/scan candidate; not operation-grade
+  usable_for_operation: false
+512930.SH:
+  symbol: 512930.SH
+  name: AI人工智能ETF平安
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: candidate_tech_etf
+  universe_tags:
+  - watchlist
+  - ai
+  - etf
+  - scan
+  - artificial_intelligence
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference:
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: AI / 算力 / 科创AI / 云计算
+  enabled: true
+  notes: AI artificial intelligence ETF watch/scan candidate; not operation-grade
+  usable_for_operation: false

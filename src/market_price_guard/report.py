@@ -828,6 +828,11 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         f"- provider_skipped_by_failure_budget_count: {_provider_skipped_by_failure_budget_count(records)}",
         f"- slow_provider_attempts_count: {len(slow_attempts)}",
         f"- provider_runtime_budget_summary: {_provider_runtime_budget_summary(runtime, attempts)}",
+        f"- quote_cache_hit_count: {_quote_cache_metric(records, runtime, 'quote_cache_hit_count')}",
+        f"- quote_cache_miss_count: {_quote_cache_metric(records, runtime, 'quote_cache_miss_count')}",
+        f"- quote_cache_failure_hit_count: {_quote_cache_metric(records, runtime, 'quote_cache_failure_hit_count')}",
+        f"- quote_cache_success_hit_count: {_quote_cache_metric(records, runtime, 'quote_cache_success_hit_count')}",
+        f"- repeated_provider_call_prevented_count: {_quote_cache_metric(records, runtime, 'repeated_provider_call_prevented_count')}",
         f"- universe_name: {runtime.get('universe_name', '')}",
         f"- universe_type: {runtime.get('universe_type', '')}",
         f"- layer_config_mismatch: {runtime.get('layer_manifest', {}).get('config_mismatch', '') if isinstance(runtime.get('layer_manifest'), dict) else ''}",
@@ -879,6 +884,8 @@ def build_runtime_diagnostics_report(records: list[PriceRecord], runtime: dict[s
         lines.append("- 无")
     lines.extend(["", "## provider_call_cache"])
     lines.extend(_runtime_provider_cache_lines(records))
+    lines.extend(["", "## Cache / Reuse Summary"])
+    lines.extend(_cache_reuse_summary_lines(records, runtime))
     lines.extend(["", "## provider_runtime_budget"])
     lines.extend(_provider_runtime_budget_lines(runtime, records))
     if runtime.get("provider_policy") == "diagnostic":
@@ -1697,11 +1704,11 @@ def _provider_health_summary_lines(records: list[PriceRecord]) -> list[str]:
             grouped.setdefault(provider, []).append(attempt)
     providers = sorted(set(planned) | set(grouped))
     lines = [
-        "| provider | planned_count | actual_attempt_count | success_count | failure_count | timeout_count | skipped_count | elapsed_seconds | slow_attempt_count | top_failure_reasons |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| provider | planned_count | actual_attempt_count | success_count | failure_count | timeout_count | skipped_count | elapsed_seconds | slow_attempt_count | cache_hit_count | cache_miss_count | failure_cached_count | circuit_open_count | repeated_call_prevented_count | top_failure_reasons |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     if not providers:
-        lines.append("| none | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | none |")
+        lines.append("| none | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | none |")
         return lines
     for provider in providers:
         provider_attempts = grouped.get(provider, [])
@@ -1714,7 +1721,7 @@ def _provider_health_summary_lines(records: list[PriceRecord]) -> list[str]:
             reasons[reason] = reasons.get(reason, 0) + 1
         top_reasons = ", ".join(f"{reason}:{count}" for reason, count in sorted(reasons.items(), key=lambda item: (-item[1], item[0]))[:3]) or "none"
         lines.append(
-            "| {provider} | {planned} | {actual} | {success} | {failure} | {timeout} | {skipped} | {elapsed} | {slow} | {reasons} |".format(
+            "| {provider} | {planned} | {actual} | {success} | {failure} | {timeout} | {skipped} | {elapsed} | {slow} | {cache_hit} | {cache_miss} | {failure_cached} | {circuit_open} | {repeated} | {reasons} |".format(
                 provider=provider,
                 planned=planned.get(provider, 0),
                 actual=len(actual),
@@ -1724,6 +1731,11 @@ def _provider_health_summary_lines(records: list[PriceRecord]) -> list[str]:
                 skipped=len(skipped),
                 elapsed=round(sum(float(attempt.get("elapsed_seconds") or 0.0) for attempt in actual), 3),
                 slow=sum(1 for attempt in actual if attempt.get("slow_provider_attempt")),
+                cache_hit=sum(1 for record in records if record.provider_diagnostics.get("cache_hit") and (record.selected_provider or record.source) == provider),
+                cache_miss=sum(1 for record in records if record.provider_diagnostics.get("cache_miss") and provider in (record.provider_diagnostics.get("provider_planned_chain") or [])),
+                failure_cached=sum(1 for attempt in provider_attempts if attempt.get("cache_status") in {"hit_failure", "miss_failure_cached"}),
+                circuit_open=sum(1 for attempt in skipped if attempt.get("reason") == "skipped_by_provider_circuit"),
+                repeated=sum(1 for record in records if record.provider_diagnostics.get("repeated_provider_call_prevented") and (record.selected_provider or record.source) == provider),
                 reasons=top_reasons,
             )
         )
@@ -1754,6 +1766,57 @@ def _runtime_provider_cache_lines(records: list[PriceRecord]) -> list[str]:
         if len(call_ids) > 1:
             lines.append(f"  - warning: {function_name} called more than once")
     return lines
+
+
+def _cache_reuse_summary_lines(records: list[PriceRecord], runtime: dict[str, Any]) -> list[str]:
+    attempts = _all_provider_attempts(records)
+    manifest = runtime.get("quote_run_cache") if isinstance(runtime.get("quote_run_cache"), dict) else {}
+    batch_hit = sum(1 for attempt in attempts if attempt.get("provider") == "akshare" and attempt.get("from_cache"))
+    batch_miss = sum(1 for attempt in attempts if attempt.get("provider") == "akshare" and attempt.get("cache_status") == "miss")
+    failure_cached = sum(1 for attempt in attempts if attempt.get("provider") == "akshare" and attempt.get("cache_status") in {"hit_failure", "miss_failure_cached"})
+    lines = [
+        f"- quote_cache_hit_count: {_quote_cache_metric(records, runtime, 'quote_cache_hit_count')}",
+        f"- quote_cache_miss_count: {_quote_cache_metric(records, runtime, 'quote_cache_miss_count')}",
+        f"- quote_cache_failure_hit_count: {_quote_cache_metric(records, runtime, 'quote_cache_failure_hit_count')}",
+        f"- quote_cache_success_hit_count: {_quote_cache_metric(records, runtime, 'quote_cache_success_hit_count')}",
+        f"- batch_cache_hit_count: {batch_hit}",
+        f"- batch_cache_miss_count: {batch_miss}",
+        f"- batch_provider_reuse_count: {batch_hit}",
+        f"- batch_provider_failure_cached_count: {failure_cached}",
+        f"- repeated_provider_call_prevented_count: {_quote_cache_metric(records, runtime, 'repeated_provider_call_prevented_count')}",
+        f"- repeated_batch_call_prevented_count: {sum(1 for attempt in attempts if attempt.get('provider') == 'akshare' and attempt.get('from_cache'))}",
+        f"- quote_cache_profile_insufficient_count: {manifest.get('quote_cache_profile_insufficient_count', 0)}",
+        "- cache_hit_by_layer: " + _cache_hit_by(records, "source_universe"),
+        "- cache_hit_by_provider: " + _cache_hit_by_provider(records),
+    ]
+    return lines
+
+
+def _quote_cache_metric(records: list[PriceRecord], runtime: dict[str, Any], key: str) -> int:
+    manifest = runtime.get("quote_run_cache") if isinstance(runtime.get("quote_run_cache"), dict) else {}
+    if manifest and key in manifest:
+        return int(manifest.get(key, 0) or 0)
+    return int(runtime.get(key, 0) or 0)
+
+
+def _cache_hit_by(records: list[PriceRecord], attr: str) -> str:
+    counts: dict[str, int] = {}
+    for record in records:
+        if not record.provider_diagnostics.get("cache_hit"):
+            continue
+        key = str(getattr(record, attr, "") or "unknown")
+        counts[key] = counts.get(key, 0) + 1
+    return ", ".join(f"{key}:{value}" for key, value in sorted(counts.items())) or "none"
+
+
+def _cache_hit_by_provider(records: list[PriceRecord]) -> str:
+    counts: dict[str, int] = {}
+    for record in records:
+        if not record.provider_diagnostics.get("cache_hit"):
+            continue
+        provider = record.selected_provider or record.source or "unknown"
+        counts[provider] = counts.get(provider, 0) + 1
+    return ", ".join(f"{key}:{value}" for key, value in sorted(counts.items())) or "none"
 
 
 def _index_issue_counts(records: list[PriceRecord], summary: CompletenessSummary, runtime: dict[str, Any]) -> dict[str, int]:

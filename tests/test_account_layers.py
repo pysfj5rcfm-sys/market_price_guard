@@ -109,9 +109,9 @@ def test_account_config_check_tech_counts(tmp_path):
     assert result["account"] == "tech"
     assert result["account_bootstrapped"] is True
     assert result["universes"]["tech_core"]["configured_symbol_count"] == 7
-    assert result["universes"]["tech_operation_candidates"]["configured_symbol_count"] == 11
-    assert result["universes"]["tech_watchlist"]["configured_symbol_count"] == 16
-    assert result["universes"]["tech_scan_ai"]["configured_symbol_count"] == 30
+    assert result["universes"]["tech_operation_candidates"]["configured_symbol_count"] == 19
+    assert result["universes"]["tech_watchlist"]["configured_symbol_count"] == 28
+    assert result["universes"]["tech_scan_ai"]["configured_symbol_count"] == 40
     assert (tmp_path / "tech_layer_config_check.md").exists()
 
 
@@ -141,9 +141,9 @@ def test_manage_account_layers_tech_show_validate_export(tmp_path):
     export = manager.run(Namespace(account="tech", command="export"))
 
     assert show["account"] == "tech"
-    assert show["after_counts"] == {"operation": 7, "operation_candidate": 11, "watchlist": 16, "scan": 30}
+    assert show["after_counts"] == {"operation": 7, "operation_candidate": 19, "watchlist": 28, "scan": 40}
     assert validate["validation_status"] == "ok"
-    assert export["after_counts"]["scan"] == 30
+    assert export["after_counts"]["scan"] == 40
 
 
 def test_manage_account_layers_energy_does_not_fallback_to_tech(tmp_path):
@@ -232,12 +232,12 @@ def test_manage_account_layers_dry_run_makes_no_config_changes(tmp_path):
     root = _copy_project_config(tmp_path)
     before = (root / "config/watchlist.yaml").read_bytes()
 
-    exit_code = account_main(["--project-root", str(root), "-Account", "tech", "add", "513180.SH", "-Layer", "watchlist", "-DryRun"])
+    exit_code = account_main(["--project-root", str(root), "-Account", "tech", "add", "513310.SH", "-Layer", "watchlist", "-DryRun"])
 
     assert exit_code == 0
     assert (root / "config/watchlist.yaml").read_bytes() == before
     data = yaml.safe_load((root / "config/universes/tech_watchlist.yaml").read_text(encoding="utf-8"))
-    assert "513180.SH" not in data["symbols"]
+    assert "513310.SH" not in data["symbols"]
 
 
 def test_account_scripts_declared():

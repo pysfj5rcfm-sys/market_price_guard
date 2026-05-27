@@ -53,7 +53,7 @@ SOURCE_LIMIT_NOTE = (
 
 
 class EastmoneyDirectProvider(PriceProvider):
-    def __init__(self, http_get: Any | None = None, base_url: str = BASE_URL, timeout_seconds: float = 5.0, max_retries: int = 1):
+    def __init__(self, http_get: Any | None = None, base_url: str = BASE_URL, timeout_seconds: float = 2.5, max_retries: int = 0):
         self.http_get = http_get or _default_http_get
         self.base_url = base_url
         self.timeout_seconds = timeout_seconds
@@ -121,7 +121,7 @@ class EastmoneyDirectProvider(PriceProvider):
             ulist = self._fetch_symbol_ulist(symbol, fetch_time, secid, diagnostics, last_exception)
             if ulist is not None:
                 return ulist
-            return _error_price(symbol, fetch_time, ["provider_error"], exception=last_exception, diagnostics=diagnostics)
+            return _error_price(symbol, fetch_time, _failure_issues(last_exception), exception=last_exception, diagnostics=diagnostics)
 
         rc = payload.get("rc")
         data = payload.get("data")
@@ -563,3 +563,14 @@ def _error_price(
         operation_blocking_reason="reference_tier_requires_operation_confirmation",
         reference_note=SOURCE_LIMIT_NOTE,
     )
+
+
+def _failure_issues(exc: Exception | None) -> list[str]:
+    text = str(exc or "")
+    exc_name = type(exc).__name__ if exc else ""
+    issues = ["provider_error"]
+    if "WinError 10013" in text or "访问权限不允许" in text or "permission" in text.lower():
+        issues.append("provider_network_permission_denied")
+    elif exc_name in {"URLError", "TimeoutError", "socket.timeout"} or "timed out" in text.lower() or "timeout" in text.lower():
+        issues.append("provider_timeout")
+    return issues

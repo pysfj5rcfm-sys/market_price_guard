@@ -364,6 +364,31 @@ def test_runtime_budget_circuit_skips_provider_without_counting_attempted():
     assert "eastmoney_direct" not in second.provider_diagnostics["actual_provider_attempted"]
 
 
+def test_eastmoney_permission_denied_opens_runtime_circuit():
+    budget = ProviderRuntimeBudget(failure_threshold=10, timeout_threshold=10)
+    first = route_symbol(
+        _instrument("601899.SH", provider_priority=["akshare", "mock"], asset_type="stock"),
+        {
+            "eastmoney_direct": StaticProvider(_raw("601899.SH", "eastmoney_direct", None, quality_issues=["provider_error", "provider_network_permission_denied"])),
+            "mock": StaticProvider(_raw("601899.SH", "mock", 18.42)),
+        },
+        RouterConfig(provider_mode="live", provider_policy="diagnostic", runtime_budget=budget),
+    )
+    second_provider = StaticProvider(_raw("601985.SH", "eastmoney_direct", 7.25))
+    second = route_symbol(
+        _instrument("601985.SH", provider_priority=["akshare", "mock"], asset_type="stock"),
+        {"eastmoney_direct": second_provider, "mock": StaticProvider(_raw("601985.SH", "mock", 7.25))},
+        RouterConfig(provider_mode="live", provider_policy="diagnostic", runtime_budget=budget),
+    )
+
+    assert any(
+        attempt["provider"] == "eastmoney_direct" and attempt["reason"] == "provider_network_permission_denied"
+        for attempt in first.provider_diagnostics["provider_attempts"]
+    )
+    assert second_provider.called is False
+    assert second.provider_diagnostics["provider_skip_reasons"]["eastmoney_direct"] == "skipped_by_provider_circuit"
+
+
 def test_provider_health_summary_has_planned_actual_skip_counts():
     raw = route_symbol(
         _instrument("601899.SH", provider_priority=["akshare", "mock"], asset_type="stock"),
@@ -381,6 +406,79 @@ def test_provider_health_summary_has_planned_actual_skip_counts():
     assert "actual_attempt_count" in report
     assert "skipped_count" in report
     assert "route_reason: account_generic_a_share_stock_route" in report
+
+
+def test_run_level_quote_cache_records_success_and_hit_has_no_provider_attempt(monkeypatch, tmp_path):
+    monkeypatch.setenv("MARKET_GUARD_USE_QUOTE_RUN_CACHE", "1")
+    monkeypatch.setenv("MARKET_GUARD_QUOTE_RUN_CACHE_DIR", str(tmp_path / "quote_cache"))
+    instrument = _instrument("601899.SH", provider_priority=["akshare", "mock"], asset_type="stock")
+    first_provider = StaticProvider(_raw("601899.SH", "akshare", 18.42))
+
+    first = route_symbol(
+        instrument,
+        {"akshare": first_provider},
+        RouterConfig(provider_mode="live", provider_policy="conservative", account="energy", layer="energy_scan", quote_purpose="reference"),
+    )
+    second_provider = StaticProvider(exc=AssertionError("cache hit should prevent provider call"))
+    second = route_symbol(
+        instrument,
+        {"akshare": second_provider},
+        RouterConfig(provider_mode="live", provider_policy="conservative", account="energy", layer="energy_watchlist", quote_purpose="reference"),
+    )
+
+    assert first.provider_diagnostics["cache_miss"] is True
+    assert second_provider.called is False
+    assert second.provider_diagnostics["cache_hit"] is True
+    assert second.provider_diagnostics["actual_provider_attempted"] == []
+    assert second.provider_diagnostics["provider_attempts"] == []
+    assert second.provider_diagnostics["repeated_provider_call_prevented"] is True
+
+
+def test_run_level_quote_cache_records_failure(monkeypatch, tmp_path):
+    monkeypatch.setenv("MARKET_GUARD_USE_QUOTE_RUN_CACHE", "1")
+    monkeypatch.setenv("MARKET_GUARD_QUOTE_RUN_CACHE_DIR", str(tmp_path / "quote_cache"))
+    instrument = _instrument("601899.SH", provider_priority=["akshare"], asset_type="stock")
+
+    first = route_symbol(
+        instrument,
+        {"akshare": StaticProvider(_raw("601899.SH", "akshare", None, quality_issues=["provider_error"]))},
+        RouterConfig(provider_mode="live", provider_policy="conservative", account="energy", layer="energy_scan", quote_purpose="reference"),
+    )
+    second_provider = StaticProvider(exc=AssertionError("cached failure should prevent provider call"))
+    second = route_symbol(
+        instrument,
+        {"akshare": second_provider},
+        RouterConfig(provider_mode="live", provider_policy="conservative", account="energy", layer="energy_watchlist", quote_purpose="reference"),
+    )
+
+    assert first.price is None
+    assert second_provider.called is False
+    assert second.price is None
+    assert second.provider_diagnostics["cache_hit"] is True
+    assert second.provider_diagnostics["actual_provider_attempted"] == []
+
+
+def test_reference_cache_does_not_upgrade_operation_quote(monkeypatch, tmp_path):
+    monkeypatch.setenv("MARKET_GUARD_USE_QUOTE_RUN_CACHE", "1")
+    monkeypatch.setenv("MARKET_GUARD_QUOTE_RUN_CACHE_DIR", str(tmp_path / "quote_cache"))
+    instrument = _instrument("159819.SZ", provider_priority=["akshare", "mock"], asset_type="etf")
+    route_symbol(
+        instrument,
+        {"akshare": StaticProvider(_raw("159819.SZ", "akshare", 0.921))},
+        RouterConfig(provider_mode="live", provider_policy="fast", account="tech", layer="tech_scan_ai", quote_purpose="reference"),
+    )
+    operation_provider = StaticProvider(_raw("159819.SZ", "akshare", 0.922))
+
+    operation = route_symbol(
+        instrument,
+        {"akshare": operation_provider},
+        RouterConfig(provider_mode="live", provider_policy="fast", account="tech", layer="tech_core", quote_purpose="operation"),
+    )
+
+    assert operation_provider.called is True
+    assert operation.price == 0.922
+    assert operation.provider_diagnostics["cache_miss"] is True
+    assert operation.provider_diagnostics["cache_event"]["cache_status"] == "profile_insufficient"
 
 
 def test_allow_mock_fallback_for_operation_makes_mock_fallback_usable():

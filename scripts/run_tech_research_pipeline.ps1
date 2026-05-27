@@ -32,6 +32,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $OutputDir = Join-Path $ProjectRoot 'outputs_tech_pipeline_latest'
 $CacheDir = Join-Path $ProjectRoot 'outputs_tech_pipeline_cache_latest'
+$QuoteCacheDir = Join-Path $ProjectRoot 'outputs_tech_pipeline_quote_cache_latest'
 $SummaryPath = Join-Path $OutputDir 'pipeline_summary.md'
 $ManifestPath = Join-Path $OutputDir 'pipeline_manifest.json'
 $LayerManifestPath = Join-Path $OutputDir 'pipeline_layer_manifest.json'
@@ -39,10 +40,18 @@ $UploadManifestPath = Join-Path $OutputDir 'upload_manifest.md'
 
 $PreviousUseRunCache = $env:MARKET_GUARD_USE_UAT_RUN_CACHE
 $PreviousRunCacheDir = $env:MARKET_GUARD_UAT_RUN_CACHE_DIR
+$PreviousUseQuoteCache = $env:MARKET_GUARD_USE_QUOTE_RUN_CACHE
+$PreviousQuoteCacheDir = $env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+if (Test-Path $QuoteCacheDir) {
+    Remove-Item -Recurse -Force -LiteralPath $QuoteCacheDir -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Force -Path $QuoteCacheDir | Out-Null
 $PipelineStartedAt = (Get-Date).ToUniversalTime()
 $GeneratedAt = $PipelineStartedAt.ToString('o')
+$env:MARKET_GUARD_USE_QUOTE_RUN_CACHE = '1'
+$env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR = $QuoteCacheDir
 
 if ($UseRunCache) {
     if (Test-Path $CacheDir) {
@@ -184,6 +193,20 @@ $RunCacheHitCount = if ($CacheManifest) { [int]$CacheManifest.hit_count } else {
 $RunCacheMissCount = if ($CacheManifest) { [int]$CacheManifest.miss_count } else { 0 }
 $RunCacheBypassCount = if ($CacheManifest) { [int]$CacheManifest.bypass_count } else { 0 }
 $RunCacheErrorCount = if ($CacheManifest) { [int]$CacheManifest.cache_error_count } else { 0 }
+$QuoteCacheManifestPath = Join-Path $QuoteCacheDir 'quote_cache_manifest.json'
+$QuoteCacheManifest = $null
+if (Test-Path $QuoteCacheManifestPath) {
+    try {
+        $QuoteCacheManifest = Get-Content $QuoteCacheManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        $QuoteCacheManifest = $null
+    }
+}
+$QuoteCacheHitCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_hit_count } else { 0 }
+$QuoteCacheMissCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_miss_count } else { 0 }
+$QuoteCacheFailureHitCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_failure_hit_count } else { 0 }
+$QuoteCacheSuccessHitCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_success_hit_count } else { 0 }
+$RepeatedProviderPreventedCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.repeated_provider_call_prevented_count } else { 0 }
 
 $Passed = @($Results | Where-Object { $_.status -eq 'passed' }).Count
 $Failed = @($Results | Where-Object { $_.status -eq 'failed' }).Count
@@ -259,6 +282,19 @@ $Lines += ('- run_cache_bypass_count: ' + $RunCacheBypassCount)
 $Lines += ('- run_cache_error_count: ' + $RunCacheErrorCount)
 $Lines += '- item_cache_status: not_collected'
 $Lines += '- item_cache_note: see run-level cache summary'
+$Lines += ''
+$Lines += '## Cache / Reuse Summary'
+$Lines += ''
+$Lines += ('- quote_cache_hit_count: ' + $QuoteCacheHitCount)
+$Lines += ('- quote_cache_miss_count: ' + $QuoteCacheMissCount)
+$Lines += ('- quote_cache_failure_hit_count: ' + $QuoteCacheFailureHitCount)
+$Lines += ('- quote_cache_success_hit_count: ' + $QuoteCacheSuccessHitCount)
+$Lines += ('- batch_cache_hit_count: ' + $RunCacheHitCount)
+$Lines += ('- batch_cache_miss_count: ' + $RunCacheMissCount)
+$Lines += ('- repeated_provider_call_prevented_count: ' + $RepeatedProviderPreventedCount)
+$Lines += ('- repeated_batch_call_prevented_count: ' + $RunCacheHitCount)
+$Lines += '- cache_hit_by_layer: see step runtime_diagnostics.md'
+$Lines += '- cache_hit_by_provider: see step runtime_diagnostics.md'
 $Lines += ''
 $Lines += '## Layer Config Summary'
 $Lines += ''
@@ -352,6 +388,11 @@ $Manifest = New-Object PSObject -Property ([ordered]@{
         run_cache_miss_count = $RunCacheMissCount;
         run_cache_bypass_count = $RunCacheBypassCount;
         run_cache_error_count = $RunCacheErrorCount;
+        quote_cache_hit_count = $QuoteCacheHitCount;
+        quote_cache_miss_count = $QuoteCacheMissCount;
+        quote_cache_failure_hit_count = $QuoteCacheFailureHitCount;
+        quote_cache_success_hit_count = $QuoteCacheSuccessHitCount;
+        repeated_provider_call_prevented_count = $RepeatedProviderPreventedCount;
         total_elapsed_seconds = $TotalElapsedSeconds;
     })
 })
@@ -413,6 +454,16 @@ if ($null -ne $PreviousRunCacheDir) {
     $env:MARKET_GUARD_UAT_RUN_CACHE_DIR = $PreviousRunCacheDir
 } else {
     Remove-Item Env:\MARKET_GUARD_UAT_RUN_CACHE_DIR -ErrorAction SilentlyContinue
+}
+if ($null -ne $PreviousUseQuoteCache) {
+    $env:MARKET_GUARD_USE_QUOTE_RUN_CACHE = $PreviousUseQuoteCache
+} else {
+    Remove-Item Env:\MARKET_GUARD_USE_QUOTE_RUN_CACHE -ErrorAction SilentlyContinue
+}
+if ($null -ne $PreviousQuoteCacheDir) {
+    $env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR = $PreviousQuoteCacheDir
+} else {
+    Remove-Item Env:\MARKET_GUARD_QUOTE_RUN_CACHE_DIR -ErrorAction SilentlyContinue
 }
 
 Write-Host ('Pipeline summary: ' + $SummaryPath)

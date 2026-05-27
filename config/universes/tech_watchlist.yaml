@@ -4,7 +4,8 @@ universe_type: candidate_watchlist
 quote_purpose: reference
 required_for_operation: false
 affect_core_strict: false
-description: 科技 watchlist：当前持仓强弱验证 + 通信/CPO + 半导体/芯片/设备 + 重点AI个股观察。已按本轮要求移出港股科技、AI扩展ETF与外盘宏观项；不得直接给出买卖价。
+description: 科技 watchlist：当前持仓强弱验证 + 通信/CPO + 半导体/芯片/设备 + 港股科技/互联网 + AI PCB/服务器链 +
+  AI/科技ETF观察。watchlist 不直接给买卖价。
 symbols:
 - 159632.SZ
 - 513300.SH
@@ -22,6 +23,18 @@ symbols:
 - 688256.SH
 - 300308.SZ
 - 300502.SZ
+- 513180.SH
+- 513130.SH
+- 513020.SH
+- 513150.SH
+- 513320.SH
+- 002463.SZ
+- 002938.SZ
+- 600183.SH
+- 603228.SH
+- 002281.SZ
+- 515000.SH
+- 512930.SH
 layers:
   current_holding_reference:
     description: 当前科技持仓/核心参考，watchlist 中用于强弱验证，不等于新增买入清单
@@ -42,32 +55,39 @@ layers:
     - 588170.SH
     - 159558.SZ
   communication_cpo:
-    description: 通信/CPO 同组验证与光模块个股强度观察；个股不默认买入
+    description: 通信/CPO/光模块同组验证与个股强度观察；个股不默认交易
     symbols:
     - 515880.SH
     - 515050.SH
     - 159994.SZ
     - 300308.SZ
     - 300502.SZ
+    - 002281.SZ
   ai_focus:
-    description: AI方向重点观察；688256为个股强度验证，不默认交易
+    description: AI方向重点观察；个股与ETF只作强度验证，不自动交易
     symbols:
     - 159819.SZ
     - 688256.SH
-  nasdaq_core_reference:
-    description: 当前纳指核心持仓观察；本轮 watchlist 不扩 QDII 外盘/宏观比较项
+    - 512930.SH
+  hk_tech_cross_border:
+    description: 港股科技/港股互联网/QDII或跨境ETF观察；premium 模块未实现时不得替代溢价判断
     symbols:
-    - 159632.SZ
-    - 513300.SH
-deleted_by_this_update:
-- 513180.SH
-- 513130.SH
-- 513150.SH
-- 513020.SH
-- 159792.SZ
-- 513320.SH
-- 516510.SH
-- 588760.SH
-- 588930.SH
-- 159363.SZ
-- 515980.SH
+    - 513180.SH
+    - 513130.SH
+    - 513020.SH
+    - 513150.SH
+    - 513320.SH
+  ai_pcb_server_chain:
+    description: AI PCB/服务器链/材料事件观察；个股进入 candidate/watchlist 不等于买入建议
+    symbols:
+    - 002463.SZ
+    - 002938.SZ
+    - 600183.SH
+    - 603228.SH
+    - 002281.SZ
+  broad_tech_ai_etf:
+    description: 宽口径科技/AI ETF验证
+    symbols:
+    - 515000.SH
+    - 512930.SH
+deleted_by_this_update: []

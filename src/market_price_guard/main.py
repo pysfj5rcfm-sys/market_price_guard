@@ -9,6 +9,7 @@ from pathlib import Path
 from .normalize import load_watchlist, load_yaml, normalize_records
 from .price_reconciliation import apply_reconciliation
 from .provider_router import ProviderRuntimeBudget, RouterConfig, collect_routed_prices
+from .quote_run_cache import load_manifest as load_quote_cache_manifest
 from .models import WatchProject, Watchlist
 from .minute_bars import apply_minute_bars_probe
 from .providers.akshare_provider import AkshareProvider
@@ -136,6 +137,9 @@ def collect_prices(
             scan_mode=scan_mode,
             yfinance_circuit=yfinance_circuit,
             runtime_budget=runtime_budget,
+            account=profile,
+            layer=str(universe_metadata.get("universe_name", universe or profile)),
+            runtime_profile=scan_mode if quote_purpose == "reference" else provider_policy,
         ),
     )
     return {"watchlist": watchlist, "prices": prices, "universe_metadata": universe_metadata}
@@ -228,6 +232,7 @@ def run_pipeline(
         yfinance_circuit=yfinance_circuit,
         provider_runtime_budget=provider_runtime_budget,
     )
+    runtime["quote_run_cache"] = load_quote_cache_manifest()
     completeness = build_completeness_summary(records)
     exit_code = EXIT_STRICT_BLOCKED if strict and not completeness.usable_for_operation else EXIT_OK
     runtime["exit_code"] = exit_code
@@ -418,6 +423,11 @@ def _runtime_diagnostics(
         "provider_budget_run_id": provider_runtime_budget.run_id if provider_runtime_budget else run_start_time_utc,
         "provider_max_attempts": dict(provider_runtime_budget.max_attempts_by_provider) if provider_runtime_budget else {},
         "provider_max_time_seconds": dict(provider_runtime_budget.max_time_seconds_by_provider) if provider_runtime_budget else {},
+        "quote_cache_hit_count": sum(1 for record in records if record.provider_diagnostics.get("cache_hit")),
+        "quote_cache_miss_count": sum(1 for record in records if record.provider_diagnostics.get("cache_miss")),
+        "quote_cache_success_hit_count": sum(1 for record in records if record.provider_diagnostics.get("cache_hit") and record.price is not None),
+        "quote_cache_failure_hit_count": sum(1 for record in records if record.provider_diagnostics.get("cache_hit") and record.price is None),
+        "repeated_provider_call_prevented_count": sum(1 for record in records if record.provider_diagnostics.get("repeated_provider_call_prevented")),
     }
 
 

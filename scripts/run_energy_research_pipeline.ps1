@@ -18,14 +18,23 @@ if ($ScanMode -notin @('fast', 'diagnostic')) {
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $OutputDir = Join-Path $ProjectRoot 'outputs_energy_pipeline_latest'
+$QuoteCacheDir = Join-Path $ProjectRoot 'outputs_energy_pipeline_quote_cache_latest'
 $SummaryPath = Join-Path $OutputDir 'pipeline_summary.md'
 $ManifestPath = Join-Path $OutputDir 'pipeline_manifest.json'
 $LayerManifestPath = Join-Path $OutputDir 'pipeline_layer_manifest.json'
 $UploadManifestPath = Join-Path $OutputDir 'upload_manifest.md'
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+if (Test-Path $QuoteCacheDir) {
+    Remove-Item -Recurse -Force -LiteralPath $QuoteCacheDir -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Force -Path $QuoteCacheDir | Out-Null
 $PipelineStartedAt = (Get-Date).ToUniversalTime()
 $GeneratedAt = $PipelineStartedAt.ToString('o')
+$PreviousUseQuoteCache = $env:MARKET_GUARD_USE_QUOTE_RUN_CACHE
+$PreviousQuoteCacheDir = $env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR
+$env:MARKET_GUARD_USE_QUOTE_RUN_CACHE = '1'
+$env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR = $QuoteCacheDir
 
 $Steps = @(
     @{ Name = 'energy_scan'; Script = 'run_energy_scan.ps1'; Args = [string[]]@('-Mode', $ScanMode); OutputDir = 'outputs_energy_scan_latest'; Skip = $SkipScan.IsPresent },
@@ -172,6 +181,20 @@ foreach ($Step in $Steps) {
     }
 }
 $LayerMismatchCount = @($LayerManifests | Where-Object { $_.config_mismatch }).Count
+$QuoteCacheManifestPath = Join-Path $QuoteCacheDir 'quote_cache_manifest.json'
+$QuoteCacheManifest = $null
+if (Test-Path $QuoteCacheManifestPath) {
+    try {
+        $QuoteCacheManifest = Get-Content $QuoteCacheManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        $QuoteCacheManifest = $null
+    }
+}
+$QuoteCacheHitCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_hit_count } else { 0 }
+$QuoteCacheMissCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_miss_count } else { 0 }
+$QuoteCacheFailureHitCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_failure_hit_count } else { 0 }
+$QuoteCacheSuccessHitCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.quote_cache_success_hit_count } else { 0 }
+$RepeatedProviderPreventedCount = if ($QuoteCacheManifest) { [int]$QuoteCacheManifest.repeated_provider_call_prevented_count } else { 0 }
 
 $Lines = @()
 $Lines += '# Energy Research Pipeline Summary'
@@ -219,6 +242,19 @@ $Lines += '|---|---:|---:|---:|---:|---:|---:|---:|---:|'
 foreach ($Row in $CompletenessRows) {
     $Lines += ('| ' + $Row.layer + ' | ' + $Row.total_symbols + ' | ' + $Row.successful_quote_count + ' | ' + $Row.failed_quote_count + ' | ' + $Row.provider_missing_count + ' | ' + $Row.unsupported_count + ' | ' + $Row.stale_count + ' | ' + $Row.usable_for_reference_count + ' | ' + $Row.usable_for_operation_count + ' |')
 }
+$Lines += ''
+$Lines += '## Cache / Reuse Summary'
+$Lines += ''
+$Lines += ('- quote_cache_hit_count: ' + $QuoteCacheHitCount)
+$Lines += ('- quote_cache_miss_count: ' + $QuoteCacheMissCount)
+$Lines += ('- quote_cache_failure_hit_count: ' + $QuoteCacheFailureHitCount)
+$Lines += ('- quote_cache_success_hit_count: ' + $QuoteCacheSuccessHitCount)
+$Lines += '- batch_cache_hit_count: see step runtime_diagnostics.md'
+$Lines += '- batch_cache_miss_count: see step runtime_diagnostics.md'
+$Lines += ('- repeated_provider_call_prevented_count: ' + $RepeatedProviderPreventedCount)
+$Lines += '- repeated_batch_call_prevented_count: see step runtime_diagnostics.md'
+$Lines += '- cache_hit_by_layer: see step runtime_diagnostics.md'
+$Lines += '- cache_hit_by_provider: see step runtime_diagnostics.md'
 $Lines += ''
 $Lines += '## Runtime Diagnostics Summary'
 $Lines += ''
@@ -288,6 +324,11 @@ $Manifest = New-Object PSObject -Property ([ordered]@{
         strict_blocked_but_reported = $StrictBlocked;
         skipped_by_parameter = $Skipped;
         total_elapsed_seconds = $TotalElapsedSeconds;
+        quote_cache_hit_count = $QuoteCacheHitCount;
+        quote_cache_miss_count = $QuoteCacheMissCount;
+        quote_cache_failure_hit_count = $QuoteCacheFailureHitCount;
+        quote_cache_success_hit_count = $QuoteCacheSuccessHitCount;
+        repeated_provider_call_prevented_count = $RepeatedProviderPreventedCount;
         no_minute_probe = $true;
         no_intraday_metrics = $true;
         no_vwap = $true;
@@ -324,6 +365,17 @@ $UploadLines = @(
     '- No minute_probe, no intraday_metrics, no VWAP, no trading advice.'
 )
 $UploadLines | Set-Content $UploadManifestPath -Encoding UTF8
+
+if ($null -ne $PreviousUseQuoteCache) {
+    $env:MARKET_GUARD_USE_QUOTE_RUN_CACHE = $PreviousUseQuoteCache
+} else {
+    Remove-Item Env:\MARKET_GUARD_USE_QUOTE_RUN_CACHE -ErrorAction SilentlyContinue
+}
+if ($null -ne $PreviousQuoteCacheDir) {
+    $env:MARKET_GUARD_QUOTE_RUN_CACHE_DIR = $PreviousQuoteCacheDir
+} else {
+    Remove-Item Env:\MARKET_GUARD_QUOTE_RUN_CACHE_DIR -ErrorAction SilentlyContinue
+}
 
 Write-Host ('Pipeline summary: ' + $SummaryPath)
 if ($Failed -gt 0) {

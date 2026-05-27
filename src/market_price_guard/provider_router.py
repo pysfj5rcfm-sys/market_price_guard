@@ -6,6 +6,7 @@ from typing import Protocol
 
 from .freshness import now_utc
 from .models import Instrument, RawPrice, Watchlist
+from .quote_run_cache import quote_key, read_quote, write_quote
 from .yfinance_circuit import YFinanceCircuitBreaker
 
 
@@ -83,6 +84,9 @@ class RouterConfig:
     scan_mode: str = "fast"
     yfinance_circuit: YFinanceCircuitBreaker | None = None
     runtime_budget: ProviderRuntimeBudget | None = None
+    account: str = ""
+    layer: str = ""
+    runtime_profile: str = ""
 
 
 def collect_routed_prices(
@@ -100,6 +104,33 @@ def collect_routed_prices(
 def route_symbol(instrument: Instrument, providers: dict[str, Provider], config: RouterConfig) -> RawPrice:
     configured_priority = [provider for provider in (instrument.provider_priority or [instrument.provider]) if provider != "disabled"]
     priority = _effective_priority(instrument, config.provider_mode, config.provider_policy, config.quote_purpose, config.scan_mode)
+    key = quote_key(
+        account=config.account or str(instrument.project_scope or ""),
+        symbol=instrument.symbol,
+        normalized_symbol=_normalize_symbol(instrument.symbol),
+        quote_purpose=config.quote_purpose,
+        provider_profile=config.provider_policy,
+        runtime_profile=config.runtime_profile or config.scan_mode,
+        market=instrument.market,
+        asset_type=instrument.asset_type or "",
+        layer=config.layer or instrument.source_universe or instrument.universe_type,
+    )
+    cached, cache_event = read_quote(key)
+    if cached is not None:
+        cached.provider_diagnostics.update(
+            {
+                "provider_planned_chain": priority,
+                "provider_priority": priority,
+                "effective_provider_chain": priority,
+                "configured_provider_priority": configured_priority,
+                "normalized_symbol": _normalize_symbol(instrument.symbol),
+                "route_reason": _route_reason(instrument, priority, config.quote_purpose),
+                "provider_policy": config.provider_policy,
+                "quote_purpose": config.quote_purpose,
+                "cache_event": cache_event,
+            }
+        )
+        return cached
     attempts: list[dict[str, object]] = []
     last_raw: RawPrice | None = None
 
@@ -215,13 +246,18 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
             ]
         if config.runtime_budget is not None:
             config.runtime_budget.record(provider_name, elapsed, success=_raw_usable_for_selection(raw), slow=elapsed > config.timeout_seconds)
+            if "provider_network_permission_denied" in raw.quality_issues:
+                config.runtime_budget.circuit_open_by_provider[provider_name] = "skipped_by_provider_circuit"
         attempts.extend(stamped_attempts)
         last_raw = raw
         if _raw_usable_for_selection(raw):
             if provider_name == "yfinance" and config.yfinance_circuit is not None:
                 config.yfinance_circuit.record_success(elapsed)
             _attach_reconciliation_candidates(instrument, providers, config, raw, provider_name, priority, attempts)
-            return _selected_raw(instrument, raw, provider_name, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
+            selected = _selected_raw(instrument, raw, provider_name, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
+            selected.provider_diagnostics.update({"cache_hit": False, "cache_miss": True, "cache_event": cache_event, "cacheable": True})
+            write_quote(key, selected)
+            return selected
         if provider_name == "yfinance" and config.yfinance_circuit is not None:
             message = ",".join(raw.quality_issues) or str(raw.provider_diagnostics.get("exception_message", "provider_error"))
             if "provider_timeout" in raw.quality_issues:
@@ -229,7 +265,10 @@ def route_symbol(instrument: Instrument, providers: dict[str, Provider], config:
             else:
                 config.yfinance_circuit.record_error(message, elapsed_seconds=elapsed, symbol=instrument.symbol)
 
-    return _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
+    failed = _final_failed_raw(instrument, last_raw, priority, configured_priority, config.provider_policy, config.quote_purpose, attempts)
+    failed.provider_diagnostics.update({"cache_hit": False, "cache_miss": True, "cache_event": cache_event, "cacheable": True})
+    write_quote(key, failed)
+    return failed
 
 
 def _effective_priority(
@@ -341,6 +380,10 @@ def _final_failed_raw(
     raw.quote_purpose = quote_purpose
     issues = list(raw.quality_issues)
     failure_reason = _final_failure_reason(attempts)
+    if instrument.symbol.endswith(".HK") and failure_reason in {"provider_error", "provider_timeout", "symbol_not_found", ""}:
+        failure_reason = "hk_provider_timeout" if failure_reason == "provider_timeout" else "hk_reference_unavailable"
+        issues = [issue for issue in issues if issue != "symbol_not_found"]
+        issues.append(failure_reason)
     if failure_reason and "symbol_not_found" in issues:
         issues = [issue for issue in issues if issue != "symbol_not_found"]
         issues.append("provider_error")
@@ -490,7 +533,7 @@ def _provider_attempts(raw: RawPrice) -> list[dict[str, object]]:
             "price": raw.price if attempt.get("status") == "success" else "",
             "quote_time": raw.quote_time.isoformat() if raw.quote_time and attempt.get("status") == "success" else "",
             "usable_for_operation": usable,
-            "reason": attempt.get("exception_message", "") or ",".join(raw.quality_issues),
+            "reason": _attempt_reason(raw, attempt),
             "from_cache": attempt.get("from_cache", ""),
             "call_id": attempt.get("call_id", ""),
             "call_count": attempt.get("call_count", ""),
@@ -533,8 +576,24 @@ def _raw_attempt(raw: RawPrice, provider_name: str) -> dict[str, object]:
         price=raw.price,
         quote_time=raw.quote_time.isoformat() if raw.quote_time else "",
         usable_for_operation=usable_for_operation,
-        reason=",".join(raw.quality_issues),
+        reason=_attempt_reason(raw, {}),
     )
+
+
+def _attempt_reason(raw: RawPrice, attempt: dict[str, object]) -> str:
+    for reason in [
+        "provider_network_permission_denied",
+        "provider_timeout",
+        "hk_provider_timeout",
+        "hk_provider_error",
+        "yfinance_not_installed",
+        "yfinance_provider_error",
+        "provider_error",
+        "symbol_not_found",
+    ]:
+        if reason in raw.quality_issues:
+            return reason
+    return str(attempt.get("exception_message", "")) or ",".join(raw.quality_issues)
 
 
 def _attempt(

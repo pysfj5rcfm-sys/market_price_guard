@@ -122,7 +122,15 @@ def test_tech_minute_probe_includes_operation_candidates_from_registry(tmp_path)
             "159558.SZ",
             "515050.SH",
             "159994.SZ",
-        ]
+            "513180.SH",
+            "513130.SH",
+            "513150.SH",
+            "513020.SH",
+            "002463.SZ",
+            "002938.SZ",
+            "600183.SH",
+            "002281.SZ",
+            ]
     mock_path.write_text(
         "prices:\n"
         + "\n".join(
@@ -161,6 +169,14 @@ def test_tech_minute_probe_includes_operation_candidates_from_registry(tmp_path)
         "159558.SZ",
         "515050.SH",
         "159994.SZ",
+        "513180.SH",
+        "513130.SH",
+        "513150.SH",
+        "513020.SH",
+        "002463.SZ",
+        "002938.SZ",
+        "600183.SH",
+        "002281.SZ",
     }
     assert set(candidates["required_for_operation"].astype(str)) == {"False"}
     assert set(candidates["usable_for_operation"].astype(str)) == {"False"}
