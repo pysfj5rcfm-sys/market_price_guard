@@ -1,0 +1,81 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<section class="panel {% if error %}error{% endif %}">
+  {% if error %}
+    <h1>Bundle Failed</h1>
+    <p>{{ error }}</p>
+    <p><a class="button" href="/admin/bundles">Back to bundles</a></p>
+  {% else %}
+    <h1>Bundle Created</h1>
+    <dl class="facts">
+      <div><dt>Batch</dt><dd>{{ result.batch_name }}</dd></div>
+      <div><dt>Zip name</dt><dd>{{ result.zip_name }}</dd></div>
+      <div><dt>Generated</dt><dd>{{ result.generated_at }}</dd></div>
+      <div><dt>Size</dt><dd>{{ result.zip_size }}</dd></div>
+    </dl>
+    <div class="toolbar">
+      <a class="button" href="/admin/bundles/download/{{ result.zip_name }}">Download</a>
+      <a class="button" href="/admin/bundles">Back to bundles</a>
+    </div>
+  {% endif %}
+</section>
+
+{% if result %}
+<section class="two-col">
+  <article class="panel">
+    <h2>Included Paths</h2>
+    <table>
+      <thead><tr><th>Path</th><th>Role</th><th>Required</th><th>Match</th></tr></thead>
+      <tbody>
+      {% for item in result.included_paths %}
+        <tr>
+          <td>{{ item.path }}</td>
+          <td>{{ item.role }}</td>
+          <td>{{ item.required }}</td>
+          <td>{{ item.latest_match_pipeline }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </article>
+  <article class="panel">
+    <h2>Skipped Paths</h2>
+    {% if result.skipped_paths %}
+      <table>
+        <thead><tr><th>Path</th><th>Reason</th><th>Fallback</th></tr></thead>
+        <tbody>
+        {% for item in result.skipped_paths %}
+          <tr><td>{{ item.path }}</td><td>{{ item.reason }}</td><td>{{ item.authoritative_fallback }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No skipped paths.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="two-col">
+  <article class="panel">
+    <h2>Missing Optional Paths</h2>
+    {% if result.missing_optional_paths %}
+      <ul class="plain-list">
+        {% for item in result.missing_optional_paths %}<li>{{ item }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No optional path gaps.</p>
+    {% endif %}
+  </article>
+  <article class="panel">
+    <h2>Warnings</h2>
+    {% if result.warnings %}
+      <ul class="plain-list">
+        {% for item in result.warnings %}<li>{{ item }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No warnings.</p>
+    {% endif %}
+  </article>
+</section>
+{% endif %}
+{% endblock %}

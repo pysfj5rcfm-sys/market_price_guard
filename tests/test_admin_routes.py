@@ -3,6 +3,12 @@ from __future__ import annotations
 import asyncio
 from urllib.parse import urlencode
 
+import pytest
+
+pytest.importorskip("fastapi")
+pytest.importorskip("uvicorn")
+pytest.importorskip("jinja2")
+
 from market_price_guard.admin_app import app
 
 
@@ -43,7 +49,7 @@ def test_admin_routes_exist_and_home_returns_200():
 
     assert status == 200
     assert b"Local Admin Layer Manager" in body
-    assert b"No pipeline runner in v0.8.0" in body
+    assert b"Task runner" in body
 
 
 def test_admin_account_pages_return_200():
@@ -64,9 +70,11 @@ def test_admin_validate_route_returns_200():
     assert b"Validate energy" in body
 
 
-def test_admin_v080_has_no_pipeline_or_bundle_routes():
-    pipeline_status, _ = asyncio.run(_request("/admin/pipeline"))
-    bundle_status, _ = asyncio.run(_request("/admin/bundle"))
+def test_admin_v081_task_and_bundle_routes_exist():
+    tasks_status, tasks_body = asyncio.run(_request("/admin/tasks"))
+    bundles_status, bundles_body = asyncio.run(_request("/admin/bundles"))
 
-    assert pipeline_status == 404
-    assert bundle_status == 404
+    assert tasks_status == 200
+    assert bundles_status == 200
+    assert b"Pipeline Runner" in tasks_body
+    assert b"Output Bundles" in bundles_body

@@ -30,7 +30,7 @@ def test_admin_no_trading_advice_keywords_in_new_ui_surfaces():
     )
     paths = list(Path("src/market_price_guard").glob("admin*.py"))
     paths.extend(Path("templates/admin").glob("*.html"))
-    handoff = Path("docs/HANDOFF_v0.8.0.md")
+    handoff = Path("docs/HANDOFF_v0.8.1.md")
     if handoff.exists():
         paths.append(handoff)
 

@@ -13,7 +13,10 @@ $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $Python = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
-$BundledPython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+$UnixPython = Join-Path $ProjectRoot '.venv/bin/python'
+$HomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+$BundledPython = if ($HomeDir) { Join-Path $HomeDir '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' } else { '' }
+$BundledUnixPython = if ($HomeDir) { Join-Path $HomeDir '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3' } else { '' }
 
 if (Test-Path $Python) {
     $null = & $Python --version 2>$null
@@ -26,10 +29,17 @@ if (Test-Path $Python) {
 }
 
 if (-not $Python) {
-    if (Test-Path $BundledPython) {
+    if (Test-Path $UnixPython) {
+        $Python = $UnixPython
+    } elseif ($BundledPython -and (Test-Path $BundledPython)) {
         $Python = $BundledPython
+    } elseif ($BundledUnixPython -and (Test-Path $BundledUnixPython)) {
+        $Python = $BundledUnixPython
     } else {
         $PathPython = Get-Command python -ErrorAction SilentlyContinue
+        if ($null -eq $PathPython) {
+            $PathPython = Get-Command python3 -ErrorAction SilentlyContinue
+        }
         if ($null -eq $PathPython) {
             $PathPython = Get-Command py -ErrorAction SilentlyContinue
         }

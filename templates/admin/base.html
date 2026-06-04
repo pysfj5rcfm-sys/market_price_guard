@@ -18,14 +18,16 @@
       <a href="/admin/accounts/energy">Energy</a>
       <a href="{{ symbol_wizard_path }}">Symbol wizard</a>
       <a href="/admin/validate">Validate</a>
+      <a href="/admin/tasks">Tasks</a>
+      <a href="/admin/bundles">Bundles</a>
     </nav>
   </header>
   <main class="shell">
     <section class="notice">
       <strong>This is a local admin dashboard.</strong>
-      <span>Layer changes are configuration management only.</span>
+      <span>Pipeline runs are data/report generation only.</span>
       <span>No trading advice is generated.</span>
-      <span>No pipeline runner in v0.8.0. Pipeline runner will be v0.8.1.</span>
+      <span>Task runner does not place orders.</span>
     </section>
     {% block content %}{% endblock %}
   </main>

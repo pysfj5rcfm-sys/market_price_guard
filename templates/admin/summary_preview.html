@@ -1,0 +1,26 @@
+{% if record.summary_preview.metrics %}
+  <dl class="compact">
+    {% for key, value in record.summary_preview.metrics.items() %}
+      <div><dt>{{ key }}</dt><dd>{{ value }}</dd></div>
+    {% endfor %}
+  </dl>
+{% endif %}
+{% if record.summary_preview.snapshot_paths %}
+  <h3>Snapshot Paths</h3>
+  <table>
+    <thead><tr><th>Path</th><th>Exists</th></tr></thead>
+    <tbody>
+    {% for item in record.summary_preview.snapshot_paths %}
+      <tr><td>{{ item.path }}</td><td>{{ item.exists }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% if record.summary_preview.previews %}
+  {% for item in record.summary_preview.previews %}
+    <h3>{{ item.path }}</h3>
+    <pre>{{ item.text }}</pre>
+  {% endfor %}
+{% else %}
+  <p class="muted">No summary preview available yet.</p>
+{% endif %}

@@ -4,8 +4,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
-VERSION = "v0.8.0"
-SCOPE_CLASSIFICATION = "local FastAPI admin dashboard for account layer management"
+VERSION = "v0.8.1"
+SCOPE_CLASSIFICATION = "local FastAPI admin pipeline runner and output bundle UI"
 
 ACCOUNTS = ["tech", "energy"]
 LAYERS = ["operation", "operation_candidate", "watchlist", "scan"]

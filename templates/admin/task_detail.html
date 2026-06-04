@@ -1,0 +1,72 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Task Detail</h1>
+  <dl class="facts">
+    <div><dt>Task ID</dt><dd>{{ record.task_id }}</dd></div>
+    <div><dt>Task name</dt><dd>{{ record.task_name }}</dd></div>
+    <div><dt>Status</dt><dd class="status">{{ record.status }}</dd></div>
+    <div><dt>Exit code</dt><dd>{{ record.exit_code }}</dd></div>
+    <div><dt>Elapsed seconds</dt><dd>{{ record.elapsed_seconds }}</dd></div>
+    <div><dt>Batch</dt><dd>{{ record.batch_name }}</dd></div>
+    <div><dt>Started</dt><dd>{{ record.started_at }}</dd></div>
+    <div><dt>Finished</dt><dd>{{ record.finished_at }}</dd></div>
+  </dl>
+  <h2>Command</h2>
+  <pre>{{ record.command }}</pre>
+  {% if record.warnings %}
+    <h2>Warnings</h2>
+    <ul class="plain-list">
+      {% for item in record.warnings %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% if record.bundle_eligible %}
+    <form method="post" action="/admin/bundles/build" class="inline-form">
+      <input type="hidden" name="batch_name" value="{{ record.batch_name }}">
+      <input type="hidden" name="task_id" value="{{ record.task_id }}">
+      <input type="hidden" name="task_name" value="{{ record.task_name }}">
+      <input type="hidden" name="command" value="{{ record.command }}">
+      <button type="submit">Build {{ record.batch_name }} bundle</button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="two-col">
+  <article class="panel">
+    <h2>Summary Paths</h2>
+    {% if record.summary_paths %}
+      <ul class="plain-list">
+        {% for item in record.summary_paths %}<li>{{ item }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No summary path found.</p>
+    {% endif %}
+  </article>
+  <article class="panel">
+    <h2>Output Paths</h2>
+    {% if record.output_paths %}
+      <ul class="plain-list">
+        {% for item in record.output_paths %}<li>{{ item }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No output path found.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="panel">
+  <h2>Summary Preview</h2>
+  {% include "admin/summary_preview.html" %}
+</section>
+
+<section class="two-col">
+  <article class="panel">
+    <h2>Stdout Tail</h2>
+    <pre>{{ record.stdout_tail }}</pre>
+  </article>
+  <article class="panel">
+    <h2>Stderr Tail</h2>
+    <pre>{{ record.stderr_tail }}</pre>
+  </article>
+</section>
+{% endblock %}
