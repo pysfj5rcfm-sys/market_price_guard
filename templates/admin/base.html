@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>market_price_guard Local Admin</title>
+  <link rel="stylesheet" href="{{ url_for('admin_static', path='admin.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>market_price_guard</strong>
+      <span class="muted">{{ version }}</span>
+    </div>
+    <nav>
+      <a href="/admin">Home</a>
+      <a href="/admin/accounts/tech">Tech</a>
+      <a href="/admin/accounts/energy">Energy</a>
+      <a href="{{ symbol_wizard_path }}">Symbol wizard</a>
+      <a href="/admin/validate">Validate</a>
+    </nav>
+  </header>
+  <main class="shell">
+    <section class="notice">
+      <strong>This is a local admin dashboard.</strong>
+      <span>Layer changes are configuration management only.</span>
+      <span>No trading advice is generated.</span>
+      <span>No pipeline runner in v0.8.0. Pipeline runner will be v0.8.1.</span>
+    </section>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

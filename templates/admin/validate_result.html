@@ -1,0 +1,45 @@
+{% extends "admin/base.html" %}
+{% block content %}
+{% if registry_detail %}
+<section class="panel">
+  <h1>Registry Details</h1>
+  <dl class="facts">
+    <div><dt>symbol</dt><dd>{{ registry_detail.symbol }}</dd></div>
+    <div><dt>registry_status</dt><dd>{{ registry_detail.registry_status }}</dd></div>
+  </dl>
+  <pre>{{ registry_detail.entry }}</pre>
+</section>
+{% endif %}
+
+{% for account, result in results.items() %}
+<section class="panel">
+  <h1>Validate {{ account }}</h1>
+  <dl class="facts">
+    <div><dt>status</dt><dd>{{ result.status }}</dd></div>
+    <div><dt>root mirror match</dt><dd>{{ result.root_mirror_match }}</dd></div>
+    <div><dt>registry missing</dt><dd>{{ result.registry_missing_symbols|join(", ") or "none" }}</dd></div>
+    <div><dt>duplicate registry</dt><dd>{{ result.duplicate_registry_entries|join(", ") or "none" }}</dd></div>
+  </dl>
+  <h2>Counts</h2>
+  <table>
+    <thead>
+      <tr><th>layer</th><th>count</th><th>root mirror count</th><th>mirror status</th></tr>
+    </thead>
+    <tbody>
+      {% for layer_name, info in result.universes.items() %}
+      <tr>
+        <td>{{ info.root_layer_name }}</td>
+        <td>{{ info.configured_symbol_count }}</td>
+        <td>{{ info.root_mirror_symbol_count }}</td>
+        <td>{{ info.root_mirror_matches }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <h2>Policy warnings</h2>
+  <ul>{% for item in result.policy_warnings %}<li>{{ item }}</li>{% else %}<li>none</li>{% endfor %}</ul>
+  <h2>Config mismatch / errors</h2>
+  <ul>{% for item in result.errors %}<li>{{ item }}</li>{% else %}<li>none</li>{% endfor %}</ul>
+</section>
+{% endfor %}
+{% endblock %}

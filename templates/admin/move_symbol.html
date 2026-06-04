@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Move Symbol</h1>
+  <form method="post" action="/admin/layers/move" class="stacked-form">
+    <input type="hidden" name="stage" value="dry_run">
+    <label>Account
+      <select name="account">
+        {% for account in accounts %}
+        <option value="{{ account }}" {% if form.account == account %}selected{% endif %}>{{ account }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Symbol <input name="symbol" value="{{ form.symbol or '' }}" required></label>
+    <label>Source layer
+      <select name="source_layer">
+        {% for layer in layers %}
+        <option value="{{ layer }}" {% if form.source_layer == layer %}selected{% endif %}>{{ layer }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Target layer
+      <select name="target_layer">
+        {% for layer in layers %}
+        <option value="{{ layer }}" {% if form.target_layer == layer %}selected{% endif %}>{{ layer }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" name="confirm_apply"> Confirm config change</label>
+    <label class="check"><input type="checkbox" name="confirm_operation_layer_change"> Confirm operation-layer config change</label>
+    <label class="check"><input type="checkbox" name="confirm_policy_override"> Confirm policy warning</label>
+    <button type="submit">Dry-run</button>
+  </form>
+</section>
+
+{% if plan %}
+  {% include "admin/dry_run_result.html" %}
+{% endif %}
+{% endblock %}

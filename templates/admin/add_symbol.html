@@ -1,0 +1,111 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Symbol Wizard</h1>
+  <form method="post" action="{{ symbol_wizard_path }}" class="stacked-form">
+    <input type="hidden" name="stage" value="analyze">
+    <fieldset>
+      <legend>Step 1</legend>
+      <label>Account
+        <select name="account">
+          {% for account in accounts %}
+          <option value="{{ account }}" {% if form.account == account %}selected{% endif %}>{{ account }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Target layer
+        <select name="target_layer">
+          {% for layer in layers %}
+          <option value="{{ layer }}" {% if form.target_layer == layer %}selected{% endif %}>{{ layer }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Symbol
+        <input name="symbol" value="{{ form.symbol or '' }}" placeholder="159632, 00883.HK, QQQ, GOLD_CNY" required>
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>Optional</legend>
+      <label>Display name <input name="display_name" value="{{ form.display_name or '' }}"></label>
+      <label>Note <input name="note" value="{{ form.note or '' }}"></label>
+      <label>Instrument type
+        <select name="instrument_type">
+          <option value="">auto infer</option>
+          {% for item in instrument_types %}
+          <option value="{{ item }}" {% if form.instrument_type == item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Category
+        <select name="category">
+          <option value="">suggest</option>
+          {% set category_list = energy_categories if form.account == "energy" else tech_categories %}
+          {% for item in category_list %}
+          <option value="{{ item }}" {% if form.category == item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </fieldset>
+    <button type="submit">Analyze</button>
+  </form>
+</section>
+
+{% if analysis %}
+<section class="panel">
+  <h2>Step 2</h2>
+  <dl class="facts">
+    <div><dt>raw_symbol</dt><dd>{{ analysis.raw_symbol }}</dd></div>
+    <div><dt>canonical_symbol</dt><dd>{{ analysis.canonical_symbol }}</dd></div>
+    <div><dt>inferred_market</dt><dd>{{ analysis.inferred_market }}</dd></div>
+    <div><dt>inferred_asset_type</dt><dd>{{ analysis.inferred_asset_type }}</dd></div>
+    <div><dt>registry_status</dt><dd>{{ analysis.registry_status }}</dd></div>
+    <div><dt>existing_layers</dt><dd>{{ analysis.existing_layers|join(", ") or "none" }}</dd></div>
+    <div><dt>duplicate status</dt><dd>{{ analysis.duplicate_status }}</dd></div>
+    <div><dt>suggested category</dt><dd>{{ analysis.suggested_category }}</dd></div>
+    <div><dt>registry stub needed</dt><dd>{{ analysis.registry_stub_needed }}</dd></div>
+  </dl>
+  <h3>Policy warnings</h3>
+  <ul>
+    {% for warning in analysis.policy_warnings %}
+    <li>{{ warning }}</li>
+    {% else %}
+    <li>none</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Step 3</h2>
+  <form method="post" action="{{ symbol_wizard_path }}" class="stacked-form">
+    <input type="hidden" name="stage" value="dry_run">
+    <input type="hidden" name="account" value="{{ analysis.account }}">
+    <input type="hidden" name="target_layer" value="{{ analysis.target_layer }}">
+    <input type="hidden" name="symbol" value="{{ analysis.canonical_symbol }}">
+    <input type="hidden" name="display_name" value="{{ analysis.display_name }}">
+    <input type="hidden" name="note" value="{{ analysis.note }}">
+    <label>Instrument type
+      <select name="instrument_type">
+        {% for item in instrument_types %}
+        <option value="{{ item }}" {% if analysis.instrument_type == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Category
+      <select name="category">
+        {% set category_list = energy_categories if analysis.account == "energy" else tech_categories %}
+        {% for item in category_list %}
+        <option value="{{ item }}" {% if analysis.suggested_category == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if analysis.registry_stub_needed %}
+    <label class="check"><input type="checkbox" name="create_registry_stub"> Create minimal registry stub</label>
+    {% endif %}
+    <label class="check"><input type="checkbox" name="confirm_apply"> Confirm config change</label>
+    <label class="check"><input type="checkbox" name="confirm_operation_layer_change"> Confirm operation-layer config change</label>
+    <label class="check"><input type="checkbox" name="confirm_policy_override"> Confirm policy warning</label>
+    <button type="submit">Step 4 Dry-run preview</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

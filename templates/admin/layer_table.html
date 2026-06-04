@@ -1,0 +1,73 @@
+<section class="panel layer">
+  <div class="layer-head">
+    <div>
+      <h2>{{ layer.name }}</h2>
+      <p class="muted">{{ layer.source_file }}</p>
+    </div>
+    <dl class="compact">
+      <div><dt>count</dt><dd>{{ layer.count }}</dd></div>
+      <div><dt>root mirror count</dt><dd>{{ layer.root_mirror_count }}</dd></div>
+      <div><dt>mirror status</dt><dd>{{ layer.mismatch_status }}</dd></div>
+    </dl>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>symbol</th>
+          <th>display name</th>
+          <th>market</th>
+          <th>asset type</th>
+          <th>registry</th>
+          <th>current layers</th>
+          <th>policy tags</th>
+          <th>warnings</th>
+          <th>actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in layer.symbols %}
+        <tr>
+          <td><code>{{ row.symbol }}</code></td>
+          <td>{{ row.display_name }}</td>
+          <td>{{ row.market }}</td>
+          <td>{{ row.asset_type }}</td>
+          <td>{{ row.registry_status }}</td>
+          <td>{{ row.current_layers|join(", ") }}</td>
+          <td>{{ row.policy_tags|join(", ") }}</td>
+          <td>
+            {% if row.warnings %}
+              <ul class="plain-list">
+              {% for warning in row.warnings %}
+                <li>{{ warning }}</li>
+              {% endfor %}
+              </ul>
+            {% else %}
+              <span class="muted">none</span>
+            {% endif %}
+          </td>
+          <td class="actions">
+            <a class="button small" href="/admin/layers/move">Move</a>
+            <form method="post" action="/admin/layers/move">
+              <input type="hidden" name="stage" value="dry_run">
+              <input type="hidden" name="account" value="{{ snapshot.account }}">
+              <input type="hidden" name="symbol" value="{{ row.symbol }}">
+              <input type="hidden" name="source_layer" value="{{ layer.name }}">
+              <input type="hidden" name="target_layer" value="{{ 'scan' if layer.name != 'scan' else 'watchlist' }}">
+              <button type="submit" class="button small">Dry-run move</button>
+            </form>
+            <form method="post" action="/admin/layers/remove">
+              <input type="hidden" name="stage" value="dry_run">
+              <input type="hidden" name="account" value="{{ snapshot.account }}">
+              <input type="hidden" name="symbol" value="{{ row.symbol }}">
+              <input type="hidden" name="source_layer" value="{{ layer.name }}">
+              <button type="submit" class="button small danger">Remove</button>
+            </form>
+            <a class="button small" href="/admin/registry/{{ row.symbol }}">Registry details</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>

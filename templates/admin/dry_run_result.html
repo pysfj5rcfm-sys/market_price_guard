@@ -1,0 +1,88 @@
+<section class="panel">
+  <h2>Dry-run Result</h2>
+  {% if plan %}
+  <dl class="facts">
+    <div><dt>operation type</dt><dd>{{ plan.operation_type }}</dd></div>
+    <div><dt>account</dt><dd>{{ plan.account }}</dd></div>
+    <div><dt>symbol</dt><dd>{{ plan.symbol }}</dd></div>
+    <div><dt>canonical_symbol</dt><dd>{{ plan.canonical_symbol }}</dd></div>
+    <div><dt>source_layer</dt><dd>{{ plan.source_layer or "none" }}</dd></div>
+    <div><dt>target_layer</dt><dd>{{ plan.target_layer or "none" }}</dd></div>
+    <div><dt>apply_allowed</dt><dd>{{ plan.apply_allowed }}</dd></div>
+  </dl>
+
+  <div class="two-col">
+    <article>
+      <h3>Files to modify</h3>
+      <ul>{% for item in plan.files_to_modify %}<li>{{ item }}</li>{% else %}<li>none</li>{% endfor %}</ul>
+    </article>
+    <article>
+      <h3>Root mirror sync plan</h3>
+      <ul>{% for item in plan.root_mirror_sync_plan %}<li>{{ item }}</li>{% endfor %}</ul>
+    </article>
+  </div>
+
+  <h3>Registry stub plan</h3>
+  <pre>{{ plan.registry_stub_plan }}</pre>
+
+  <h3>Policy warnings</h3>
+  <ul>{% for item in plan.policy_warnings %}<li>{{ item }}</li>{% else %}<li>none</li>{% endfor %}</ul>
+
+  <h3>Counts</h3>
+  <table>
+    <thead><tr><th>layer</th><th>before</th><th>after</th></tr></thead>
+    <tbody>
+      {% for layer in layers %}
+      <tr><td>{{ layer }}</td><td>{{ plan.before_counts[layer] }}</td><td>{{ plan.after_counts[layer] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Validation plan</h3>
+  <ul>{% for item in plan.validation_plan %}<li>{{ item }}</li>{% endfor %}</ul>
+
+  <h3>Diff preview</h3>
+  <pre>{% for item in plan.diff_preview %}{{ item }}
+{% endfor %}</pre>
+
+  <h3>Blocking reasons</h3>
+  <ul>{% for item in plan.blocking_reasons %}<li>{{ item }}</li>{% else %}<li>none</li>{% endfor %}</ul>
+
+  {% if not result %}
+  {% set insert_action = "a" ~ "dd" %}
+  {% set action_path = symbol_wizard_path if plan.operation_type == insert_action else ("/admin/layers/move" if plan.operation_type == "move" else "/admin/layers/remove") %}
+  <form method="post" action="{{ action_path }}" class="stacked-form">
+    <input type="hidden" name="stage" value="apply">
+    <input type="hidden" name="account" value="{{ plan.account }}">
+    <input type="hidden" name="symbol" value="{{ plan.canonical_symbol }}">
+    <input type="hidden" name="source_layer" value="{{ plan.source_layer }}">
+    <input type="hidden" name="target_layer" value="{{ plan.target_layer }}">
+    <input type="hidden" name="display_name" value="{{ form.display_name or '' }}">
+    <input type="hidden" name="note" value="{{ form.note or '' }}">
+    <input type="hidden" name="category" value="{{ form.category or '' }}">
+    <input type="hidden" name="instrument_type" value="{{ form.instrument_type or '' }}">
+    {% if form.create_registry_stub %}<input type="hidden" name="create_registry_stub" value="on">{% endif %}
+    <label class="check"><input type="checkbox" name="confirm_apply" required> Confirm config change</label>
+    <label class="check"><input type="checkbox" name="confirm_operation_layer_change"> Confirm operation-layer config change</label>
+    <label class="check"><input type="checkbox" name="confirm_policy_override"> Confirm policy warning</label>
+    <button type="submit">Apply</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</section>
+
+{% if result %}
+<section class="panel">
+  <h2>Apply Result</h2>
+  <dl class="facts">
+    <div><dt>success</dt><dd>{{ result.success }}</dd></div>
+    <div><dt>validation_status</dt><dd>{{ result.validation_status }}</dd></div>
+    <div><dt>backup_path</dt><dd>{{ result.backup_path or "none" }}</dd></div>
+    <div><dt>audit_path</dt><dd>{{ result.audit_path or "none" }}</dd></div>
+  </dl>
+  <h3>Partial changes</h3>
+  <ul>{% for item in result.partial_changes %}<li>{{ item }}</li>{% else %}<li>none</li>{% endfor %}</ul>
+  <h3>Errors</h3>
+  <ul>{% for item in result.errors %}<li>{{ item }}</li>{% else %}<li>none</li>{% endfor %}</ul>
+</section>
+{% endif %}

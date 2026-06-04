@@ -199,7 +199,13 @@ def test_provider_mode_live_can_be_monkeypatched_without_network(monkeypatch, tm
 
     monkeypatch.setattr(AkshareProvider, "fetch", fake_fetch)
 
-    result = run_pipeline(output_dir=tmp_path / "out", provider_mode="live", provider_policy="conservative", strict=True)
+    result = run_pipeline(
+        output_dir=tmp_path / "out",
+        provider_mode="live",
+        provider_policy="conservative",
+        strict=True,
+        manual_prices_path=_fresh_manual_prices(tmp_path),
+    )
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK

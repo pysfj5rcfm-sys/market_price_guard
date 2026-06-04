@@ -1,0 +1,148 @@
+name: tech_scan_ai
+profile: tech
+universe_type: scan_universe
+quote_purpose: reference
+required_for_operation: false
+affect_core_strict: false
+description: 科技 scan 层：用户指定的广谱扫描池；scan 仅用于广谱扫描和强弱验证，不得直接交易。
+symbols:
+- 159632.SZ
+- 513300.SH
+- 159819.SZ
+- 515880.SH
+- 159516.SZ
+- 510300.SH
+- GOLD_CNY
+- 512480.SH
+- 159995.SZ
+- 588200.SH
+- 588890.SH
+- 588170.SH
+- 159558.SZ
+- 513310.SH
+- 515050.SH
+- 159994.SZ
+- 300308.SZ
+- 300502.SZ
+- 688256.SH
+- 588760.SH
+- 588930.SH
+- 159363.SZ
+- 516510.SH
+- 515980.SH
+- 513180.SH
+- 513130.SH
+- 513150.SH
+- 513020.SH
+- 159792.SZ
+- 513320.SH
+- 002463.SZ
+- 002938.SZ
+- 600183.SH
+- 603228.SH
+- 002281.SZ
+- 515000.SH
+- 512930.SH
+- 300476.SZ
+- 002916.SZ
+- 300394.SZ
+layers:
+  current_core_reference:
+    description: operation 当前持仓与基础参考在 scan 中保留，用于全局强弱比较
+    report_group: 当前持仓 / 基础参考
+    symbols:
+    - 159632.SZ
+    - 513300.SH
+    - 159819.SZ
+    - 515880.SH
+    - 159516.SZ
+    - 510300.SH
+    - GOLD_CNY
+  semiconductor_chip_equipment:
+    description: 半导体 / 芯片 / 科创芯片 / 半导体设备
+    report_group: 半导体 / 科创芯片 / 半导体设备
+    symbols:
+    - 512480.SH
+    - 159995.SZ
+    - 588200.SH
+    - 588890.SH
+    - 588170.SH
+    - 159558.SZ
+    - 159516.SZ
+  communication_cpo:
+    description: 通信 / CPO / 光模块
+    report_group: 通信 / CPO / 光模块
+    symbols:
+    - 515880.SH
+    - 515050.SH
+    - 159994.SZ
+    - 300308.SZ
+    - 300502.SZ
+    - 002281.SZ
+    - 300394.SZ
+  ai_computing_cloud:
+    description: AI / 算力 / 科创AI / 云计算
+    report_group: AI / 算力 / 科创AI / 云计算
+    symbols:
+    - 159819.SZ
+    - 688256.SH
+    - 588760.SH
+    - 588930.SH
+    - 159363.SZ
+    - 516510.SH
+    - 515980.SH
+    - 512930.SH
+    - 515000.SH
+  hk_tech_cross_border:
+    description: 港股科技 / 中韩半导体 / 港股互联网方向
+    report_group: 港股科技 / 中韩半导体 / 港股互联网
+    symbols:
+    - 513310.SH
+    - 513180.SH
+    - 513130.SH
+    - 513150.SH
+    - 513020.SH
+    - 159792.SZ
+    - 513320.SH
+  ai_pcb_server_chain:
+    description: AI PCB / 服务器链 / PCB材料
+    report_group: AI PCB / 服务器链
+    symbols:
+    - 002463.SZ
+    - 002938.SZ
+    - 600183.SH
+    - 603228.SH
+    - 002916.SZ
+    - 300476.SZ
+  broad_defense_reference:
+    description: 宽基 / 黄金手工参考
+    report_group: 宽基 / 防守参考
+    symbols:
+    - 510300.SH
+    - GOLD_CNY
+promotion_rules:
+  scan_to_watchlist:
+  - 连续2个交易日强于同类ETF
+  - 与当前持仓方向高度相关
+  - 成为市场主线
+  - 对当前持仓有强验证意义
+  - 用户明确要求跟踪
+  watchlist_to_candidate:
+  - 行情稳定且可参考
+  - 方向强于同类
+  - 有明确买入触发条件
+  - 不违反QDII溢价、承接确认、失败试错禁补等硬规则
+  - 不是因为卖飞后悔或亏损补仓
+  candidate_to_operation:
+  - 下周可能直接交易
+  - 数据可稳定获取
+  - 需要输出分时/涨跌/VWAP/关键中枢
+  - 可用于强执行判断
+  operation_downgrade:
+  - 数据长期不稳定
+  - 不再可能交易
+  - 只用于强弱验证
+  - QDII溢价长期过高
+  - 个股事件仓未获用户授权
+  - 失败观察仓且禁补禁T
+  scan_not_trading_signal: true

@@ -258,7 +258,8 @@ projects:
       manual_reference_only: true
     layer_universes:
       note: Legacy-compatible mirror of config/universes/tech_*.yaml. Scripts should
-        prefer account universe files when available.
+        prefer config/universes/*.yaml when available. projects.tech.instruments intentionally
+        remains operation/core only to avoid broadening tech_fast_strict.
       operation:
       - 159632.SZ
       - 513300.SH
@@ -267,7 +268,6 @@ projects:
       - 159516.SZ
       - 510300.SH
       - GOLD_CNY
-      - 159995.SZ
       operation_candidate:
       - 159819.SZ
       - 515880.SH
@@ -359,7 +359,7 @@ projects:
       - 002916.SZ
       - 300394.SZ
       counts:
-        operation: 8
+        operation: 7
         operation_candidate: 19
         watchlist: 28
         scan: 40
@@ -1036,7 +1036,7 @@ projects:
       quote_purpose: reference
       notes: CPO/optical device strength verification only; not default buy object
     layer_counts:
-      operation: 8
+      operation: 7
       operation_candidate: 19
       watchlist: 28
       scan: 40

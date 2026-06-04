@@ -1,0 +1,45 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Local Admin Layer Manager</h1>
+  <dl class="facts">
+    <div><dt>Version</dt><dd>{{ version }}</dd></div>
+    <div><dt>Scope classification</dt><dd>{{ scope_classification }}</dd></div>
+    <div><dt>Tech config check</dt><dd class="status">{{ config_status.tech }}</dd></div>
+    <div><dt>Energy config check</dt><dd class="status">{{ config_status.energy }}</dd></div>
+  </dl>
+</section>
+
+<section class="two-col">
+  <article class="panel">
+    <h2>Tech Baseline</h2>
+    <table>
+      <tbody>
+      {% for layer, count in tech.counts.items() %}
+        <tr><th>{{ layer }}</th><td>{{ count }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p><a class="button" href="/admin/accounts/tech">Open tech account</a></p>
+  </article>
+  <article class="panel">
+    <h2>Energy Baseline</h2>
+    <table>
+      <tbody>
+      {% for layer, count in energy.counts.items() %}
+        <tr><th>{{ layer }}</th><td>{{ count }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p><a class="button" href="/admin/accounts/energy">Open energy account</a></p>
+  </article>
+</section>
+
+<section class="panel">
+  <h2>Shortcuts</h2>
+  <div class="toolbar">
+    <a class="button" href="{{ symbol_wizard_path }}">Symbol wizard</a>
+    <a class="button" href="/admin/validate">Validate all</a>
+  </div>
+</section>
+{% endblock %}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -124,6 +124,7 @@ def test_operation_tech_path_keeps_akshare_first(monkeypatch, tmp_path):
         profile="tech",
         quote_purpose="operation",
         strict=True,
+        manual_prices_path=_fresh_manual_prices(tmp_path),
     )
     df = pd.read_csv(output_dir / "prices_snapshot.csv", encoding="utf-8-sig")
     etf_rows = df[df["symbol"].isin(ETF_SYMBOLS)]
@@ -151,6 +152,28 @@ def test_yfinance_etf_reference_grade_does_not_pass_operation_blocking_rules():
     assert record.quote_trust_tier == "reference"
     assert record.usable_for_operation is False
     assert get_blocking_records([record])[0]["blocking_reason"] == "reference_tier_requires_operation_confirmation"
+
+
+def _fresh_manual_prices(tmp_path):
+    path = tmp_path / "fresh_manual_prices.yaml"
+    quote_time = (datetime.now(timezone(timedelta(hours=8))) - timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    path.write_text(
+        f"""
+manual_prices:
+  - symbol: "GOLD_CNY"
+    name: "GOLD_CNY"
+    market: "MANUAL"
+    price: 1040.0
+    currency: "CNY"
+    quote_time: "{quote_time}"
+    source: "manual"
+    project: "tech"
+    asset_role: "defense_or_potential_tech_funding"
+    required_for_operation: true
+""".strip(),
+        encoding="utf-8",
+    )
+    return path
 
 
 def _raw(symbol: str, source: str = "yfinance", price: float = 1.23) -> RawPrice:

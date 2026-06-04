@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-06-04T09:06:21.313841+00:00",
+  "operation": "move",
+  "account": "tech",
+  "symbol": "159995.SZ",
+  "files": [
+    {
+      "path": "config/watchlist.yaml",
+      "sha256_before": "bbda22d8fb17687dfab39080adf1b0eb6efc1ca473b3807ce73572d0d72860bc"
+    },
+    {
+      "path": "config/universes/tech_core.yaml",
+      "sha256_before": "71606b571462faea1b27f5ee8139071c20963bab66ee64267978cbca9c46cb85"
+    },
+    {
+      "path": "config/universes/tech_operation_candidates.yaml",
+      "sha256_before": "a09ff365949f44f5e4467199a99e4a8715fe5f1ff7704a871b036aa4febbddce"
+    },
+    {
+      "path": "config/universes/tech_watchlist.yaml",
+      "sha256_before": "6a3703bb68022304b1a1ca31fb3298471e6209d022b88b81d9032d51f31f5856"
+    },
+    {
+      "path": "config/universes/tech_scan_ai.yaml",
+      "sha256_before": "6fb2cd8774bacad7fd4f60a70b761f0a97aaf169d409ebd322cff49b3852f20e"
+    }
+  ],
+  "user_action_source": "admin_ui"
+}

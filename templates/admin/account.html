@@ -1,0 +1,18 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>{{ snapshot.account|capitalize }} Account</h1>
+  <dl class="facts">
+    <div><dt>operation</dt><dd>{{ snapshot.counts.operation }}</dd></div>
+    <div><dt>operation_candidate</dt><dd>{{ snapshot.counts.operation_candidate }}</dd></div>
+    <div><dt>watchlist</dt><dd>{{ snapshot.counts.watchlist }}</dd></div>
+    <div><dt>scan</dt><dd>{{ snapshot.counts.scan }}</dd></div>
+    <div><dt>root mirror</dt><dd>{{ "match" if snapshot.root_mirror_match else "mismatch" }}</dd></div>
+    <div><dt>validation</dt><dd>{{ snapshot.validation.status }}</dd></div>
+  </dl>
+</section>
+
+{% for layer in snapshot.layers %}
+  {% include "admin/layer_table.html" %}
+{% endfor %}
+{% endblock %}
