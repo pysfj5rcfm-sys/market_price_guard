@@ -46,6 +46,7 @@ symbols:
 - 300476.SZ
 - 002916.SZ
 - 300394.SZ
+- 000938.SZ
 layers:
   current_core_reference:
     description: operation 当前持仓与基础参考在 scan 中保留，用于全局强弱比较

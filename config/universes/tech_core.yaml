@@ -23,7 +23,6 @@ symbols:
 - 513150.SH
 - 513020.SH
 - 512480.SH
-- 000938.SZ
 description: 科技 operation 层：仅保留当前持仓与基础参考。新增扩池标的本轮不进入 operation，避免非持仓验证标的阻断 tech_fast_strict。
 rules:
   current_holdings_required_for_operation:
