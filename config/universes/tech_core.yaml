@@ -11,6 +11,12 @@ symbols:
 - 510300.SH
 - GOLD_CNY
 - 159995.SZ
+- 513100.SH
+- 159941.SZ
+- 159659.SZ
+- 513110.SH
+- 513390.SH
+- 513870.SH
 description: 科技 operation 层：仅保留当前持仓与基础参考。新增扩池标的本轮不进入 operation，避免非持仓验证标的阻断 tech_fast_strict。
 rules:
   current_holdings_required_for_operation:

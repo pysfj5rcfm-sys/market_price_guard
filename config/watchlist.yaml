@@ -268,6 +268,12 @@ projects:
       - 510300.SH
       - GOLD_CNY
       - 159995.SZ
+      - 513100.SH
+      - 159941.SZ
+      - 159659.SZ
+      - 513110.SH
+      - 513390.SH
+      - 513870.SH
       operation_candidate:
       - 159819.SZ
       - 515880.SH
@@ -359,7 +365,7 @@ projects:
       - 002916.SZ
       - 300394.SZ
       counts:
-        operation: 8
+        operation: 14
         operation_candidate: 19
         watchlist: 28
         scan: 40
@@ -1036,11 +1042,11 @@ projects:
       quote_purpose: reference
       notes: CPO/optical device strength verification only; not default buy object
     layer_counts:
-      operation: 8
+      operation: 14
       operation_candidate: 19
       watchlist: 28
       scan: 40
-      all_layer_union: 40
+      all_layer_union: 46
     layer_mirror_updated_by: config_1100_update_v1
   controller:
     display_name: 理财｜投资咨询/总控项目

@@ -2755,3 +2755,43 @@ DX-Y.NYB:
   enabled: true
   notes: AI artificial intelligence ETF watch/scan candidate; not operation-grade
   usable_for_operation: false
+513110.SH:
+  symbol: 513110.SH
+  name: 513110.SH
+  display_name: 513110.SH
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Other
+  source: admin_ui_stub
+  created_at: '2026-06-09T04:40:48.092792+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management
+    only.
+513870.SH:
+  symbol: 513870.SH
+  name: 513870.SH
+  display_name: 513870.SH
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Other
+  source: admin_ui_stub
+  created_at: '2026-06-09T04:41:32.070587+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management
+    only.
