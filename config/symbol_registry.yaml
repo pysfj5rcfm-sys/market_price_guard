@@ -2795,3 +2795,23 @@ DX-Y.NYB:
   default_quote_purpose: operation
   notes: Local admin dashboard minimal registry stub for configuration management
     only.
+000938.SZ:
+  symbol: 000938.SZ
+  name: 000938.SZ
+  display_name: 000938.SZ
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Communication / CPO
+  source: admin_ui_stub
+  created_at: '2026-06-09T07:17:43.974740+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management
+    only.

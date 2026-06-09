@@ -330,6 +330,23 @@ projects:
       - yfinance
       - mock
       required_for_operation: false
+    - symbol: 000938.SZ
+      name: 紫光股份
+      market: SZ
+      core: false
+      provider: akshare
+      provider_priority: &id001
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 512480.SH
+      name: 半导体ETF
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority: *id001
+      required_for_operation: false
     layer_universes:
       note: Legacy-compatible mirror of config/universes/tech_*.yaml. Scripts should
         prefer account universe files when available.
@@ -341,18 +358,20 @@ projects:
       - 159516.SZ
       - 510300.SH
       - GOLD_CNY
+      - 588200.SH
       - 159995.SZ
+      - 159994.SZ
+      - 513130.SH
+      - 513150.SH
+      - 513020.SH
       - 513100.SH
       - 159941.SZ
       - 159659.SZ
       - 513110.SH
       - 513390.SH
       - 513870.SH
-      - 588200.SH
-      - 159994.SZ
-      - 513130.SH
-      - 513150.SH
-      - 513020.SH
+      - 000938.SZ
+      - 512480.SH
       operation_candidate:
       - 159819.SZ
       - 515880.SH
@@ -444,7 +463,7 @@ projects:
       - 002916.SZ
       - 300394.SZ
       counts:
-        operation: 19
+        operation: 21
         operation_candidate: 19
         watchlist: 28
         scan: 40
@@ -791,7 +810,7 @@ projects:
       name: 半导体ETF
       market: SH
       asset_type: ETF
-      in_operation: false
+      in_operation: true
       in_operation_candidate: true
       in_watchlist: true
       in_scan: true
@@ -801,8 +820,9 @@ projects:
       operation_candidate: true
       watchlist: true
       scan: true
-      quote_purpose: reference
-      notes: scan candidate; existing candidate expanded into layer1; 半导体整体强弱验证；可作为新交易候选
+      quote_purpose: operation_validator
+      notes: user-added operation-level reference; semiconductor ETF validator; existing
+        candidate/watchlist/scan member; not trading advice; required_for_operation=false
     - symbol: 588890.SH
       name: 科创芯片相关ETF
       market: SH
@@ -1232,13 +1252,30 @@ projects:
       scan: true
       quote_purpose: reference
       notes: CPO/optical device strength verification only; not default buy object
+    - symbol: 000938.SZ
+      name: 紫光股份
+      market: SZ
+      asset_type: stock
+      in_operation: true
+      in_operation_candidate: false
+      in_watchlist: false
+      in_scan: false
+      required_for_operation: false
+      affect_core_strict: false
+      usable_for_operation: false
+      operation_candidate: false
+      watchlist: false
+      scan: false
+      quote_purpose: operation_validator
+      notes: user-added operation-level reference; cloud/network/AI infrastructure
+        observation; not trading advice; required_for_operation=false
     layer_counts:
-      operation: 19
+      operation: 21
       operation_candidate: 19
       watchlist: 28
       scan: 40
-      all_layer_union: 46
-    layer_mirror_updated_by: chatgpt_manual_fix_keep_legacy6
+      all_layer_union: 47
+    layer_mirror_updated_by: assistant_watchlist_fix_keep_legacy6_plus_000938_512480
   controller:
     display_name: 理财｜投资咨询/总控项目
     allow_full_detail: false
