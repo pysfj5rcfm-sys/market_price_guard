@@ -30,7 +30,7 @@
           <td>{{ item.generated_at }}</td>
           <td>{{ item.zip_size }}</td>
           <td>{{ item.warnings|join("; ") }}</td>
-          <td><a href="/admin/bundles/download/{{ item.zip_name }}">Download</a></td>
+          <td class="action-cell"><a class="button small" href="/admin/bundles/download/{{ item.zip_name }}">Download</a></td>
         </tr>
       {% endfor %}
       </tbody>

@@ -65,6 +65,20 @@ def _copy_project_config(tmp_path: Path) -> Path:
     return root
 
 
+def _symbols(path: Path) -> list[str]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return [str(symbol) for symbol in data["symbols"]]
+
+
+def _tech_counts(root: Path = Path(".")) -> dict[str, int]:
+    return {
+        "operation": len(_symbols(root / "config/universes/tech_core.yaml")),
+        "operation_candidate": len(_symbols(root / "config/universes/tech_operation_candidates.yaml")),
+        "watchlist": len(_symbols(root / "config/universes/tech_watchlist.yaml")),
+        "scan": len(_symbols(root / "config/universes/tech_scan_ai.yaml")),
+    }
+
+
 def test_account_architecture_doc_exists():
     text = Path("docs/ACCOUNT_ARCHITECTURE.md").read_text(encoding="utf-8")
 
@@ -105,13 +119,14 @@ def test_account_generic_layer_aliases():
 
 def test_account_config_check_tech_counts(tmp_path):
     result = run_config_check(tmp_path, account="tech")
+    expected = _tech_counts()
 
     assert result["account"] == "tech"
     assert result["account_bootstrapped"] is True
-    assert result["universes"]["tech_core"]["configured_symbol_count"] == 7
-    assert result["universes"]["tech_operation_candidates"]["configured_symbol_count"] == 19
-    assert result["universes"]["tech_watchlist"]["configured_symbol_count"] == 28
-    assert result["universes"]["tech_scan_ai"]["configured_symbol_count"] == 40
+    assert result["universes"]["tech_core"]["configured_symbol_count"] == expected["operation"]
+    assert result["universes"]["tech_operation_candidates"]["configured_symbol_count"] == expected["operation_candidate"]
+    assert result["universes"]["tech_watchlist"]["configured_symbol_count"] == expected["watchlist"]
+    assert result["universes"]["tech_scan_ai"]["configured_symbol_count"] == expected["scan"]
     assert (tmp_path / "tech_layer_config_check.md").exists()
 
 
@@ -141,9 +156,9 @@ def test_manage_account_layers_tech_show_validate_export(tmp_path):
     export = manager.run(Namespace(account="tech", command="export"))
 
     assert show["account"] == "tech"
-    assert show["after_counts"] == {"operation": 7, "operation_candidate": 19, "watchlist": 28, "scan": 40}
+    assert show["after_counts"] == _tech_counts(root)
     assert validate["validation_status"] == "ok"
-    assert export["after_counts"]["scan"] == 40
+    assert export["after_counts"]["scan"] == _tech_counts(root)["scan"]
 
 
 def test_manage_account_layers_energy_does_not_fallback_to_tech(tmp_path):

@@ -67,6 +67,14 @@ a {
   margin-bottom: 16px;
 }
 
+.panel > :first-child {
+  margin-top: 0;
+}
+
+.panel > :last-child {
+  margin-bottom: 0;
+}
+
 .two-col {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -127,6 +135,11 @@ td {
   padding: 8px;
 }
 
+.action-cell {
+  white-space: nowrap;
+  width: 1%;
+}
+
 th {
   background: #f0f3f7;
   font-size: 12px;
@@ -146,9 +159,13 @@ th {
   align-items: center;
 }
 
+.detail-actions {
+  margin-top: 12px;
+}
+
 .task-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
 }
 
@@ -158,6 +175,7 @@ th {
   padding: 12px;
   display: grid;
   gap: 10px;
+  align-content: start;
 }
 
 .task-card h3 {
@@ -171,15 +189,34 @@ button {
   border-radius: 4px;
   background: var(--accent);
   color: #ffffff;
+  min-height: 34px;
   padding: 7px 10px;
   text-decoration: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .button.small,
 button.small {
   font-size: 12px;
+  min-height: 28px;
   padding: 4px 7px;
+}
+
+.button.secondary,
+button.secondary {
+  border-color: var(--line);
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.button.full,
+button.full {
+  width: 100%;
 }
 
 .button.danger,
@@ -204,12 +241,25 @@ fieldset {
 label {
   display: grid;
   gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 label.check {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 34px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
 }
 
 input,
@@ -217,7 +267,10 @@ select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 4px;
+  min-height: 34px;
   padding: 7px 8px;
+  color: var(--ink);
+  background: #ffffff;
 }
 
 pre {
@@ -227,6 +280,48 @@ pre {
   color: #f8fafc;
   padding: 12px;
   border-radius: 4px;
+  overflow: auto;
+  max-width: 100%;
+}
+
+.log-box {
+  max-height: 420px;
+  margin: 0;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  background: #f0f3f7;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-passed {
+  border-color: #1a7f37;
+  background: #dafbe1;
+  color: #116329;
+}
+
+.status-failed {
+  border-color: var(--danger);
+  background: #ffebe9;
+  color: var(--danger);
+}
+
+.status-running,
+.status-pending,
+.status-runtime_warning,
+.status-strict_blocked_but_reported {
+  border-color: #9a6700;
+  background: #fff8c5;
+  color: #7d4e00;
 }
 
 .plain-list {

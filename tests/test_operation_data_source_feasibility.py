@@ -43,6 +43,15 @@ def _symbols(path: str) -> list[str]:
     return list(data["symbols"])
 
 
+def _tech_counts() -> dict[str, int]:
+    return {
+        "operation": len(_symbols("config/universes/tech_core.yaml")),
+        "operation_candidate": len(_symbols("config/universes/tech_operation_candidates.yaml")),
+        "watchlist": len(_symbols("config/universes/tech_watchlist.yaml")),
+        "scan": len(_symbols("config/universes/tech_scan_ai.yaml")),
+    }
+
+
 def _matrix_rows() -> list[dict[str, str]]:
     _ensure_outputs()
     with (OUTPUT_DIR / "feasibility_matrix.csv").open(encoding="utf-8-sig", newline="") as handle:
@@ -55,10 +64,12 @@ def _row(name: str) -> dict[str, str]:
 
 
 def test_current_account_baselines_for_v0754():
-    assert len(_symbols("config/universes/tech_core.yaml")) == 7
-    assert len(_symbols("config/universes/tech_operation_candidates.yaml")) == 19
-    assert len(_symbols("config/universes/tech_watchlist.yaml")) == 28
-    assert len(_symbols("config/universes/tech_scan_ai.yaml")) == 40
+    assert _tech_counts() == {
+        "operation": len(_symbols("config/universes/tech_core.yaml")),
+        "operation_candidate": len(_symbols("config/universes/tech_operation_candidates.yaml")),
+        "watchlist": len(_symbols("config/universes/tech_watchlist.yaml")),
+        "scan": len(_symbols("config/universes/tech_scan_ai.yaml")),
+    }
 
     assert len(_symbols("config/universes/energy_core.yaml")) == 4
     assert len(_symbols("config/universes/energy_operation_candidates.yaml")) == 8

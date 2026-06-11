@@ -25,6 +25,15 @@ def _read_root_layer(root: Path, layer: str) -> list[str]:
     return [str(symbol) for symbol in data["projects"]["tech"]["layer_universes"][layer]]
 
 
+def _tech_counts(root: Path) -> dict[str, int]:
+    return {
+        "operation": len(_read_symbols(root, "config/universes/tech_core.yaml")),
+        "operation_candidate": len(_read_symbols(root, "config/universes/tech_operation_candidates.yaml")),
+        "watchlist": len(_read_symbols(root, "config/universes/tech_watchlist.yaml")),
+        "scan": len(_read_symbols(root, "config/universes/tech_scan_ai.yaml")),
+    }
+
+
 def test_layer_aliases():
     assert normalize_layer("core") == "operation"
     assert normalize_layer("candidate") == "operation_candidate"
@@ -37,7 +46,7 @@ def test_show_does_not_modify_files(tmp_path):
 
     report = TechLayerManager(root).show()
 
-    assert report["before_counts"] == {"operation": 7, "operation_candidate": 19, "watchlist": 28, "scan": 40}
+    assert report["before_counts"] == _tech_counts(root)
     assert report["root_mirror_mismatch"] is False
     assert (root / "config/watchlist.yaml").read_bytes() == before
 
@@ -185,10 +194,10 @@ def test_show_and_export_report_counts(tmp_path):
     show = manager.show()
     export = manager.export()
 
-    assert show["after_counts"]["scan"] == 40
-    assert export["after_counts"]["watchlist"] == 28
+    assert show["after_counts"]["scan"] == _tech_counts(root)["scan"]
+    assert export["after_counts"]["watchlist"] == _tech_counts(root)["watchlist"]
     data = json.loads((root / "outputs_config_manager_latest/tech_layer_config_export.json").read_text(encoding="utf-8"))
-    assert len(data["layers"]["operation"]) == 7
+    assert len(data["layers"]["operation"]) == _tech_counts(root)["operation"]
 
 
 def test_manage_script_declared():

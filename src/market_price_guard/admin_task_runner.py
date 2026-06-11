@@ -32,7 +32,7 @@ TASK_DEFINITIONS: dict[str, TaskDefinition] = {
 
 _PROCESS_LOCK = threading.Lock()
 STALE_LOCK_SECONDS = 6 * 60 * 60
-POWER_SHELL_MISSING = "PowerShell executable not found. Please install pwsh."
+POWER_SHELL_MISSING = "PowerShell executable not found. Please install pwsh or use Windows PowerShell."
 
 
 class TaskRunnerError(ValueError):
@@ -127,8 +127,8 @@ class AdminTaskRunner:
         record.status = "running"
         self._write_record(record)
         sequence = self._command_sequence(record.task_name, options)
-        pwsh = shutil.which("pwsh")
-        if not pwsh:
+        powershell = resolve_powershell_executable()
+        if not powershell:
             record.status = "failed"
             record.exit_code = 1
             record.finished_at = utc_now()
@@ -143,7 +143,7 @@ class AdminTaskRunner:
         exit_codes: list[int] = []
         statuses: list[str] = []
         for command in sequence:
-            runnable = [pwsh, *command[1:]]
+            runnable = [powershell, *command[1:]]
             result = subprocess.run(runnable, cwd=self.project_root, capture_output=True, text=True, shell=False, env=_script_env(self.project_root))
             stdout_chunks.append(result.stdout or "")
             stderr_chunks.append(result.stderr or "")
@@ -168,17 +168,29 @@ class AdminTaskRunner:
     def _command_sequence(self, task_name: str, options: TaskOptions) -> list[list[str]]:
         cache = bool(options.use_run_cache and TASK_DEFINITIONS[task_name].supports_run_cache)
         if task_name == "tech_pipeline":
-            return [["pwsh", "./scripts/run_tech_research_pipeline.ps1", "-UseRunCache"]]
+            command = ["pwsh", "./scripts/run_tech_research_pipeline.ps1"]
+            if cache:
+                command.append("-UseRunCache")
+            return [command]
         if task_name == "energy_pipeline":
             return [["pwsh", "./scripts/run_energy_research_pipeline.ps1"]]
         if task_name == "both_pipelines":
-            return [*self._command_sequence("tech_pipeline", TaskOptions(use_run_cache=True)), *self._command_sequence("energy_pipeline", TaskOptions())]
+            return [*self._command_sequence("tech_pipeline", TaskOptions(use_run_cache=cache)), *self._command_sequence("energy_pipeline", TaskOptions())]
         if task_name == "uat_quick":
-            return [["pwsh", "./scripts/run_uat.ps1", "-Mode", "quick", "-UseRunCache"]]
+            command = ["pwsh", "./scripts/run_uat.ps1", "-Mode", "quick"]
+            if cache:
+                command.append("-UseRunCache")
+            return [command]
         if task_name == "uat_intraday":
-            return [["pwsh", "./scripts/run_uat.ps1", "-Mode", "intraday", "-UseRunCache"]]
+            command = ["pwsh", "./scripts/run_uat.ps1", "-Mode", "intraday"]
+            if cache:
+                command.append("-UseRunCache")
+            return [command]
         if task_name == "uat_energy":
-            return [["pwsh", "./scripts/run_uat.ps1", "-Mode", "energy", "-UseRunCache"]]
+            command = ["pwsh", "./scripts/run_uat.ps1", "-Mode", "energy"]
+            if cache:
+                command.append("-UseRunCache")
+            return [command]
         if task_name == "acceptance":
             return [["pwsh", "./scripts/build_acceptance_summary.ps1"]]
         if task_name == "config_check_tech":
@@ -276,6 +288,15 @@ def read_lock_status(lock_path: Path) -> dict[str, Any]:
     return data
 
 
+def resolve_powershell_executable() -> str:
+    candidates = ["pwsh", "powershell.exe", "powershell"] if os.name == "nt" else ["pwsh"]
+    for candidate in candidates:
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return ""
+
+
 def tail_text(path: Path, max_lines: int = 200) -> str:
     if not path.exists():
         return ""
@@ -369,6 +390,9 @@ def _script_env(project_root: Path) -> dict[str, str]:
     venv_bin = project_root / ".venv" / "bin"
     if venv_bin.exists():
         path_parts.append(str(venv_bin))
+    venv_scripts = project_root / ".venv" / "Scripts"
+    if venv_scripts.exists():
+        path_parts.append(str(venv_scripts))
     if values.get("PATH"):
         path_parts.append(values["PATH"])
     if path_parts:

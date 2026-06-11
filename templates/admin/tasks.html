@@ -19,7 +19,7 @@
         <h3>{{ item.label }}</h3>
         <p class="muted">{{ item.task_name }}</p>
         {% if item.supports_run_cache %}
-          <label class="check"><input type="checkbox" name="use_run_cache" value="true" checked> Use run cache</label>
+          <label class="check"><input type="checkbox" name="use_run_cache" value="true"> Use run cache</label>
         {% endif %}
         {% if item.supports_continue_on_failure %}
           <label class="check"><input type="checkbox" name="continue_on_failure" value="true"> Continue after failure</label>
@@ -28,7 +28,7 @@
           Note
           <input name="optional_note" placeholder="optional local note">
         </label>
-        <button type="submit">Run</button>
+        <button type="submit" class="button full">Run</button>
       </form>
     {% endfor %}
   </div>
@@ -44,10 +44,10 @@
         {% for item in recent_tasks %}
           <tr>
             <td>{{ item.task_name }}</td>
-            <td class="status">{{ item.status }}</td>
+            <td><span class="status-pill status-{{ item.status }}">{{ item.status }}</span></td>
             <td>{{ item.exit_code }}</td>
             <td>{{ item.elapsed_seconds }}</td>
-            <td><a href="/admin/tasks/{{ item.task_id }}">Open</a></td>
+            <td class="action-cell"><a class="button small" href="/admin/tasks/{{ item.task_id }}">Open</a></td>
           </tr>
         {% endfor %}
         </tbody>

@@ -5,14 +5,14 @@
   <dl class="facts">
     <div><dt>Task ID</dt><dd>{{ record.task_id }}</dd></div>
     <div><dt>Task</dt><dd>{{ record.task_name }}</dd></div>
-    <div><dt>Status</dt><dd class="status">{{ record.status }}</dd></div>
+    <div><dt>Status</dt><dd><span class="status-pill status-{{ record.status }}">{{ record.status }}</span></dd></div>
     <div><dt>Exit code</dt><dd>{{ record.exit_code }}</dd></div>
     <div><dt>Elapsed seconds</dt><dd>{{ record.elapsed_seconds }}</dd></div>
     <div><dt>Batch</dt><dd>{{ record.batch_name }}</dd></div>
   </dl>
   <div class="toolbar">
     <a class="button" href="/admin/tasks/{{ record.task_id }}">Open detail</a>
-    <a class="button" href="/admin/tasks">Back to tasks</a>
+    <a class="button secondary" href="/admin/tasks">Back to tasks</a>
     {% if record.bundle_eligible %}
       <form method="post" action="/admin/bundles/build" class="inline-form">
         <input type="hidden" name="batch_name" value="{{ record.batch_name }}">
@@ -33,11 +33,11 @@
 <section class="two-col">
   <article class="panel">
     <h2>Stdout Tail</h2>
-    <pre>{{ record.stdout_tail }}</pre>
+    <pre class="log-box">{{ record.stdout_tail }}</pre>
   </article>
   <article class="panel">
     <h2>Stderr Tail</h2>
-    <pre>{{ record.stderr_tail }}</pre>
+    <pre class="log-box">{{ record.stderr_tail }}</pre>
   </article>
 </section>
 {% endblock %}

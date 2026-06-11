@@ -351,18 +351,18 @@ projects:
       - 159516.SZ
       - 510300.SH
       - GOLD_CNY
-      - 588200.SH
       - 159995.SZ
-      - 159994.SZ
-      - 513130.SH
-      - 513150.SH
-      - 513020.SH
       - 513100.SH
       - 159941.SZ
       - 159659.SZ
       - 513110.SH
       - 513390.SH
       - 513870.SH
+      - 588200.SH
+      - 159994.SZ
+      - 513130.SH
+      - 513150.SH
+      - 513020.SH
       - 512480.SH
       operation_candidate:
       - 159819.SZ
@@ -454,11 +454,12 @@ projects:
       - 300476.SZ
       - 002916.SZ
       - 300394.SZ
+      - 000938.SZ
       counts:
         operation: 20
         operation_candidate: 19
         watchlist: 28
-        scan: 40
+        scan: 41
       hard_rules:
         scan_watchlist_candidate_are_not_operation: true
         no_auto_promotion: true
@@ -1248,8 +1249,8 @@ projects:
       operation: 20
       operation_candidate: 19
       watchlist: 28
-      scan: 40
-      all_layer_union: 46
+      scan: 41
+      all_layer_union: 47
     layer_mirror_updated_by: assistant_watchlist_fix_keep_legacy6_plus_000938_512480
   controller:
     display_name: 理财｜投资咨询/总控项目

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .account_config import normalize_account
@@ -93,8 +93,7 @@ async def run_task(request: Request) -> HTMLResponse:
     )
     try:
         record = runner.run_task(task_name, options)
-        context = {**base_context(request), "record": record}
-        return templates.TemplateResponse(request=request, name="admin/task_result.html", context=context)
+        return RedirectResponse(url=f"/admin/tasks/{record.task_id}", status_code=303)
     except TaskRunnerError as exc:
         return templates.TemplateResponse(request=request, name="admin/error.html", context={**base_context(request), "error": str(exc)}, status_code=400)
 
@@ -103,7 +102,12 @@ async def run_task(request: Request) -> HTMLResponse:
 async def task_detail(request: Request, task_id: str) -> HTMLResponse:
     record = get_task_runner(request).load_task(task_id)
     if record is None:
-        raise HTTPException(status_code=404, detail="task not found")
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/error.html",
+            context={**base_context(request), "error": f"task not found: {task_id}"},
+            status_code=404,
+        )
     return templates.TemplateResponse(request=request, name="admin/task_detail.html", context={**base_context(request), "record": record})
 
 

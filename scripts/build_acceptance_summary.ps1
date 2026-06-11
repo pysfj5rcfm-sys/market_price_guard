@@ -107,11 +107,57 @@ function Get-NoAdviceScan {
         (Join-Path $ProjectRoot 'outputs_uat_latest/*/*.md')
     )
     $Pattern = '买入|卖出|加仓|减仓|做T|挂单|目标价|入场价|止损|preferred_action|action_hint|buy|sell|add|reduce'
-    $Hits = @(Select-String -Path $Paths -Pattern $Pattern -CaseSensitive:$false -ErrorAction SilentlyContinue)
+    $ExistingPaths = @($Paths | Where-Object { Test-Path $_ })
+    $Hits = if ($ExistingPaths.Count -gt 0) {
+        @(Select-String -Path $ExistingPaths -Pattern $Pattern -CaseSensitive:$false -ErrorAction SilentlyContinue)
+    } else {
+        @()
+    }
     return [ordered]@{
         status = if ($Hits.Count -eq 0) { 'passed' } else { 'failed' }
         hit_count = $Hits.Count
         hits = @($Hits | Select-Object -First 20 | ForEach-Object { $_.Path + ':' + $_.LineNumber + ':' + $_.Line.Trim() })
+    }
+}
+
+function Get-UniverseSymbolCount {
+    param([string]$RelativePath)
+    $Path = Join-Path $ProjectRoot $RelativePath
+    if (-not (Test-Path $Path)) {
+        return 0
+    }
+    $InSymbols = $false
+    $Count = 0
+    foreach ($Line in Get-Content $Path -Encoding UTF8) {
+        if ($Line -match '^symbols:\s*$') {
+            $InSymbols = $true
+            continue
+        }
+        if ($InSymbols -and $Line -match '^\S' -and $Line -notmatch '^\s*-\s+') {
+            break
+        }
+        if ($InSymbols -and $Line -match '^\s*-\s+\S+') {
+            $Count += 1
+        }
+    }
+    return $Count
+}
+
+function Get-AccountBaseline {
+    param([string]$Account)
+    if ($Account -eq 'tech') {
+        return [ordered]@{
+            operation = Get-UniverseSymbolCount 'config/universes/tech_core.yaml'
+            operation_candidate = Get-UniverseSymbolCount 'config/universes/tech_operation_candidates.yaml'
+            watchlist = Get-UniverseSymbolCount 'config/universes/tech_watchlist.yaml'
+            scan = Get-UniverseSymbolCount 'config/universes/tech_scan_ai.yaml'
+        }
+    }
+    return [ordered]@{
+        operation = Get-UniverseSymbolCount 'config/universes/energy_core.yaml'
+        operation_candidate = Get-UniverseSymbolCount 'config/universes/energy_operation_candidates.yaml'
+        watchlist = Get-UniverseSymbolCount 'config/universes/energy_watchlist.yaml'
+        scan = Get-UniverseSymbolCount 'config/universes/energy_scan.yaml'
     }
 }
 
@@ -120,23 +166,15 @@ $EnergyPipeline = Get-PipelineAcceptance -Account 'energy' -DirName 'outputs_ene
 $Uat = Get-UatAcceptance
 $ConfigDiff = Get-ConfigDiffStatus
 $NoAdviceScan = Get-NoAdviceScan
+$TechBaseline = Get-AccountBaseline -Account 'tech'
+$EnergyBaseline = Get-AccountBaseline -Account 'energy'
 
 $Summary = [ordered]@{
     version = 'v0.7.5.3'
     generated_at = $GeneratedAt
     scope_classification = 'account-generic runtime/UAT acceptance polish'
-    tech_baseline = [ordered]@{
-        operation = 7
-        operation_candidate = 19
-        watchlist = 28
-        scan = 40
-    }
-    energy_baseline = [ordered]@{
-        operation = 4
-        operation_candidate = 8
-        watchlist = 24
-        scan = 41
-    }
+    tech_baseline = $TechBaseline
+    energy_baseline = $EnergyBaseline
     tech_pipeline = $TechPipeline
     energy_pipeline = $EnergyPipeline
     uat = $Uat
@@ -159,8 +197,8 @@ $Lines += '- scope_classification: account-generic runtime/UAT acceptance polish
 $Lines += ''
 $Lines += '## Baselines'
 $Lines += ''
-$Lines += '- tech: operation=7, operation_candidate=19, watchlist=28, scan=40'
-$Lines += '- energy: operation=4, operation_candidate=8, watchlist=24, scan=41'
+$Lines += ('- tech: operation=' + $TechBaseline.operation + ', operation_candidate=' + $TechBaseline.operation_candidate + ', watchlist=' + $TechBaseline.watchlist + ', scan=' + $TechBaseline.scan)
+$Lines += ('- energy: operation=' + $EnergyBaseline.operation + ', operation_candidate=' + $EnergyBaseline.operation_candidate + ', watchlist=' + $EnergyBaseline.watchlist + ', scan=' + $EnergyBaseline.scan)
 $Lines += ''
 $Lines += '## Tech Pipeline'
 $Lines += ''

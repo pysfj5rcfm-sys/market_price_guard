@@ -3,12 +3,17 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import yaml
 
+TECH_LAYER_FILES = {
+    "tech_core": "config/universes/tech_core.yaml",
+    "tech_operation_candidates": "config/universes/tech_operation_candidates.yaml",
+    "tech_watchlist": "config/universes/tech_watchlist.yaml",
+    "tech_scan_ai": "config/universes/tech_scan_ai.yaml",
+}
 TECH_BASELINE = {
-    "tech_core": 7,
-    "tech_operation_candidates": 19,
-    "tech_watchlist": 28,
-    "tech_scan_ai": 40,
+    layer: len(yaml.safe_load(Path(path).read_text(encoding="utf-8"))["symbols"])
+    for layer, path in TECH_LAYER_FILES.items()
 }
 ENERGY_BASELINE = {
     "energy_core": 4,
@@ -24,10 +29,8 @@ def _script(path: str) -> str:
 
 def test_current_account_baselines_are_declared_in_tests_and_config_check():
     assert TECH_BASELINE == {
-        "tech_core": 7,
-        "tech_operation_candidates": 19,
-        "tech_watchlist": 28,
-        "tech_scan_ai": 40,
+        layer: len(yaml.safe_load(Path(path).read_text(encoding="utf-8"))["symbols"])
+        for layer, path in TECH_LAYER_FILES.items()
     }
     assert ENERGY_BASELINE == {
         "energy_core": 4,

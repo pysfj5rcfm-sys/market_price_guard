@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 
 from market_price_guard.config_observability import (
     extract_configured_symbols,
@@ -13,6 +14,11 @@ from market_price_guard.config_observability import (
     run_config_check,
 )
 from market_price_guard.main import run_pipeline
+
+
+def _configured_count(layer_name: str) -> int:
+    data = yaml.safe_load(Path(f"config/universes/{layer_name}.yaml").read_text(encoding="utf-8"))
+    return len(data["symbols"])
 
 
 @pytest.mark.unit
@@ -41,9 +47,8 @@ def test_layer_manifest_detects_loaded_mismatch():
 
 @pytest.mark.contract
 def test_current_tech_layer_manifest_counts():
-    assert load_target_layer_manifest("tech_operation_candidates", [])["configured_symbol_count"] == 19
-    assert load_target_layer_manifest("tech_watchlist", [])["configured_symbol_count"] == 28
-    assert load_target_layer_manifest("tech_scan_ai", [])["configured_symbol_count"] == 40
+    for layer_name in ["tech_core", "tech_operation_candidates", "tech_watchlist", "tech_scan_ai"]:
+        assert load_target_layer_manifest(layer_name, [])["configured_symbol_count"] == _configured_count(layer_name)
 
 
 @pytest.mark.contract
@@ -69,7 +74,7 @@ def test_config_check_root_mirror_and_registry(tmp_path):
 
     assert (tmp_path / "tech_layer_config_check.md").exists()
     assert (tmp_path / "tech_layer_config_check.json").exists()
-    assert result["universes"]["tech_core"]["configured_symbol_count"] == 7
+    assert result["universes"]["tech_core"]["configured_symbol_count"] == _configured_count("tech_core")
     assert result["universes"]["tech_operation_candidates"]["root_mirror_matches"] is True
     assert result["universes"]["tech_watchlist"]["root_mirror_matches"] is True
     assert result["universes"]["tech_scan_ai"]["root_mirror_matches"] is True
@@ -83,8 +88,8 @@ def test_run_pipeline_writes_layer_manifest_and_reports(tmp_path):
     run_pipeline(output_dir=output_dir, provider_mode="mock", profile="tech", quote_purpose="reference", universe="tech_operation_candidates")
 
     manifest = json.loads((output_dir / "layer_manifest.json").read_text(encoding="utf-8"))
-    assert manifest["configured_symbol_count"] == 19
-    assert manifest["loaded_symbol_count"] == 19
+    assert manifest["configured_symbol_count"] == _configured_count("tech_operation_candidates")
+    assert manifest["loaded_symbol_count"] == _configured_count("tech_operation_candidates")
     assert manifest["config_mismatch"] is False
     assert "Config Source / Layer Manifest" in (output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
     assert "Config Source / Layer Manifest" in (output_dir / "debug_bundle.md").read_text(encoding="utf-8")

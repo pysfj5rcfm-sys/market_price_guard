@@ -32,14 +32,32 @@ def _root_layer(root: Path, account: str, layer: str) -> list[str]:
     return [str(item) for item in data["projects"][account]["layer_universes"][layer]]
 
 
+def _config_counts(root: Path, account: str) -> dict[str, int]:
+    files = {
+        "tech": {
+            "operation": "config/universes/tech_core.yaml",
+            "operation_candidate": "config/universes/tech_operation_candidates.yaml",
+            "watchlist": "config/universes/tech_watchlist.yaml",
+            "scan": "config/universes/tech_scan_ai.yaml",
+        },
+        "energy": {
+            "operation": "config/universes/energy_core.yaml",
+            "operation_candidate": "config/universes/energy_operation_candidates.yaml",
+            "watchlist": "config/universes/energy_watchlist.yaml",
+            "scan": "config/universes/energy_scan.yaml",
+        },
+    }[account]
+    return {layer: len(_symbols(root, relative)) for layer, relative in files.items()}
+
+
 def test_admin_service_current_baselines_are_preserved():
     service = AdminLayerService(Path.cwd())
 
     tech = service.account_snapshot("tech")
     energy = service.account_snapshot("energy")
 
-    assert tech["counts"] == {"operation": 7, "operation_candidate": 19, "watchlist": 28, "scan": 40}
-    assert energy["counts"] == {"operation": 4, "operation_candidate": 8, "watchlist": 24, "scan": 41}
+    assert tech["counts"] == _config_counts(Path.cwd(), "tech")
+    assert energy["counts"] == _config_counts(Path.cwd(), "energy")
 
 
 def test_admin_symbol_insert_dry_run_does_not_modify_config(tmp_path):
@@ -53,7 +71,7 @@ def test_admin_symbol_insert_dry_run_does_not_modify_config(tmp_path):
     )
 
     assert plan.operation_type == "add"
-    assert plan.after_counts["scan"] == 41
+    assert plan.after_counts["scan"] == _config_counts(root, "tech")["scan"] + 1
     assert _config_bytes(root) == before
 
 
@@ -83,7 +101,7 @@ def test_admin_remove_dry_run_does_not_modify_config(tmp_path):
     )
 
     assert plan.operation_type == "remove"
-    assert plan.after_counts["watchlist"] == 27
+    assert plan.after_counts["watchlist"] == _config_counts(root, "tech")["watchlist"] - 1
     assert _config_bytes(root) == before
 
 
