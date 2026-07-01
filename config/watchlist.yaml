@@ -44,8 +44,8 @@ projects:
       - mock
       required_for_operation: true
     layer_universes:
-      note: Legacy-compatible mirror of config/universes/energy_*.yaml. Scripts should
-        prefer account universe files when available.
+      note: Legacy-compatible mirror of config/universes/energy_*.yaml. Scripts should prefer account universe files when
+        available.
       operation:
       - 00883.HK
       - 601899.SH
@@ -210,8 +210,18 @@ projects:
       provider_priority:
       - mock
       required_for_operation: true
-    - symbol: 588200.SH
-      name: 科创芯片ETF
+    - symbol: 159995.SZ
+      name: 芯片ETF
+      market: SZ
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 513100.SH
+      name: 纳指ETF
       market: SH
       core: false
       provider: akshare
@@ -220,9 +230,59 @@ projects:
       - yfinance
       - mock
       required_for_operation: false
-    - symbol: 159995.SZ
-      name: 芯片ETF
+    - symbol: 159941.SZ
+      name: 纳指ETF
       market: SZ
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 159659.SZ
+      name: 纳指ETF
+      market: SZ
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 513110.SH
+      name: 513110.SH
+      market: SH
+      core: true
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: true
+    - symbol: 513390.SH
+      name: 纳指ETF
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 513870.SH
+      name: 513870.SH
+      market: SH
+      core: true
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: true
+    - symbol: 588200.SH
+      name: 科创芯片ETF
+      market: SH
       core: false
       provider: akshare
       provider_priority:
@@ -270,66 +330,6 @@ projects:
       - yfinance
       - mock
       required_for_operation: false
-    - symbol: 513100.SH
-      name: 纳指ETF参考
-      market: SH
-      core: false
-      provider: akshare
-      provider_priority:
-      - akshare
-      - yfinance
-      - mock
-      required_for_operation: false
-    - symbol: 159941.SZ
-      name: 纳指ETF参考
-      market: SZ
-      core: false
-      provider: akshare
-      provider_priority:
-      - akshare
-      - yfinance
-      - mock
-      required_for_operation: false
-    - symbol: 159659.SZ
-      name: 纳指100ETF参考
-      market: SZ
-      core: false
-      provider: akshare
-      provider_priority:
-      - akshare
-      - yfinance
-      - mock
-      required_for_operation: false
-    - symbol: 513110.SH
-      name: 纳指100ETF参考
-      market: SH
-      core: false
-      provider: akshare
-      provider_priority:
-      - akshare
-      - yfinance
-      - mock
-      required_for_operation: false
-    - symbol: 513390.SH
-      name: 纳指100ETF参考
-      market: SH
-      core: false
-      provider: akshare
-      provider_priority:
-      - akshare
-      - yfinance
-      - mock
-      required_for_operation: false
-    - symbol: 513870.SH
-      name: 纳指科技ETF参考
-      market: SH
-      core: false
-      provider: akshare
-      provider_priority:
-      - akshare
-      - yfinance
-      - mock
-      required_for_operation: false
     - symbol: 512480.SH
       name: 半导体ETF
       market: SH
@@ -340,9 +340,148 @@ projects:
       - yfinance
       - mock
       required_for_operation: false
+    - symbol: 159612.SZ
+      name: 159612.SZ
+      market: SZ
+      core: true
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: true
+    - symbol: 513500.SH
+      name: 513500.SH
+      market: SH
+      core: true
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: true
+    - symbol: 159655.SZ
+      name: 159655.SZ
+      market: SZ
+      core: true
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: true
+    - symbol: 513650.SH
+      name: 513650.SH
+      market: SH
+      core: true
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: true
+    - symbol: '161125'
+      name: '161125'
+      market: US
+      core: true
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: true
+    - symbol: 512760.SH
+      name: 芯片ETF国泰
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 562590.SH
+      name: 半导体设备ETF华夏
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 159558.SZ
+      name: 半导体设备ETF易方达
+      market: SZ
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 560780.SH
+      name: 半导体设备ETF广发
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 588170.SH
+      name: 科创半导体ETF
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 589020.SH
+      name: 科创半导体设备ETF鹏华
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 516350.SH
+      name: 芯片ETF易方达
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 516640.SH
+      name: 芯片ETF富国
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
+    - symbol: 588780.SH
+      name: 科创芯片设计ETF国联安
+      market: SH
+      core: false
+      provider: akshare
+      provider_priority:
+      - akshare
+      - yfinance
+      - mock
+      required_for_operation: false
     layer_universes:
-      note: Legacy-compatible mirror of config/universes/tech_*.yaml. Scripts should
-        prefer account universe files when available.
+      note: Legacy-compatible mirror of config/universes/tech_*.yaml. Scripts should prefer account universe files when available.
       operation:
       - 159632.SZ
       - 513300.SH
@@ -364,6 +503,20 @@ projects:
       - 513150.SH
       - 513020.SH
       - 512480.SH
+      - 159612.SZ
+      - 513500.SH
+      - 159655.SZ
+      - 513650.SH
+      - '161125'
+      - 512760.SH
+      - 562590.SH
+      - 159558.SZ
+      - 560780.SH
+      - 588170.SH
+      - 589020.SH
+      - 516350.SH
+      - 516640.SH
+      - 588780.SH
       operation_candidate:
       - 159819.SZ
       - 515880.SH
@@ -413,6 +566,36 @@ projects:
       - 002281.SZ
       - 515000.SH
       - 512930.SH
+      - 512760.SH
+      - 562590.SH
+      - 560780.SH
+      - 589020.SH
+      - 516350.SH
+      - 516640.SH
+      - 588780.SH
+      - 561980.SH
+      - 159813.SZ
+      - 159665.SZ
+      - 516920.SH
+      - 159801.SZ
+      - 159310.SZ
+      - 159560.SZ
+      - 159599.SZ
+      - 159325.SZ
+      - 562820.SH
+      - 159546.SZ
+      - 002371.SZ
+      - 688012.SH
+      - 688072.SH
+      - 688120.SH
+      - 688082.SH
+      - 688361.SH
+      - 688200.SH
+      - 300604.SZ
+      - 688019.SH
+      - 600584.SH
+      - 002156.SZ
+      - 688008.SH
       scan:
       - 159632.SZ
       - 513300.SH
@@ -454,12 +637,81 @@ projects:
       - 300476.SZ
       - 002916.SZ
       - 300394.SZ
-      - 000938.SZ
+      - 512760.SH
+      - 562590.SH
+      - 560780.SH
+      - 589020.SH
+      - 516350.SH
+      - 516640.SH
+      - 588780.SH
+      - 561980.SH
+      - 159813.SZ
+      - 159665.SZ
+      - 516920.SH
+      - 159801.SZ
+      - 159310.SZ
+      - 159560.SZ
+      - 159599.SZ
+      - 159325.SZ
+      - 562820.SH
+      - 159546.SZ
+      - 600584.SH
+      - 002156.SZ
+      - 688362.SH
+      - 002185.SZ
+      - 603005.SH
+      - 688352.SH
+      - 688135.SH
+      - 688372.SH
+      - 688200.SH
+      - 300604.SZ
+      - 688361.SH
+      - 300567.SZ
+      - 688001.SH
+      - 002371.SZ
+      - 688012.SH
+      - 688072.SH
+      - 688082.SH
+      - 688120.SH
+      - 688037.SH
+      - 688147.SH
+      - 300316.SZ
+      - 603690.SH
+      - 688019.SH
+      - 688126.SH
+      - 688409.SH
+      - 300666.SZ
+      - 300054.SZ
+      - 002409.SZ
+      - 300346.SZ
+      - 688146.SH
+      - 688549.SH
+      - 688268.SH
+      - 688106.SH
+      - 603078.SH
+      - 300655.SZ
+      - 688401.SH
+      - 688234.SH
+      - 688008.SH
+      - 603986.SH
+      - 301308.SZ
+      - 688525.SH
+      - 001309.SZ
+      - 300223.SZ
+      - 688123.SH
+      - 688766.SH
+      - 688110.SH
+      - 000021.SZ
+      - 600667.SH
+      - 688041.SH
+      - 603019.SH
+      - 000977.SZ
+      - 601138.SH
       counts:
-        operation: 20
+        operation: 34
         operation_candidate: 19
-        watchlist: 28
-        scan: 41
+        watchlist: 58
+        scan: 110
       hard_rules:
         scan_watchlist_candidate_are_not_operation: true
         no_auto_promotion: true
@@ -467,791 +719,135 @@ projects:
         specific_symbols_are_policy_warnings_not_permanent_hard_blocks: true
         GOLD_CNY_manual_reference_only: true
     all_layer_instruments:
-    - symbol: 159632.SZ
-      name: 纳指相关ETF
-      market: SZ
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: true
-      affect_core_strict: true
-      usable_for_operation: true
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: operation
-      notes: 科技账户核心纳指相关 ETF; current holding; nasdaq primary anchor; QDII premium
-        must be checked externally until premium module is implemented
-    - symbol: 513300.SH
-      name: 纳指ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: true
-      affect_core_strict: true
-      usable_for_operation: true
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: operation
-      notes: current holding; nasdaq anchor but add priority lower than 159632 unless
-        premium is materially better
-    - symbol: 159819.SZ
-      name: 人工智能ETF
-      market: SZ
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: true
-      affect_core_strict: true
-      usable_for_operation: true
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: operation
-      notes: already in tech core; included in scan universe for comparison only;
-        current holding; AI second observation satellite; candidate only after AI
-        group resonance and support confirmation
-    - symbol: 515880.SH
-      name: 通信ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: true
-      affect_core_strict: true
-      usable_for_operation: true
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: operation
-      notes: already in tech core; included in scan universe for comparison only;
-        current holding; communication/CPO first observation satellite; candidate
-        only after pullback/support confirmation
-    - symbol: 159516.SZ
-      name: 半导体设备ETF
-      market: SZ
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: true
-      affect_core_strict: true
-      usable_for_operation: true
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: operation
-      notes: current holding; failed trial observation position; retained in operation_candidate
-        only as restricted observation; no add, no T, not a repair candidate; any
-        new trade requires full re-evaluation
-    - symbol: 510300.SH
-      name: 沪深300ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: operation
-      notes: current holding; non-tech broad-base risk appetite reference; not a tech
-        budget candidate
-    - symbol: GOLD_CNY
-      name: 黄金持仓参考价
-      market: MANUAL
-      asset_type: manual_price
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: true
-      affect_core_strict: true
-      usable_for_operation: true
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: operation
-      notes: manual reference only; defensive/potential tech funding; does not overwrite
-        formal gold asset amount; no intraday VWAP support
-    - symbol: 588200.SH
-      name: 科创芯片ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; existing candidate expanded into layer1; 科创芯片弹性验证；可作为新交易候选;
-        operation-level validator/reference; not current holding/cost change
-    - symbol: 159995.SZ
-      name: 芯片ETF
-      market: SZ
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; existing candidate expanded into layer1; 芯片方向强弱验证；可作为新交易候选;
-        operation-level validator/reference; not current holding/cost change
-    - symbol: 159994.SZ
-      name: 通信ETF银华
-      market: SZ
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider; 同组验证；若明显强于515880且同组共振，才作为候选；不默认买;
-        operation-level validator/reference; not current holding/cost change
-    - symbol: 513130.SH
-      name: 恒生科技相关ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: cross-border/HK tech scan candidate; fund name should be validated by
-        provider; operation-level validator/reference; not current holding/cost change
-    - symbol: 513150.SH
-      name: 港股互联网ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: cross-border/HK internet scan candidate; premium module not yet available;
-        operation-level validator/reference; not current holding/cost change
-    - symbol: 513020.SH
-      name: 港股科技互联网相关ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: cross-border/HK tech scan candidate; fund name should be validated by
-        provider; operation-level validator/reference; not current holding/cost change
-    - symbol: 513100.SH
-      name: 纳指ETF参考
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: false
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: false
-      quote_purpose: reference
-      notes: legacy tech instrument retained in operation layer as operation-level
-        validator/reference; not current holding/cost change; not a default trade
-        candidate
-    - symbol: 159941.SZ
-      name: 纳指ETF参考
-      market: SZ
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: false
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: false
-      quote_purpose: reference
-      notes: legacy tech instrument retained in operation layer as operation-level
-        validator/reference; not current holding/cost change; not a default trade
-        candidate
-    - symbol: 159659.SZ
-      name: 纳指100ETF参考
-      market: SZ
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: false
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: false
-      quote_purpose: reference
-      notes: legacy tech instrument retained in operation layer as operation-level
-        validator/reference; not current holding/cost change; not a default trade
-        candidate
-    - symbol: 513110.SH
-      name: 纳指100ETF参考
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: false
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: false
-      quote_purpose: reference
-      notes: legacy tech instrument retained in operation layer as operation-level
-        validator/reference; not current holding/cost change; not a default trade
-        candidate
-    - symbol: 513390.SH
-      name: 纳指100ETF参考
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: false
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: false
-      quote_purpose: reference
-      notes: legacy tech instrument retained in operation layer as operation-level
-        validator/reference; not current holding/cost change; not a default trade
-        candidate
-    - symbol: 513870.SH
-      name: 纳指科技ETF参考
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: false
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: false
-      quote_purpose: reference
-      notes: legacy tech instrument retained in operation layer as operation-level
-        validator/reference; not current holding/cost change; not a default trade
-        candidate
-    - symbol: 512480.SH
-      name: 半导体ETF
-      market: SH
-      asset_type: ETF
-      in_operation: true
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: operation_validator
-      notes: user-added operation-level reference; semiconductor ETF validator; existing
-        candidate/watchlist/scan member; not trading advice; required_for_operation=false
-    - symbol: 588890.SH
-      name: 科创芯片相关ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider
-    - symbol: 588170.SH
-      name: 科创半导体ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider; 科创半导体强弱验证；当前不列入candidate，可用于同组验证
-    - symbol: 159558.SZ
-      name: 半导体设备ETF易方达
-      market: SZ
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider; 159516同类设备验证；不得用于补159516；不作为当前candidate
-    - symbol: 515050.SH
-      name: 通信ETF华夏
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider; 同组验证；若明显强于515880且同组共振，才作为候选；不默认买
-    - symbol: 513180.SH
-      name: 恒生科技指数ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: cross-border/HK tech scan candidate; premium module not yet available
-    - symbol: 002463.SZ
-      name: 沪电股份
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: sell-fly review observation only; not candidate by default; requires
-        user authorization and event-position state machine; now user-selected operation_candidate;
-        event_stock_candidate_warning; requires event state-machine review; policy
-        override is user-driven, not trading advice
-    - symbol: 002938.SZ
-      name: 鹏鼎控股
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: PCB/server chain scan only; not candidate by default; now user-selected
-        operation_candidate/watchlist; PCB/server chain strength verification; policy
-        warning only
-    - symbol: 600183.SH
-      name: 生益科技
-      market: SH
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: AI PCB/materials event-watch candidate; policy warning only; not default
-        trading advice; now user-selected operation_candidate/watchlist; AI PCB/materials
-        event-watch candidate; policy warning only
-    - symbol: 002281.SZ
-      name: 光迅科技
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: true
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: true
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: CPO/optical module event-watch candidate; policy warning only; not default
-        trading advice; now user-selected operation_candidate/watchlist; CPO/optical
-        module strength verification; policy warning only
-    - symbol: 688256.SH
-      name: 寒武纪
-      market: SH
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: single-stock scan candidate; not ETF; do not compare raw volume/amount
-        directly with ETFs
-    - symbol: 300308.SZ
-      name: 中际旭创
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: single-stock scan candidate; not ETF; do not compare raw volume/amount
-        directly with ETFs
-    - symbol: 300502.SZ
-      name: 新易盛
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: single-stock scan candidate; not ETF; do not compare raw volume/amount
-        directly with ETFs
-    - symbol: 513320.SH
-      name: 港股科技互联网相关ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: cross-border/HK tech scan candidate; fund name should be validated by
-        provider
-    - symbol: 603228.SH
-      name: 景旺电子
-      market: SH
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: PCB scan only; not candidate by default
-    - symbol: 515000.SH
-      name: 科技ETF华宝
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: broad technology ETF watch/scan candidate; not operation-grade
-    - symbol: 512930.SH
-      name: AI人工智能ETF平安
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: true
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: true
-      scan: true
-      quote_purpose: reference
-      notes: AI artificial intelligence ETF watch/scan candidate; not operation-grade
-    - symbol: 513310.SH
-      name: 中韩半导体ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: cross-border semiconductor ETF; premium/reference module not yet available
-    - symbol: 588760.SH
-      name: 科创人工智能ETF广发
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider; 科创AI验证；若明显强于159819且AI同组共振，才作为候选
-    - symbol: 588930.SH
-      name: 科创AI相关ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider
-    - symbol: 159363.SZ
-      name: 创业板人工智能ETF
-      market: SZ
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider; AI弹性验证；若明显强于159819且AI同组共振，才作为候选
-    - symbol: 516510.SH
-      name: 云计算ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider
-    - symbol: 515980.SH
-      name: 人工智能相关ETF
-      market: SH
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; fund name should be validated by provider
-    - symbol: 159792.SZ
-      name: 港股通互联网相关ETF
-      market: SZ
-      asset_type: ETF
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: scan candidate; verify whether QDII or HK-stock-connect ETF
-    - symbol: 300476.SZ
-      name: 胜宏科技
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: AI PCB strength verification only; not default buy object
-    - symbol: 002916.SZ
-      name: 深南电路
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: AI PCB/server PCB scan only; not candidate by default
-    - symbol: 300394.SZ
-      name: 天孚通信
-      market: SZ
-      asset_type: stock
-      in_operation: false
-      in_operation_candidate: false
-      in_watchlist: false
-      in_scan: true
-      required_for_operation: false
-      affect_core_strict: false
-      usable_for_operation: false
-      operation_candidate: false
-      watchlist: false
-      scan: true
-      quote_purpose: reference
-      notes: CPO/optical device strength verification only; not default buy object
+    - 159632.SZ
+    - 513300.SH
+    - 159819.SZ
+    - 515880.SH
+    - 159516.SZ
+    - 510300.SH
+    - GOLD_CNY
+    - 159995.SZ
+    - 513100.SH
+    - 159941.SZ
+    - 159659.SZ
+    - 513110.SH
+    - 513390.SH
+    - 513870.SH
+    - 588200.SH
+    - 159994.SZ
+    - 513130.SH
+    - 513150.SH
+    - 513020.SH
+    - 512480.SH
+    - 159612.SZ
+    - 513500.SH
+    - 159655.SZ
+    - 513650.SH
+    - '161125'
+    - 512760.SH
+    - 562590.SH
+    - 159558.SZ
+    - 560780.SH
+    - 588170.SH
+    - 589020.SH
+    - 516350.SH
+    - 516640.SH
+    - 588780.SH
+    - 588890.SH
+    - 515050.SH
+    - 513180.SH
+    - 002463.SZ
+    - 002938.SZ
+    - 600183.SH
+    - 002281.SZ
+    - 688256.SH
+    - 300308.SZ
+    - 300502.SZ
+    - 513320.SH
+    - 603228.SH
+    - 515000.SH
+    - 512930.SH
+    - 561980.SH
+    - 159813.SZ
+    - 159665.SZ
+    - 516920.SH
+    - 159801.SZ
+    - 159310.SZ
+    - 159560.SZ
+    - 159599.SZ
+    - 159325.SZ
+    - 562820.SH
+    - 159546.SZ
+    - 002371.SZ
+    - 688012.SH
+    - 688072.SH
+    - 688120.SH
+    - 688082.SH
+    - 688361.SH
+    - 688200.SH
+    - 300604.SZ
+    - 688019.SH
+    - 600584.SH
+    - 002156.SZ
+    - 688008.SH
+    - 513310.SH
+    - 588760.SH
+    - 588930.SH
+    - 159363.SZ
+    - 516510.SH
+    - 515980.SH
+    - 159792.SZ
+    - 300476.SZ
+    - 002916.SZ
+    - 300394.SZ
+    - 688362.SH
+    - 002185.SZ
+    - 603005.SH
+    - 688352.SH
+    - 688135.SH
+    - 688372.SH
+    - 300567.SZ
+    - 688001.SH
+    - 688037.SH
+    - 688147.SH
+    - 300316.SZ
+    - 603690.SH
+    - 688126.SH
+    - 688409.SH
+    - 300666.SZ
+    - 300054.SZ
+    - 002409.SZ
+    - 300346.SZ
+    - 688146.SH
+    - 688549.SH
+    - 688268.SH
+    - 688106.SH
+    - 603078.SH
+    - 300655.SZ
+    - 688401.SH
+    - 688234.SH
+    - 603986.SH
+    - 301308.SZ
+    - 688525.SH
+    - 001309.SZ
+    - 300223.SZ
+    - 688123.SH
+    - 688766.SH
+    - 688110.SH
+    - 000021.SZ
+    - 600667.SH
+    - 688041.SH
+    - 603019.SH
+    - 000977.SZ
+    - 601138.SH
     layer_counts:
-      operation: 20
+      operation: 34
       operation_candidate: 19
-      watchlist: 28
-      scan: 41
-      all_layer_union: 47
-    layer_mirror_updated_by: assistant_watchlist_fix_keep_legacy6_plus_000938_512480
+      watchlist: 58
+      scan: 110
+      all_layer_union: 121
+    layer_mirror_updated_by: semiconductor_reality_pool_v0.1_update; synced operation/instruments; removed 000938.SZ from
+      tech layers
   controller:
     display_name: 理财｜投资咨询/总控项目
     allow_full_detail: false

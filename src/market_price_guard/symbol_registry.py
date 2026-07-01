@@ -23,6 +23,7 @@ class UniverseSpec:
     universe_type: str
     quote_purpose: str
     symbols: list[str]
+    source_path: str = ""
 
 
 def load_symbol_registry(path: Path) -> dict[str, dict[str, Any]]:
@@ -45,6 +46,7 @@ def load_universe(name_or_path: str, universes_dir: Path) -> UniverseSpec:
         universe_type=str(data.get("universe_type") or SCAN_UNIVERSE),
         quote_purpose=str(data.get("quote_purpose") or "reference"),
         symbols=[str(symbol).strip() for symbol in data.get("symbols", []) if str(symbol).strip()],
+        source_path=str(path),
     )
 
 
@@ -105,6 +107,8 @@ def build_watchlist_from_registry(
         "universe_type": spec.universe_type,
         "universe_quote_purpose": spec.quote_purpose,
         "universe_symbols": resolved_symbols,
+        "universe_source_path": spec.source_path,
+        "loaded_symbols_source": spec.source_path or "cli_symbols",
         "unsupported_symbols": unsupported,
         "core_count": sum(1 for project in projects.values() for item in project.instruments if item.universe_type == CORE_HOLDINGS),
         "watchlist_count": sum(1 for project in projects.values() for item in project.instruments if item.universe_type == CANDIDATE_WATCHLIST),

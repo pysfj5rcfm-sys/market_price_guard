@@ -4,8 +4,7 @@ universe_type: operation_candidate
 quote_purpose: reference
 required_for_operation: false
 affect_core_strict: false
-description: 科技 operation_candidate 层：用户指定的候选/重点观察层；不是默认买入清单。特殊标的只触发 policy warning
-  与 ConfirmPolicyOverride 记录，不再作为永久 hard-block。
+description: 科技 operation_candidate 层：用户指定的候选/重点观察层；不是默认买入清单。特殊标的只触发 policy warning 与 ConfirmPolicyOverride 记录，不再作为永久 hard-block。
 rules:
   required_for_operation: false
   default_quote_purpose: reference
@@ -16,13 +15,11 @@ rules:
   not_default_buy_list: true
   qdii_premium_required_for_nasdaq_add: true
   restricted_candidate_symbols:
-    159516.SZ: failed_trial_observation_only; no_add_no_t; not_repair_candidate; any
-      new trade requires full re-evaluation
+    159516.SZ: failed_trial_observation_only; no_add_no_t; not_repair_candidate; any new trade requires full re-evaluation
   policy_warning_not_hard_block: true
   special_policy_symbols:
     159516.SZ: failed_trial_observation_only; no_add_no_t; not_repair_candidate; new_trade_requires_full_re_evaluation
-    002463.SZ: event_stock_candidate_warning; requires_event_state_machine_review;
-      user_selected_candidate
+    002463.SZ: event_stock_candidate_warning; requires_event_state_machine_review; user_selected_candidate
     002938.SZ: pcb/server_chain_candidate_warning; user_selected_candidate
     600183.SH: ai_pcb_materials_candidate_warning; user_selected_candidate
     002281.SZ: cpo_optical_module_candidate_warning; user_selected_candidate

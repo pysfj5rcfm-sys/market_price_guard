@@ -101,9 +101,10 @@ def collect_prices(
 ) -> dict:
     registry_enabled = bool(universe or symbols or symbol_file or include_watchlist or include_candidates or universe_type)
     universe_metadata: dict = {}
+    account_universe_default = _should_use_account_universe_default(watchlist_path, profile, registry_enabled)
     if include_minute_bars and profile == "tech" and not registry_enabled:
         watchlist, universe_metadata = _build_tech_minute_probe_watchlist(quote_purpose)
-    elif registry_enabled:
+    elif registry_enabled or account_universe_default:
         watchlist, universe_metadata = build_watchlist_from_registry(
             registry_path=SYMBOL_REGISTRY_PATH,
             universes_dir=UNIVERSES_DIR,
@@ -143,6 +144,15 @@ def collect_prices(
         ),
     )
     return {"watchlist": watchlist, "prices": prices, "universe_metadata": universe_metadata}
+
+
+def _should_use_account_universe_default(watchlist_path: Path, profile: str, registry_enabled: bool) -> bool:
+    if registry_enabled or profile not in {"tech", "energy"}:
+        return False
+    try:
+        return watchlist_path.resolve() == (CONFIG_DIR / "watchlist.yaml").resolve()
+    except OSError:
+        return False
 
 
 def run_pipeline(

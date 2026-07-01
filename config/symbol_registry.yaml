@@ -34,8 +34,8 @@
     - akshare
   report_group: 纳指 / 海外科技ETF
   enabled: true
-  notes: 科技账户核心纳指相关 ETF; current holding; nasdaq primary anchor; QDII premium must
-    be checked externally until premium module is implemented
+  notes: 科技账户核心纳指相关 ETF; current holding; nasdaq primary anchor; QDII premium must be checked externally until premium module
+    is implemented
   qdii_premium_required: true
   usable_for_operation: true
 513300.SH:
@@ -74,8 +74,7 @@
     - akshare
   report_group: 纳指 / 海外科技ETF
   enabled: true
-  notes: current holding; nasdaq anchor but add priority lower than 159632 unless
-    premium is materially better
+  notes: current holding; nasdaq anchor but add priority lower than 159632 unless premium is materially better
   qdii_premium_required: true
   usable_for_operation: true
 159819.SZ:
@@ -116,9 +115,8 @@
     - akshare
   report_group: AI / 人工智能ETF
   enabled: true
-  notes: already in tech core; included in scan universe for comparison only; current
-    holding; AI second observation satellite; candidate only after AI group resonance
-    and support confirmation
+  notes: already in tech core; included in scan universe for comparison only; current holding; AI second observation satellite;
+    candidate only after AI group resonance and support confirmation
   usable_for_operation: true
 515880.SH:
   symbol: 515880.SH
@@ -158,9 +156,8 @@
     - akshare
   report_group: 通信 / 科技ETF
   enabled: true
-  notes: already in tech core; included in scan universe for comparison only; current
-    holding; communication/CPO first observation satellite; candidate only after pullback/support
-    confirmation
+  notes: already in tech core; included in scan universe for comparison only; current holding; communication/CPO first observation
+    satellite; candidate only after pullback/support confirmation
   usable_for_operation: true
 510300.SH:
   symbol: 510300.SH
@@ -193,8 +190,7 @@
     - akshare
   report_group: 非科技宽基单独列示
   enabled: true
-  notes: current holding; non-tech broad-base risk appetite reference; not a tech
-    budget candidate
+  notes: current holding; non-tech broad-base risk appetite reference; not a tech budget candidate
   usable_for_operation: false
 GOLD_CNY:
   symbol: GOLD_CNY
@@ -222,8 +218,8 @@ GOLD_CNY:
     - manual
   report_group: 黄金防守仓 / 潜在转科技资金
   enabled: true
-  notes: manual reference only; defensive/potential tech funding; does not overwrite
-    formal gold asset amount; no intraday VWAP support
+  notes: manual reference only; defensive/potential tech funding; does not overwrite formal gold asset amount; no intraday
+    VWAP support
   usable_for_operation: true
 00883.HK:
   symbol: 00883.HK
@@ -358,8 +354,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 600900.SH:
   symbol: 600900.SH
   name: unknown
@@ -377,8 +372,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 601088.SH:
   symbol: 601088.SH
   name: unknown
@@ -396,8 +390,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 600489.SH:
   symbol: 600489.SH
   name: unknown
@@ -415,8 +408,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 600547.SH:
   symbol: 600547.SH
   name: unknown
@@ -434,8 +426,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 603993.SH:
   symbol: 603993.SH
   name: unknown
@@ -453,8 +444,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 600188.SH:
   symbol: 600188.SH
   name: unknown
@@ -472,8 +462,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 600795.SH:
   symbol: 600795.SH
   name: unknown
@@ -491,8 +480,7 @@ GOLD_CNY:
   default_quote_purpose: reference
   report_group: 能源账户关注池
   enabled: true
-  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy
-    list item
+  notes: energy operation_candidate/watchlist/scan pool symbol; not a default buy list item
 600028.SH:
   symbol: 600028.SH
   name: unknown
@@ -1232,9 +1220,8 @@ IXIC:
     - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
-  notes: current holding; failed trial observation position; retained in operation_candidate
-    only as restricted observation; no add, no T, not a repair candidate; any new
-    trade requires full re-evaluation
+  notes: current holding; failed trial observation position; retained in operation_candidate only as restricted observation;
+    no add, no T, not a repair candidate; any new trade requires full re-evaluation
   not_candidate_by_default: true
   candidate_restriction: no_add_no_t; not_repair_candidate; new_trade_requires_full_re_evaluation
   usable_for_operation: true
@@ -1246,16 +1233,19 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - watchlist
-  - semiconductor
+  - candidate
+  - equipment
   - etf
   - layer1
-  - equipment
-  - semiconductor_equipment
-  - candidate
-  - scan
-  - tech
+  - operation
   - operation_candidate
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_equipment
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1273,7 +1263,8 @@ IXIC:
     - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
-  notes: scan candidate; fund name should be validated by provider; 159516同类设备验证；不得用于补159516；不作为当前candidate
+  notes: scan candidate; fund name should be validated by provider; 159516同类设备验证；不得用于补159516；不作为当前candidate; 半导体现实主线 ETF 工具池；operation
+    仅作板块健康度/共振验证，不等同买入清单。
   affect_core_strict: false
   qdii_premium_required: false
   usable_for_operation: false
@@ -1285,15 +1276,18 @@ IXIC:
   project_scope: tech
   role: operation_validator_etf
   universe_tags:
-  - watchlist
-  - semiconductor
+  - candidate
   - etf
   - layer1
-  - sci_tech_semiconductor
-  - candidate
-  - scan
-  - tech
+  - operation
   - operation_candidate
+  - operation_validator
+  - scan
+  - sci_tech_semiconductor
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1311,7 +1305,8 @@ IXIC:
     - akshare
   report_group: 半导体 / 科创芯片 / 半导体设备
   enabled: true
-  notes: scan candidate; fund name should be validated by provider; 科创半导体强弱验证；当前不列入candidate，可用于同组验证
+  notes: scan candidate; fund name should be validated by provider; 科创半导体强弱验证；当前不列入candidate，可用于同组验证; 半导体现实主线 ETF 工具池；operation
+    仅作板块健康度/共振验证，不等同买入清单。
   affect_core_strict: false
   qdii_premium_required: false
   usable_for_operation: false
@@ -1466,8 +1461,7 @@ IXIC:
     - akshare
   report_group: 通信 / CPO / 光模块
   enabled: true
-  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
-    with ETFs
+  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly with ETFs
   usable_for_operation: false
 300502.SZ:
   symbol: 300502.SZ
@@ -1503,8 +1497,7 @@ IXIC:
     - akshare
   report_group: 通信 / CPO / 光模块
   enabled: true
-  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
-    with ETFs
+  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly with ETFs
   usable_for_operation: false
 159363.SZ:
   symbol: 159363.SZ
@@ -1693,15 +1686,18 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - watchlist
   - ai
-  - semiconductor
-  - computing_power
-  - stock
-  - scan
-  - tech
   - ai_chip
+  - computing_power
   - layer3
+  - research_only
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -1719,9 +1715,10 @@ IXIC:
     - akshare
   report_group: AI / 算力 / 科创AI / 云计算
   enabled: true
-  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly
-    with ETFs
+  notes: single-stock scan candidate; not ETF; do not compare raw volume/amount directly with ETFs; 半导体现实主线研究池v0.1；方向：国产算力/AI芯片；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
   usable_for_operation: false
+  affect_core_strict: false
+  qdii_premium_required: false
 513180.SH:
   symbol: 513180.SH
   name: 恒生科技指数ETF
@@ -2015,8 +2012,7 @@ IXIC:
     - akshare
   report_group: 纳指QDII溢价比较池
   enabled: true
-  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet;
-    not default candidate or buy object
+  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet; not default candidate or buy object
   qdii_premium_required: true
   usable_for_operation: false
 159941.SZ:
@@ -2039,8 +2035,7 @@ IXIC:
   provider_preference: *id001
   report_group: 纳指QDII溢价比较池
   enabled: true
-  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet;
-    not default candidate or buy object
+  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet; not default candidate or buy object
   qdii_premium_required: true
   usable_for_operation: false
 159659.SZ:
@@ -2063,8 +2058,7 @@ IXIC:
   provider_preference: *id001
   report_group: 纳指QDII溢价比较池
   enabled: true
-  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet;
-    not default candidate or buy object
+  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet; not default candidate or buy object
   qdii_premium_required: true
   usable_for_operation: false
 513390.SH:
@@ -2087,8 +2081,7 @@ IXIC:
   provider_preference: *id001
   report_group: 纳指QDII溢价比较池
   enabled: true
-  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet;
-    not default candidate or buy object
+  notes: QDII premium comparison only; premium_pct/IOPV not implemented in guard yet; not default candidate or buy object
   qdii_premium_required: true
   usable_for_operation: false
 002463.SZ:
@@ -2099,14 +2092,18 @@ IXIC:
   project_scope: tech
   role: event_watch_stock
   universe_tags:
-  - watchlist
   - ai_pcb
-  - event_watch
   - candidate
-  - server_pcb
-  - scan
-  - tech
+  - event_watch
   - operation_candidate
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - server_pcb
+  - stock
+  - tech
+  - watchlist
   required_for_operation: false
   default_quote_purpose: reference
   provider_preference:
@@ -2124,11 +2121,12 @@ IXIC:
     - akshare
   report_group: AI PCB / 服务器链
   enabled: true
-  notes: sell-fly review observation only; not candidate by default; requires user
-    authorization and event-position state machine; now user-selected operation_candidate;
-    event_stock_candidate_warning; requires event state-machine review; policy override
-    is user-driven, not trading advice
+  notes: sell-fly review observation only; not candidate by default; requires user authorization and event-position state
+    machine; now user-selected operation_candidate; event_stock_candidate_warning; requires event state-machine review; policy
+    override is user-driven, not trading advice; 半导体现实主线研究池v0.1；方向：AI PCB/算力基础设施；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
   usable_for_operation: false
+  affect_core_strict: false
+  qdii_premium_required: false
 601138.SH:
   symbol: 601138.SH
   name: 工业富联
@@ -2137,11 +2135,15 @@ IXIC:
   project_scope: tech
   role: scan_candidate_stock
   universe_tags:
-  - tech
   - ai_server
   - computing_power
-  - server_chain
+  - research_only
   - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - server_chain
+  - stock
+  - tech
   - watchlist
   required_for_operation: false
   default_quote_purpose: reference
@@ -2160,8 +2162,10 @@ IXIC:
     - akshare
   report_group: AI PCB / 服务器链
   enabled: true
-  notes: mainline strength verification only; not default buy object
+  notes: mainline strength verification only; not default buy object; 半导体现实主线研究池v0.1；方向：AI服务器制造链；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
   usable_for_operation: false
+  affect_core_strict: false
+  qdii_premium_required: false
 300476.SZ:
   symbol: 300476.SZ
   name: 胜宏科技
@@ -2308,8 +2312,8 @@ IXIC:
     - akshare
   report_group: AI PCB / 服务器链
   enabled: true
-  notes: PCB/server chain scan only; not candidate by default; now user-selected operation_candidate/watchlist;
-    PCB/server chain strength verification; policy warning only
+  notes: PCB/server chain scan only; not candidate by default; now user-selected operation_candidate/watchlist; PCB/server
+    chain strength verification; policy warning only
   usable_for_operation: false
 603228.SH:
   symbol: 603228.SH
@@ -2369,8 +2373,7 @@ QQQ:
     - yfinance
   report_group: 纳指QDII溢价比较池
   enabled: true
-  notes: US Nasdaq-100 ETF external reference only; not operation/candidate; reference-only;
-    provider_validation_required
+  notes: US Nasdaq-100 ETF external reference only; not operation/candidate; reference-only; provider_validation_required
   usable_for_operation: false
   provider_validation_required: true
 NQ=F:
@@ -2392,8 +2395,7 @@ NQ=F:
   provider_preference: *id003
   report_group: 纳指QDII溢价比较池
   enabled: true
-  notes: NASDAQ futures reference only; provider validation required; not operation/candidate;
-    reference-only; provider_validation_required
+  notes: NASDAQ futures reference only; provider validation required; not operation/candidate; reference-only; provider_validation_required
   usable_for_operation: false
   provider_validation_required: true
 NVDA:
@@ -2565,8 +2567,7 @@ AAPL:
     - yfinance
   report_group: 防守资产 / 宏观风险
   enabled: true
-  notes: US 10Y yield reference only; provider validation required; reference-only;
-    provider_validation_required
+  notes: US 10Y yield reference only; provider validation required; reference-only; provider_validation_required
   usable_for_operation: false
   provider_validation_required: true
 ^VIX:
@@ -2588,8 +2589,7 @@ AAPL:
   provider_preference: *id004
   report_group: 防守资产 / 宏观风险
   enabled: true
-  notes: VIX risk appetite reference only; provider validation required; reference-only;
-    provider_validation_required
+  notes: VIX risk appetite reference only; provider validation required; reference-only; provider_validation_required
   usable_for_operation: false
   provider_validation_required: true
 DX-Y.NYB:
@@ -2647,9 +2647,8 @@ DX-Y.NYB:
     - akshare
   report_group: AI PCB / 服务器链
   enabled: true
-  notes: AI PCB/materials event-watch candidate; policy warning only; not default
-    trading advice; now user-selected operation_candidate/watchlist; AI PCB/materials
-    event-watch candidate; policy warning only
+  notes: AI PCB/materials event-watch candidate; policy warning only; not default trading advice; now user-selected operation_candidate/watchlist;
+    AI PCB/materials event-watch candidate; policy warning only
   usable_for_operation: false
 002281.SZ:
   symbol: 002281.SZ
@@ -2685,9 +2684,8 @@ DX-Y.NYB:
     - akshare
   report_group: 通信 / CPO / 光模块
   enabled: true
-  notes: CPO/optical module event-watch candidate; policy warning only; not default
-    trading advice; now user-selected operation_candidate/watchlist; CPO/optical module
-    strength verification; policy warning only
+  notes: CPO/optical module event-watch candidate; policy warning only; not default trading advice; now user-selected operation_candidate/watchlist;
+    CPO/optical module strength verification; policy warning only
   usable_for_operation: false
 515000.SH:
   symbol: 515000.SH
@@ -2773,8 +2771,7 @@ DX-Y.NYB:
   enabled: true
   required_for_operation: true
   default_quote_purpose: operation
-  notes: Local admin dashboard minimal registry stub for configuration management
-    only.
+  notes: Local admin dashboard minimal registry stub for configuration management only.
 513870.SH:
   symbol: 513870.SH
   name: 513870.SH
@@ -2793,8 +2790,7 @@ DX-Y.NYB:
   enabled: true
   required_for_operation: true
   default_quote_purpose: operation
-  notes: Local admin dashboard minimal registry stub for configuration management
-    only.
+  notes: Local admin dashboard minimal registry stub for configuration management only.
 000938.SZ:
   symbol: 000938.SZ
   name: 000938.SZ
@@ -2813,5 +2809,1747 @@ DX-Y.NYB:
   enabled: true
   required_for_operation: true
   default_quote_purpose: operation
-  notes: Local admin dashboard minimal registry stub for configuration management
-    only.
+  notes: Local admin dashboard minimal registry stub for configuration management only.
+159612.SZ:
+  symbol: 159612.SZ
+  name: 159612.SZ
+  display_name: 159612.SZ
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Other
+  source: admin_ui_stub
+  created_at: '2026-06-22T06:22:28.632120+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management only.
+513500.SH:
+  symbol: 513500.SH
+  name: 513500.SH
+  display_name: 513500.SH
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Other
+  source: admin_ui_stub
+  created_at: '2026-06-22T06:23:01.678730+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management only.
+159655.SZ:
+  symbol: 159655.SZ
+  name: 159655.SZ
+  display_name: 159655.SZ
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Other
+  source: admin_ui_stub
+  created_at: '2026-06-22T06:23:23.496963+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management only.
+513650.SH:
+  symbol: 513650.SH
+  name: 513650.SH
+  display_name: 513650.SH
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Other
+  source: admin_ui_stub
+  created_at: '2026-06-22T06:23:44.487628+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management only.
+'161125':
+  symbol: '161125'
+  name: '161125'
+  display_name: '161125'
+  market: US
+  asset_type: ETF
+  project_scope: tech
+  account_tags:
+  - tech
+  universe_tags:
+  - tech
+  - admin_ui_stub
+  category: Other
+  source: admin_ui_stub
+  created_at: '2026-06-22T06:24:05.891421+00:00'
+  enabled: true
+  required_for_operation: true
+  default_quote_purpose: operation
+  notes: Local admin dashboard minimal registry stub for configuration management only.
+512760.SH:
+  symbol: 512760.SH
+  name: 芯片ETF国泰
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_operation_reference_etf
+  universe_tags:
+  - etf
+  - operation
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: &id005
+    operation:
+    - akshare
+    - mock
+    reference:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+    - mock
+    reconcile:
+    - eastmoney_direct
+    - yfinance
+    - akshare
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体现实主线 ETF 工具池；operation 仅作板块健康度/共振验证，不等同买入清单。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+562590.SH:
+  symbol: 562590.SH
+  name: 半导体设备ETF华夏
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_operation_reference_etf
+  universe_tags:
+  - etf
+  - operation
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体现实主线 ETF 工具池；operation 仅作板块健康度/共振验证，不等同买入清单。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+560780.SH:
+  symbol: 560780.SH
+  name: 半导体设备ETF广发
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_operation_reference_etf
+  universe_tags:
+  - etf
+  - operation
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体现实主线 ETF 工具池；operation 仅作板块健康度/共振验证，不等同买入清单。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+589020.SH:
+  symbol: 589020.SH
+  name: 科创半导体设备ETF鹏华
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_operation_reference_etf
+  universe_tags:
+  - etf
+  - operation
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体现实主线 ETF 工具池；operation 仅作板块健康度/共振验证，不等同买入清单。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+516350.SH:
+  symbol: 516350.SH
+  name: 芯片ETF易方达
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_operation_reference_etf
+  universe_tags:
+  - etf
+  - operation
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体现实主线 ETF 工具池；operation 仅作板块健康度/共振验证，不等同买入清单。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+516640.SH:
+  symbol: 516640.SH
+  name: 芯片ETF富国
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_operation_reference_etf
+  universe_tags:
+  - etf
+  - operation
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体现实主线 ETF 工具池；operation 仅作板块健康度/共振验证，不等同买入清单。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+588780.SH:
+  symbol: 588780.SH
+  name: 科创芯片设计ETF国联安
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_operation_reference_etf
+  universe_tags:
+  - etf
+  - operation
+  - operation_validator
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体现实主线 ETF 工具池；operation 仅作板块健康度/共振验证，不等同买入清单。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+561980.SH:
+  symbol: 561980.SH
+  name: 招商中证半导体产业ETF
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159813.SZ:
+  symbol: 159813.SZ
+  name: 半导体ETF
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159665.SZ:
+  symbol: 159665.SZ
+  name: 半导体龙头ETF
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+516920.SH:
+  symbol: 516920.SH
+  name: 芯片ETF基金
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159801.SZ:
+  symbol: 159801.SZ
+  name: 芯片ETF龙头
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159310.SZ:
+  symbol: 159310.SZ
+  name: 芯片ETF天弘
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159560.SZ:
+  symbol: 159560.SZ
+  name: 芯片ETF景顺
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159599.SZ:
+  symbol: 159599.SZ
+  name: 芯片ETF东财
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159325.SZ:
+  symbol: 159325.SZ
+  name: 半导体ETF南方
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+562820.SH:
+  symbol: 562820.SH
+  name: 集成电路ETF嘉实
+  market: SH
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+159546.SZ:
+  symbol: 159546.SZ
+  name: 集成电路ETF国泰
+  market: SZ
+  asset_type: ETF
+  project_scope: tech
+  role: semiconductor_watchlist_reference_etf
+  universe_tags:
+  - etf
+  - scan
+  - semiconductor
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_backup
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体 / 芯片 / 半导体设备ETF
+  enabled: true
+  notes: 半导体 ETF 备选观察池；需核验规模、流动性、成分与行情源稳定性。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+600584.SH:
+  symbol: 600584.SH
+  name: 长电科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 先进封装
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：先进封装；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+002156.SZ:
+  symbol: 002156.SZ
+  name: 通富微电
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 先进封装
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：先进封装；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688362.SH:
+  symbol: 688362.SH
+  name: 甬矽电子
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 先进封装
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：先进封装；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+002185.SZ:
+  symbol: 002185.SZ
+  name: 华天科技
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 先进封装
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：先进封装；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+603005.SH:
+  symbol: 603005.SH
+  name: 晶方科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 先进封装
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：先进封装；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688352.SH:
+  symbol: 688352.SH
+  name: 颀中科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 先进封装
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：先进封装；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688135.SH:
+  symbol: 688135.SH
+  name: 利扬芯片
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 先进封装/测试服务
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：先进封装/测试服务；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688372.SH:
+  symbol: 688372.SH
+  name: 伟测科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 测试服务
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：测试服务；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688200.SH:
+  symbol: 688200.SH
+  name: 华峰测控
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 测试设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：测试设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300604.SZ:
+  symbol: 300604.SZ
+  name: 长川科技
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 测试设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：测试设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688361.SH:
+  symbol: 688361.SH
+  name: 中科飞测
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 量测检测
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：量测检测；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300567.SZ:
+  symbol: 300567.SZ
+  name: 精测电子
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 检测设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：检测设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688001.SH:
+  symbol: 688001.SH
+  name: 华兴源创
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 检测设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：检测设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+002371.SZ:
+  symbol: 002371.SZ
+  name: 北方华创
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 前道设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：前道设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688012.SH:
+  symbol: 688012.SH
+  name: 中微公司
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 刻蚀设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：刻蚀设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688072.SH:
+  symbol: 688072.SH
+  name: 拓荆科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 薄膜沉积
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：薄膜沉积；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688082.SH:
+  symbol: 688082.SH
+  name: 盛美上海
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 清洗/电镀
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：清洗/电镀；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688120.SH:
+  symbol: 688120.SH
+  name: 华海清科
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / CMP设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：CMP设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688037.SH:
+  symbol: 688037.SH
+  name: 芯源微
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 涂胶显影/清洗
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：涂胶显影/清洗；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688147.SH:
+  symbol: 688147.SH
+  name: 微导纳米
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 薄膜沉积
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：薄膜沉积；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300316.SZ:
+  symbol: 300316.SZ
+  name: 晶盛机电
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 硅片/SiC设备
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：硅片/SiC设备；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+603690.SH:
+  symbol: 603690.SH
+  name: 至纯科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 清洗/高纯工艺系统
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：清洗/高纯工艺系统；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688019.SH:
+  symbol: 688019.SH
+  name: 安集科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / CMP材料
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：CMP材料；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688126.SH:
+  symbol: 688126.SH
+  name: 沪硅产业
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 半导体硅片
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：半导体硅片；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688409.SH:
+  symbol: 688409.SH
+  name: 富创精密
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 设备零部件
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：设备零部件；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300666.SZ:
+  symbol: 300666.SZ
+  name: 江丰电子
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 靶材
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：靶材；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300054.SZ:
+  symbol: 300054.SZ
+  name: 鼎龙股份
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / CMP材料/抛光垫
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：CMP材料/抛光垫；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+002409.SZ:
+  symbol: 002409.SZ
+  name: 雅克科技
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 前驱体/材料
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：前驱体/材料；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300346.SZ:
+  symbol: 300346.SZ
+  name: 南大光电
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 特气/光刻胶材料
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：特气/光刻胶材料；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688146.SH:
+  symbol: 688146.SH
+  name: 中船特气
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 电子特气
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：电子特气；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688549.SH:
+  symbol: 688549.SH
+  name: 中巨芯
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 电子化学品/材料
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：电子化学品/材料；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688268.SH:
+  symbol: 688268.SH
+  name: 华特气体
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 电子特气
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：电子特气；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688106.SH:
+  symbol: 688106.SH
+  name: 金宏气体
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 工业气体/电子气体
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：工业气体/电子气体；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+603078.SH:
+  symbol: 603078.SH
+  name: 江化微
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 湿电子化学品
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：湿电子化学品；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300655.SZ:
+  symbol: 300655.SZ
+  name: 晶瑞电材
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 光刻胶/电子化学品
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：光刻胶/电子化学品；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688401.SH:
+  symbol: 688401.SH
+  name: 路维光电
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 掩膜版
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：掩膜版；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688234.SH:
+  symbol: 688234.SH
+  name: 天岳先进
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / SiC衬底
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：SiC衬底；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688008.SH:
+  symbol: 688008.SH
+  name: 澜起科技
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - first_priority_research_card
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  - watchlist
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 内存接口/HBM映射
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：内存接口/HBM映射；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+603986.SH:
+  symbol: 603986.SH
+  name: 兆易创新
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 存储/MCU
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：存储/MCU；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+301308.SZ:
+  symbol: 301308.SZ
+  name: 江波龙
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 存储模组/企业级存储
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：存储模组/企业级存储；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688525.SH:
+  symbol: 688525.SH
+  name: 佰维存储
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 存储模组/先进封测映射
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：存储模组/先进封测映射；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+001309.SZ:
+  symbol: 001309.SZ
+  name: 德明利
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 存储模组/SSD
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：存储模组/SSD；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+300223.SZ:
+  symbol: 300223.SZ
+  name: 北京君正
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 车规/工业存储
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：车规/工业存储；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688123.SH:
+  symbol: 688123.SH
+  name: 聚辰股份
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / SPD/EEPROM
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：SPD/EEPROM；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688766.SH:
+  symbol: 688766.SH
+  name: 普冉股份
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 非易失存储
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：非易失存储；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688110.SH:
+  symbol: 688110.SH
+  name: 东芯股份
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 中小容量存储
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：中小容量存储；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+000021.SZ:
+  symbol: 000021.SZ
+  name: 深科技
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 存储封测/电子制造
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：存储封测/电子制造；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+600667.SH:
+  symbol: 600667.SH
+  name: 太极实业
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 存储/封测/工程
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：存储/封测/工程；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+688041.SH:
+  symbol: 688041.SH
+  name: 海光信息
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 国产算力/CPU/DCU
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：国产算力/CPU/DCU；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+603019.SH:
+  symbol: 603019.SH
+  name: 中科曙光
+  market: SH
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / 服务器/HPC系统
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：服务器/HPC系统；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false
+000977.SZ:
+  symbol: 000977.SZ
+  name: 浪潮信息
+  market: SZ
+  asset_type: stock
+  project_scope: tech
+  role: semiconductor_research_stock
+  universe_tags:
+  - research_only
+  - scan
+  - semiconductor_reality_pool_v0_1
+  - semiconductor_research_pool
+  - stock
+  - tech
+  required_for_operation: false
+  default_quote_purpose: reference
+  provider_preference: *id005
+  report_group: 半导体现实主线 / AI服务器
+  enabled: true
+  notes: 半导体现实主线研究池v0.1；方向：AI服务器；研究清单，不是买入清单；个股首笔观察票需另行完成研究卡与交易条件。
+  affect_core_strict: false
+  qdii_premium_required: false
+  usable_for_operation: false

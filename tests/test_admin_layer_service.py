@@ -9,6 +9,9 @@ import yaml
 from market_price_guard.admin_layer_service import AdminLayerService
 
 
+NEW_TECH_LAYER_SYMBOL = "688183.SH"
+
+
 def _copy_project_config(tmp_path: Path) -> Path:
     root = tmp_path / "project"
     shutil.copytree(Path("config"), root / "config")
@@ -67,7 +70,7 @@ def test_admin_symbol_insert_dry_run_does_not_modify_config(tmp_path):
     plan = AdminLayerService(root).plan_symbol_insert(
         account="tech",
         target_layer="scan",
-        raw_symbol="601138.SH",
+        raw_symbol=NEW_TECH_LAYER_SYMBOL,
     )
 
     assert plan.operation_type == "add"
@@ -109,13 +112,13 @@ def test_admin_apply_requires_explicit_confirmation(tmp_path):
     root = _copy_project_config(tmp_path)
     service = AdminLayerService(root)
 
-    plan = service.plan_symbol_insert(account="tech", target_layer="scan", raw_symbol="601138.SH")
+    plan = service.plan_symbol_insert(account="tech", target_layer="scan", raw_symbol=NEW_TECH_LAYER_SYMBOL)
     result = service.perform(plan)
 
     assert plan.apply_allowed is False
     assert result.success is False
     assert "apply confirmation required" in result.errors
-    assert "601138.SH" not in _symbols(root, "config/universes/tech_scan_ai.yaml")
+    assert NEW_TECH_LAYER_SYMBOL not in _symbols(root, "config/universes/tech_scan_ai.yaml")
 
 
 def test_admin_operation_layer_apply_requires_extra_confirmation(tmp_path):
@@ -124,7 +127,7 @@ def test_admin_operation_layer_apply_requires_extra_confirmation(tmp_path):
     plan = AdminLayerService(root).plan_symbol_insert(
         account="tech",
         target_layer="operation",
-        raw_symbol="601138.SH",
+        raw_symbol=NEW_TECH_LAYER_SYMBOL,
         confirm_apply=True,
     )
 
@@ -139,7 +142,7 @@ def test_admin_apply_creates_backup_audit_validate_and_syncs_root(tmp_path):
     plan = service.plan_symbol_insert(
         account="tech",
         target_layer="scan",
-        raw_symbol="601138.SH",
+        raw_symbol=NEW_TECH_LAYER_SYMBOL,
         confirm_apply=True,
     )
     result = service.perform(plan)
@@ -151,10 +154,10 @@ def test_admin_apply_creates_backup_audit_validate_and_syncs_root(tmp_path):
     manifest = json.loads((backup_path / "backup_manifest.json").read_text(encoding="utf-8"))
     assert manifest["operation"] == "add"
     assert manifest["account"] == "tech"
-    assert manifest["symbol"] == "601138.SH"
+    assert manifest["symbol"] == NEW_TECH_LAYER_SYMBOL
     assert manifest["user_action_source"] == "admin_ui"
-    assert "601138.SH" in _symbols(root, "config/universes/tech_scan_ai.yaml")
-    assert "601138.SH" in _root_layer(root, "tech", "scan")
+    assert NEW_TECH_LAYER_SYMBOL in _symbols(root, "config/universes/tech_scan_ai.yaml")
+    assert NEW_TECH_LAYER_SYMBOL in _root_layer(root, "tech", "scan")
     assert Path(result.audit_path).exists()
     audit_line = Path(result.audit_path).read_text(encoding="utf-8").strip().splitlines()[-1]
     assert json.loads(audit_line)["success"] is True

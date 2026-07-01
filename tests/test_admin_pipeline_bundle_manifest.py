@@ -67,7 +67,8 @@ def test_latest_mismatch_is_skipped_with_snapshot_fallback(tmp_path):
     skipped = {item["path"]: item for item in manifest["skipped_paths"]}
     assert "outputs_tech_watchlist_latest/layer_manifest.json" not in names
     assert skipped["outputs_tech_watchlist_latest"]["reason"] == "latest_mismatch_with_pipeline_snapshot"
-    assert "outputs_tech_pipeline_latest/snapshots/tech_watchlist" in skipped["outputs_tech_watchlist_latest"]["authoritative_fallback"]
+    fallback = skipped["outputs_tech_watchlist_latest"]["authoritative_fallback"].replace("\\", "/")
+    assert "outputs_tech_pipeline_latest/snapshots/tech_watchlist" in fallback
     assert manifest["warnings"]
 
 

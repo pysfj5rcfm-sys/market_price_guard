@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pytest
+import yaml
 
 from market_price_guard.main import EXIT_OK, EXIT_STRICT_BLOCKED, PROJECT_ROOT, run_pipeline
 
@@ -119,11 +120,31 @@ def _fresh_mock_prices(tmp_path):
     now = datetime.now(timezone(timedelta(hours=8)))
     quote_time = (now - timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
     fetch_time = now.strftime("%Y-%m-%dT%H:%M:%S+08:00")
-    path.write_text(
-        content.replace("2026-05-20T12:45:00+08:00", quote_time).replace("2026-05-20T12:50:00+08:00", fetch_time),
-        encoding="utf-8",
+    data = yaml.safe_load(
+        content.replace("2026-05-20T12:45:00+08:00", quote_time).replace("2026-05-20T12:50:00+08:00", fetch_time)
     )
+    existing = {str(item.get("symbol")) for item in data.get("prices", [])}
+    for index, symbol in enumerate(_tech_core_symbols()):
+        if symbol in existing:
+            continue
+        data["prices"].append(
+            {
+                "symbol": symbol,
+                "price": round(1.0 + index / 1000, 4),
+                "currency": "CNY",
+                "source": "mock",
+                "quote_time": quote_time,
+                "fetch_time": fetch_time,
+                "market_status": "closed",
+            }
+        )
+    path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return path
+
+
+def _tech_core_symbols() -> list[str]:
+    data = yaml.safe_load((PROJECT_ROOT / "config" / "universes" / "tech_core.yaml").read_text(encoding="utf-8"))
+    return [str(symbol) for symbol in data["symbols"]]
 
 
 def _fresh_manual_prices(tmp_path):

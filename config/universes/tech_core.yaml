@@ -23,7 +23,23 @@ symbols:
 - 513150.SH
 - 513020.SH
 - 512480.SH
-description: 科技 operation 层：仅保留当前持仓与基础参考。新增扩池标的本轮不进入 operation，避免非持仓验证标的阻断 tech_fast_strict。
+- 159612.SZ
+- 513500.SH
+- 159655.SZ
+- 513650.SH
+- '161125'
+- 512760.SH
+- 562590.SH
+- 159558.SZ
+- 560780.SH
+- 588170.SH
+- 589020.SH
+- 516350.SH
+- 516640.SH
+- 588780.SH
+description: '科技 operation 层：仅保留当前持仓与基础参考。新增扩池标的本轮不进入 operation，避免非持仓验证标的阻断 tech_fast_strict。
+
+  Semiconductor reality pool v0.1: added main operation ETF references; operation layer is not a buy list.'
 rules:
   current_holdings_required_for_operation:
   - 159632.SZ

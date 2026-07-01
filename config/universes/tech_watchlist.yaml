@@ -4,8 +4,9 @@ universe_type: candidate_watchlist
 quote_purpose: reference
 required_for_operation: false
 affect_core_strict: false
-description: 科技 watchlist：当前持仓强弱验证 + 通信/CPO + 半导体/芯片/设备 + 港股科技/互联网 + AI PCB/服务器链 +
-  AI/科技ETF观察。watchlist 不直接给买卖价。
+description: '科技 watchlist：当前持仓强弱验证 + 通信/CPO + 半导体/芯片/设备 + 港股科技/互联网 + AI PCB/服务器链 + AI/科技ETF观察。watchlist 不直接给买卖价。
+
+  Semiconductor reality pool v0.1: added ETF backup pool and first-priority stock research cards; research/watch only.'
 symbols:
 - 159632.SZ
 - 513300.SH
@@ -35,6 +36,36 @@ symbols:
 - 002281.SZ
 - 515000.SH
 - 512930.SH
+- 512760.SH
+- 562590.SH
+- 560780.SH
+- 589020.SH
+- 516350.SH
+- 516640.SH
+- 588780.SH
+- 561980.SH
+- 159813.SZ
+- 159665.SZ
+- 516920.SH
+- 159801.SZ
+- 159310.SZ
+- 159560.SZ
+- 159599.SZ
+- 159325.SZ
+- 562820.SH
+- 159546.SZ
+- 002371.SZ
+- 688012.SH
+- 688072.SH
+- 688120.SH
+- 688082.SH
+- 688361.SH
+- 688200.SH
+- 300604.SZ
+- 688019.SH
+- 600584.SH
+- 002156.SZ
+- 688008.SH
 layers:
   current_holding_reference:
     description: 当前科技持仓/核心参考，watchlist 中用于强弱验证，不等于新增买入清单

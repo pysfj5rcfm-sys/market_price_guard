@@ -4,7 +4,10 @@ universe_type: scan_universe
 quote_purpose: reference
 required_for_operation: false
 affect_core_strict: false
-description: 科技 scan 层：用户指定的广谱扫描池；scan 仅用于广谱扫描和强弱验证，不得直接交易。
+description: '科技 scan 层：用户指定的广谱扫描池；scan 仅用于广谱扫描和强弱验证，不得直接交易。
+
+  Semiconductor reality pool v0.1: added complete semiconductor stock research pool and ETF tool pool; not a buy list. Removed
+  000938.SZ from tech scan due provider failure/stub status.'
 symbols:
 - 159632.SZ
 - 513300.SH
@@ -46,7 +49,76 @@ symbols:
 - 300476.SZ
 - 002916.SZ
 - 300394.SZ
-- 000938.SZ
+- 512760.SH
+- 562590.SH
+- 560780.SH
+- 589020.SH
+- 516350.SH
+- 516640.SH
+- 588780.SH
+- 561980.SH
+- 159813.SZ
+- 159665.SZ
+- 516920.SH
+- 159801.SZ
+- 159310.SZ
+- 159560.SZ
+- 159599.SZ
+- 159325.SZ
+- 562820.SH
+- 159546.SZ
+- 600584.SH
+- 002156.SZ
+- 688362.SH
+- 002185.SZ
+- 603005.SH
+- 688352.SH
+- 688135.SH
+- 688372.SH
+- 688200.SH
+- 300604.SZ
+- 688361.SH
+- 300567.SZ
+- 688001.SH
+- 002371.SZ
+- 688012.SH
+- 688072.SH
+- 688082.SH
+- 688120.SH
+- 688037.SH
+- 688147.SH
+- 300316.SZ
+- 603690.SH
+- 688019.SH
+- 688126.SH
+- 688409.SH
+- 300666.SZ
+- 300054.SZ
+- 002409.SZ
+- 300346.SZ
+- 688146.SH
+- 688549.SH
+- 688268.SH
+- 688106.SH
+- 603078.SH
+- 300655.SZ
+- 688401.SH
+- 688234.SH
+- 688008.SH
+- 603986.SH
+- 301308.SZ
+- 688525.SH
+- 001309.SZ
+- 300223.SZ
+- 688123.SH
+- 688766.SH
+- 688110.SH
+- 000021.SZ
+- 600667.SH
+- 688041.SH
+- 603019.SH
+- 000977.SZ
+- 601138.SH
 layers:
   current_core_reference:
     description: operation 当前持仓与基础参考在 scan 中保留，用于全局强弱比较

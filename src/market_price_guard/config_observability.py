@@ -90,6 +90,11 @@ def build_layer_manifest(
     configured_symbols: list[str],
     loaded_symbols: list[str],
     *,
+    configured_symbols_source: str | None = None,
+    loaded_symbols_source: str | None = None,
+    current_position_symbols: list[str] | None = None,
+    current_position_symbols_source: str | None = None,
+    strict_required_symbols: list[str] | None = None,
     root_watchlist_layer_name: str | None = None,
     legacy_fallback_used: bool = False,
     legacy_fallback_source_path: str | None = None,
@@ -104,8 +109,27 @@ def build_layer_manifest(
     display_source = _display_path(source)
     source_exists = source.exists() if not str(config_source_path).startswith("derived_from_") else False
     account = _account_from_layer_name(layer_name)
+    current_positions = (
+        _dedupe_symbols(current_position_symbols)
+        if current_position_symbols is not None
+        else _current_position_symbols(account)
+    )
+    strict_required = _dedupe_symbols(strict_required_symbols or [])
+    operation_validator_symbols = (
+        [symbol for symbol in loaded_symbols if symbol not in current_positions]
+        if _is_operation_layer(layer_name, universe_type, root_watchlist_layer_name)
+        else []
+    )
     missing = [symbol for symbol in configured_symbols if symbol not in loaded_symbols]
     extra = [symbol for symbol in loaded_symbols if symbol not in configured_symbols]
+    filtered_symbols = [
+        {
+            "symbol": symbol,
+            "filter_stage": "layer_manifest.loaded_symbols",
+            "filter_reason": "configured_symbol_not_loaded",
+        }
+        for symbol in missing
+    ]
     manifest = {
         "account": account,
         "layer_name": layer_name,
@@ -117,10 +141,23 @@ def build_layer_manifest(
         "config_source_mtime": _mtime(source) if source_exists else "",
         "config_loader_name": CONFIG_LOADER_NAME,
         "config_loader_version": CONFIG_LOADER_VERSION,
+        "configured_symbols_source": configured_symbols_source or display_source,
+        "loaded_symbols_source": loaded_symbols_source or "runtime.records",
         "configured_symbol_count": len(configured_symbols),
         "loaded_symbol_count": len(loaded_symbols),
         "configured_symbols": configured_symbols,
         "loaded_symbols": loaded_symbols,
+        "current_position_symbol_count": len(current_positions),
+        "current_position_symbols": current_positions,
+        "current_position_symbols_source": current_position_symbols_source
+        or _current_position_symbols_source(account),
+        "strict_required_symbol_count": len(strict_required),
+        "strict_required_symbols": strict_required,
+        "operation_validator_symbol_count": len(operation_validator_symbols),
+        "operation_validator_symbols": operation_validator_symbols,
+        "filtered_symbol_count": len(filtered_symbols),
+        "filtered_symbols": filtered_symbols,
+        "filter_reason": {item["symbol"]: item["filter_reason"] for item in filtered_symbols} if filtered_symbols else None,
         "missing_from_loaded": missing,
         "extra_loaded_symbols": extra,
         "duplicate_configured_symbols": _duplicates(configured_symbols),
@@ -142,7 +179,15 @@ def build_layer_manifest(
     return manifest
 
 
-def load_target_layer_manifest(layer_name: str, loaded_symbols: list[str], universes_dir: Path = UNIVERSES_DIR) -> dict[str, Any]:
+def load_target_layer_manifest(
+    layer_name: str,
+    loaded_symbols: list[str],
+    universes_dir: Path | None = None,
+    *,
+    loaded_symbols_source: str | None = None,
+    strict_required_symbols: list[str] | None = None,
+) -> dict[str, Any]:
+    universes_dir = universes_dir or UNIVERSES_DIR
     config_path = universes_dir / f"{layer_name}.yaml"
     warnings: list[str] = []
     data = _read_yaml(config_path, warnings)
@@ -156,13 +201,16 @@ def load_target_layer_manifest(layer_name: str, loaded_symbols: list[str], unive
         config_source_path=config_path,
         configured_symbols=configured,
         loaded_symbols=loaded_symbols,
+        loaded_symbols_source=loaded_symbols_source,
+        strict_required_symbols=strict_required_symbols,
         root_watchlist_layer_name=LAYER_TO_ROOT_MIRROR.get(layer_name),
         config_load_status="ok" if config_path.exists() else "missing",
         config_load_warnings=warnings,
     )
 
 
-def build_minute_probe_manifest(loaded_symbols: list[str], universes_dir: Path = UNIVERSES_DIR) -> dict[str, Any]:
+def build_minute_probe_manifest(loaded_symbols: list[str], universes_dir: Path | None = None) -> dict[str, Any]:
+    universes_dir = universes_dir or UNIVERSES_DIR
     core = load_target_layer_manifest("tech_core", [], universes_dir)
     candidates = load_target_layer_manifest("tech_operation_candidates", [], universes_dir)
     configured = list(dict.fromkeys(core["configured_symbols"] + candidates["configured_symbols"]))
@@ -193,15 +241,34 @@ def write_layer_manifest(output_dir: Path, manifest: dict[str, Any], filename: s
 
 def layer_manifest_from_records(records: list[Any], runtime: dict[str, Any]) -> dict[str, Any] | None:
     loaded_symbols = [str(record.symbol) for record in records]
+    strict_required_symbols = [
+        str(record.symbol) for record in records if bool(getattr(record, "required_for_operation", False))
+    ]
+    loaded_symbols_source = str(runtime.get("loaded_symbols_source") or runtime.get("universe_source_path") or "runtime.records")
     universe_name = str(runtime.get("universe_name") or "")
     if universe_name in LAYER_TO_ROOT_MIRROR or universe_name == "tech_core":
-        return load_target_layer_manifest(universe_name, loaded_symbols)
+        return load_target_layer_manifest(
+            universe_name,
+            loaded_symbols,
+            loaded_symbols_source=loaded_symbols_source,
+            strict_required_symbols=strict_required_symbols,
+        )
     if universe_name == "tech_minute_probe" or runtime.get("include_minute_bars"):
         return build_minute_probe_manifest(loaded_symbols)
     if not runtime.get("registry_enabled") and str(runtime.get("profile")) == "tech":
-        return load_target_layer_manifest("tech_core", loaded_symbols)
+        return load_target_layer_manifest(
+            "tech_core",
+            loaded_symbols,
+            loaded_symbols_source=loaded_symbols_source,
+            strict_required_symbols=strict_required_symbols,
+        )
     if not runtime.get("registry_enabled") and str(runtime.get("profile")) == "energy":
-        return load_target_layer_manifest("energy_core", loaded_symbols)
+        return load_target_layer_manifest(
+            "energy_core",
+            loaded_symbols,
+            loaded_symbols_source=loaded_symbols_source,
+            strict_required_symbols=strict_required_symbols,
+        )
     return None
 
 
@@ -214,6 +281,10 @@ def layer_manifest_summary_lines(manifest: dict[str, Any] | None) -> list[str]:
         f"- config_source_hash_sha256: {str(manifest.get('config_source_hash_sha256', ''))[:12]}",
         f"- configured_symbol_count: {manifest.get('configured_symbol_count', 0)}",
         f"- loaded_symbol_count: {manifest.get('loaded_symbol_count', 0)}",
+        f"- current_position_symbol_count: {manifest.get('current_position_symbol_count', 0)}",
+        f"- strict_required_symbol_count: {manifest.get('strict_required_symbol_count', 0)}",
+        f"- operation_validator_symbol_count: {manifest.get('operation_validator_symbol_count', 0)}",
+        f"- filtered_symbol_count: {manifest.get('filtered_symbol_count', 0)}",
         f"- config_mismatch: {str(manifest.get('config_mismatch', False)).lower()}",
         f"- missing_from_loaded: {_join_symbols(manifest.get('missing_from_loaded', []))}",
         f"- extra_loaded_symbols: {_join_symbols(manifest.get('extra_loaded_symbols', []))}",
@@ -385,6 +456,29 @@ def _symbols_from_value(value: Any) -> list[str]:
         if symbol:
             symbols.append(symbol)
     return symbols
+
+
+def _dedupe_symbols(symbols: list[str]) -> list[str]:
+    return list(dict.fromkeys(str(symbol) for symbol in symbols if str(symbol)))
+
+
+def _current_position_symbols(account: str) -> list[str]:
+    warnings: list[str] = []
+    root_data = _read_yaml(WATCHLIST_PATH, warnings)
+    instruments = root_data.get("projects", {}).get(account, {}).get("instruments", []) if isinstance(root_data, dict) else []
+    return _dedupe_symbols(_symbols_from_value(instruments))
+
+
+def _current_position_symbols_source(account: str) -> str:
+    return f"config/watchlist.yaml -> projects.{account}.instruments"
+
+
+def _is_operation_layer(layer_name: str, universe_type: str, root_watchlist_layer_name: str | None) -> bool:
+    return (
+        root_watchlist_layer_name == "operation"
+        or layer_name in {"tech_core", "energy_core"}
+        or universe_type == "core_holdings"
+    )
 
 
 def _read_yaml(path: Path, warnings: list[str]) -> Any:

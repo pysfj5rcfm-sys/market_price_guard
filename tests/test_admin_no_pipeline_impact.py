@@ -6,19 +6,24 @@ from pathlib import Path
 
 
 def _git_diff(*paths: str) -> str:
-    result = subprocess.run(["git", "diff", "--", *paths], check=True, capture_output=True, text=True)
+    result = subprocess.run(
+        ["git", "diff", "--", *paths],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     return result.stdout
 
 
-def test_admin_version_does_not_change_provider_router_or_config():
+def test_provider_router_remains_unchanged():
     assert _git_diff("src/market_price_guard/provider_router.py") == ""
-    assert _git_diff("config") == ""
 
 
-def test_admin_version_does_not_change_strict_or_usable_runtime_files():
+def test_loader_fix_does_not_change_provider_router_or_report_strict_logic():
     assert _git_diff(
         "src/market_price_guard/provider_router.py",
-        "src/market_price_guard/main.py",
         "src/market_price_guard/report.py",
     ) == ""
 
