@@ -5,7 +5,13 @@ from pathlib import Path
 import pytest
 
 from market_price_guard.main import CONFIG_DIR, run_pipeline
-from market_price_guard.symbol_registry import build_watchlist_from_registry, load_symbol_registry, load_universe
+from market_price_guard.models import Instrument, WatchProject, Watchlist
+from market_price_guard.symbol_registry import (
+    build_watchlist_from_registry,
+    load_symbol_registry,
+    load_universe,
+    merge_watchlist_with_registry,
+)
 
 
 REGISTRY_PATH = CONFIG_DIR / "symbol_registry.yaml"
@@ -117,6 +123,57 @@ def test_operation_candidate_cli_symbols_are_reference_only():
     assert instrument.required_for_operation is False
     assert instrument.affect_core_strict is False
     assert instrument.default_quote_purpose == "reference"
+
+
+@pytest.mark.unit
+def test_registry_merge_preserves_manual_provider_for_gold(tmp_path):
+    registry_path = tmp_path / "symbol_registry.yaml"
+    registry_path.write_text(
+        """
+GOLD_CNY:
+  symbol: GOLD_CNY
+  name: 黄金持仓参考价
+  market: MANUAL
+  asset_type: manual_price
+  project_scope: tech
+  role: defense_or_potential_tech_funding
+  required_for_operation: true
+  default_quote_purpose: operation
+  provider_preference:
+    operation:
+      - manual
+    reference:
+      - manual
+    reconcile:
+      - manual
+""".strip(),
+        encoding="utf-8",
+    )
+    watchlist = Watchlist(
+        projects={
+            "tech": WatchProject(
+                display_name="tech",
+                allow_full_detail=True,
+                instruments=[
+                    Instrument(
+                        symbol="GOLD_CNY",
+                        name="黄金持仓参考价",
+                        market="MANUAL",
+                        provider="mock",
+                        provider_priority=["mock"],
+                        required_for_operation=True,
+                    )
+                ],
+            )
+        }
+    )
+
+    merged = merge_watchlist_with_registry(watchlist, registry_path)
+    gold = merged.projects["tech"].instruments[0]
+
+    assert gold.provider == "manual"
+    assert gold.provider_priority == ["manual"]
+    assert gold.asset_type == "manual_price"
 
 
 @pytest.mark.unit

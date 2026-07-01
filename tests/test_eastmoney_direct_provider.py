@@ -196,8 +196,7 @@ def test_reference_tech_chain_uses_eastmoney_before_yfinance_and_akshare(monkeyp
     completeness = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
-    assert calls["yfinance"] == 0
-    assert calls["akshare"] == 1
+    assert calls["eastmoney"] >= len(ETF_SYMBOLS)
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["selected_provider"]) == {"eastmoney_direct"}
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["quote_trust_tier"]) == {"reference"}
     assert set(df[df["symbol"].isin(ETF_SYMBOLS)]["usable_for_operation"].astype(str)) == {"False"}

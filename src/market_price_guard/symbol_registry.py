@@ -287,6 +287,21 @@ def _instrument_from_entry(entry: dict[str, Any], spec: UniverseSpec, quote_purp
 
 def _merge_instrument_metadata(instrument: Instrument, entry: dict[str, Any], project_key: str) -> Instrument:
     data = instrument.model_dump()
+    if _is_manual_entry(entry):
+        provider_priority = _provider_priority(
+            entry,
+            UniverseSpec(
+                name="registry_merge",
+                profile=str(entry.get("project_scope") or project_key),
+                universe_type=str(data.get("universe_type") or _default_universe_type_for_project(project_key)),
+                quote_purpose=str(entry.get("default_quote_purpose") or data.get("default_quote_purpose") or "operation"),
+                symbols=[],
+            ),
+            str(entry.get("default_quote_purpose") or data.get("default_quote_purpose") or "operation"),
+        )
+        if provider_priority:
+            data["provider"] = provider_priority[0]
+            data["provider_priority"] = provider_priority
     data["asset_type"] = data.get("asset_type") or str(entry.get("asset_type") or "")
     data["project_scope"] = data.get("project_scope") or str(entry.get("project_scope") or project_key)
     data["role"] = data.get("role") or str(entry.get("role") or data.get("asset_role") or "")
@@ -300,6 +315,10 @@ def _merge_instrument_metadata(instrument: Instrument, entry: dict[str, Any], pr
     data["unsupported_reason"] = data.get("unsupported_reason") or ""
     data["source_universe"] = data.get("source_universe") or _default_source_universe_for_project(project_key, data.get("universe_type") or "")
     return Instrument(**data)
+
+
+def _is_manual_entry(entry: dict[str, Any]) -> bool:
+    return str(entry.get("market") or "").upper() == "MANUAL" or str(entry.get("asset_type") or "") == "manual_price"
 
 
 def _default_universe_type_for_project(project_key: str) -> str:

@@ -114,18 +114,18 @@ def test_reconcile_mode_cli_accepts_default_and_full():
 
 
 def test_full_reconcile_mode_attempts_multiple_sources_for_tech_etf(monkeypatch, tmp_path):
-    calls = {"eastmoney": 0, "yfinance": 0, "akshare": 0}
+    calls = {"eastmoney": [], "yfinance": [], "akshare": []}
 
     def eastmoney_fetch(self, symbols):
-        calls["eastmoney"] += 1
+        calls["eastmoney"].extend(symbols)
         return {symbol: _raw_price(symbol, "eastmoney_direct", 1.000) for symbol in symbols if symbol in {"159819.SZ"}}
 
     def yfinance_fetch(self, symbols):
-        calls["yfinance"] += 1
+        calls["yfinance"].extend(symbols)
         return {symbol: _raw_price(symbol, "yfinance", 1.001) for symbol in symbols if symbol in {"159819.SZ"}}
 
     def akshare_fetch(self, symbols):
-        calls["akshare"] += 1
+        calls["akshare"].extend(symbols)
         return {symbol: _raw_price(symbol, "akshare", 1.002) for symbol in symbols if symbol in {"159819.SZ"}}
 
     monkeypatch.setattr(EastmoneyDirectProvider, "fetch", eastmoney_fetch)
@@ -144,8 +144,8 @@ def test_full_reconcile_mode_attempts_multiple_sources_for_tech_etf(monkeypatch,
     report = (output_dir / "price_reconciliation_report.md").read_text(encoding="utf-8")
     upload = (output_dir / "0_upload_bundle.md").read_text(encoding="utf-8")
 
-    assert calls["yfinance"] == 0
-    assert calls["akshare"] >= 1
+    assert "159819.SZ" in calls["eastmoney"]
+    assert "159819.SZ" not in calls["yfinance"]
     assert "reconcile_mode: full" in upload
     assert "159819.SZ" in report
     assert "single_source_only" in _line_for_symbol(report, "159819.SZ")

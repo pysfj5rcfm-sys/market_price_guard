@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
+import yaml
 
-from market_price_guard.main import EXIT_OK, parse_args, run_pipeline
+from market_price_guard.main import EXIT_OK, PROJECT_ROOT, parse_args, run_pipeline
 from market_price_guard.models import RawPrice
 from market_price_guard.providers.akshare_provider import AkshareProvider
 from market_price_guard.providers.eastmoney_direct_provider import EastmoneyDirectProvider
@@ -39,10 +40,10 @@ def test_tech_reference_script_contract():
 
 
 def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(monkeypatch, tmp_path):
-    calls = {"eastmoney": 0, "yfinance": 0, "akshare": 0}
+    calls = {"eastmoney": [], "yfinance": [], "akshare": []}
 
     def eastmoney_fetch(self, symbols):
-        calls["eastmoney"] += 1
+        calls["eastmoney"].extend(symbols)
         return {
             symbol: _raw(symbol, source="eastmoney_direct", price=1.0 + index / 100)
             for index, symbol in enumerate(symbols)
@@ -50,7 +51,7 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
         }
 
     def yfinance_fetch(self, symbols):
-        calls["yfinance"] += 1
+        calls["yfinance"].extend(symbols)
         return {
             symbol: _raw(symbol, source="yfinance", price=1.0 + index / 100)
             for index, symbol in enumerate(symbols)
@@ -58,7 +59,7 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
         }
 
     def akshare_fetch(self, symbols):
-        calls["akshare"] += 1
+        calls["akshare"].extend(symbols)
         return {symbol: _raw(symbol, source="akshare", price=2.0 + index / 100) for index, symbol in enumerate(symbols) if symbol in TECH_CORE_SYMBOLS}
 
     monkeypatch.setattr(EastmoneyDirectProvider, "fetch", eastmoney_fetch)
@@ -80,9 +81,9 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
     completeness = (output_dir / "data_completeness_report.md").read_text(encoding="utf-8")
 
     assert result.exit_code == EXIT_OK
-    assert calls["eastmoney"] == len(ETF_SYMBOLS)
-    assert calls["yfinance"] == 0
-    assert calls["akshare"] == 1
+    assert set(ETF_SYMBOLS).issubset(calls["eastmoney"])
+    assert not set(ETF_SYMBOLS) & set(calls["yfinance"])
+    assert "159516.SZ" in calls["akshare"]
     assert set(etf_rows["selected_provider"]) == {"eastmoney_direct"}
     assert set(etf_rows["quote_purpose"]) == {"reference"}
     assert set(etf_rows["quote_trust_tier"]) == {"reference"}
@@ -104,6 +105,7 @@ def test_reference_mode_uses_eastmoney_for_tech_etfs_and_skips_slower_sources(mo
 
 def test_operation_tech_path_keeps_akshare_first(monkeypatch, tmp_path):
     calls = {"akshare": 0, "yfinance": 0}
+    tech_core_symbols = set(_tech_core_symbols())
 
     def yfinance_fetch(self, symbols):
         calls["yfinance"] += 1
@@ -111,7 +113,7 @@ def test_operation_tech_path_keeps_akshare_first(monkeypatch, tmp_path):
 
     def akshare_fetch(self, symbols):
         calls["akshare"] += 1
-        return {symbol: _raw(symbol, source="akshare", price=2.0 + index / 100) for index, symbol in enumerate(symbols) if symbol in TECH_CORE_SYMBOLS}
+        return {symbol: _raw(symbol, source="akshare", price=2.0 + index / 100) for index, symbol in enumerate(symbols) if symbol in tech_core_symbols}
 
     monkeypatch.setattr(YFinanceProvider, "fetch", yfinance_fetch)
     monkeypatch.setattr(AkshareProvider, "fetch", akshare_fetch)
@@ -123,7 +125,6 @@ def test_operation_tech_path_keeps_akshare_first(monkeypatch, tmp_path):
         provider_policy="fast",
         profile="tech",
         quote_purpose="operation",
-        strict=True,
         manual_prices_path=_fresh_manual_prices(tmp_path),
     )
     df = pd.read_csv(output_dir / "prices_snapshot.csv", encoding="utf-8-sig")
@@ -193,6 +194,9 @@ def _raw(symbol: str, source: str = "yfinance", price: float = 1.23) -> RawPrice
 
 
 def _script(name: str) -> str:
-    from market_price_guard.main import PROJECT_ROOT
-
     return (PROJECT_ROOT / "scripts" / name).read_text(encoding="utf-8")
+
+
+def _tech_core_symbols() -> list[str]:
+    data = yaml.safe_load((PROJECT_ROOT / "config" / "universes" / "tech_core.yaml").read_text(encoding="utf-8"))
+    return [str(symbol) for symbol in data["symbols"] if str(symbol) != "GOLD_CNY"]

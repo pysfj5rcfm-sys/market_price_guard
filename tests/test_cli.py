@@ -289,7 +289,7 @@ def test_profile_all_keeps_full_watchlist(tmp_path):
     df = pd.read_csv(tmp_path / "out" / "prices_snapshot.csv")
 
     assert result.exit_code == EXIT_OK
-    assert len(df) == 14
+    assert list(df["symbol"]) == _all_watchlist_symbols()
 
 
 def test_runtime_diagnostics_contains_core_fields(tmp_path):
@@ -427,6 +427,14 @@ def _fresh_mock_prices(tmp_path):
 def _tech_core_symbols() -> list[str]:
     data = yaml.safe_load((PROJECT_ROOT / "config" / "universes" / "tech_core.yaml").read_text(encoding="utf-8"))
     return [str(symbol) for symbol in data["symbols"]]
+
+
+def _all_watchlist_symbols() -> list[str]:
+    data = yaml.safe_load((PROJECT_ROOT / "config" / "watchlist.yaml").read_text(encoding="utf-8"))
+    symbols: list[str] = []
+    for project in data["projects"].values():
+        symbols.extend(str(item["symbol"]) for item in project.get("instruments", []))
+    return symbols
 
 
 def _fresh_manual_prices(tmp_path):

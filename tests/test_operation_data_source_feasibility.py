@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -25,17 +26,18 @@ def _ensure_outputs() -> None:
     ]
     if all(path.exists() for path in required):
         return
-    subprocess.run(
-        [
-            "powershell",
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(Path("scripts/build_operation_data_source_feasibility.ps1")),
-        ],
-        check=True,
-    )
+    subprocess.run(_powershell_command(Path("scripts/build_operation_data_source_feasibility.ps1")), check=True)
+
+
+def _powershell_command(script: Path) -> list[str]:
+    for executable in ("pwsh", "powershell", "powershell.exe"):
+        resolved = shutil.which(executable)
+        if not resolved:
+            continue
+        if executable == "pwsh":
+            return [resolved, "-NoProfile", "-File", str(script)]
+        return [resolved, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)]
+    raise FileNotFoundError("PowerShell executable not found: tried pwsh, powershell, powershell.exe")
 
 
 def _symbols(path: str) -> list[str]:

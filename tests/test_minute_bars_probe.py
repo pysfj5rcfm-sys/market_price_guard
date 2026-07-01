@@ -4,9 +4,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 import market_price_guard.minute_bars as minute_bars
-from market_price_guard.main import _merge_watchlists_core_first, parse_args, run_pipeline
+from market_price_guard.main import PROJECT_ROOT, _merge_watchlists_core_first, parse_args, run_pipeline
 from market_price_guard.models import Instrument, PriceRecord, WatchProject, Watchlist
 from market_price_guard.minute_bars import apply_minute_bars_probe
 from market_price_guard.yfinance_circuit import YFinanceCircuitBreaker
@@ -160,28 +161,19 @@ def test_tech_minute_probe_includes_operation_candidates_from_registry(tmp_path)
     candidates = prices[prices["source_universe"] == "tech_operation_candidates"]
 
     assert result.exit_code == 0
-    assert set(candidates["symbol"]) == {
-        "159995.SZ",
-        "588200.SH",
-        "512480.SH",
-        "588890.SH",
-        "588170.SH",
-        "159558.SZ",
-        "515050.SH",
-        "159994.SZ",
-        "513180.SH",
-        "513130.SH",
-        "513150.SH",
-        "513020.SH",
-        "002463.SZ",
-        "002938.SZ",
-        "600183.SH",
-        "002281.SZ",
-    }
+    assert set(candidates["symbol"]) == set(_tech_operation_candidate_only_symbols())
     assert set(candidates["required_for_operation"].astype(str)) == {"False"}
     assert set(candidates["usable_for_operation"].astype(str)) == {"False"}
     assert set(candidates["minute_bars_available"].astype(str)) == {"True"}
     assert set(bars[bars["symbol"].isin(candidates["symbol"])]["source_universe"]) == {"tech_operation_candidates"}
+
+
+def _tech_operation_candidate_only_symbols() -> list[str]:
+    universes_dir = PROJECT_ROOT / "config" / "universes"
+    core = yaml.safe_load((universes_dir / "tech_core.yaml").read_text(encoding="utf-8"))["symbols"]
+    candidates = yaml.safe_load((universes_dir / "tech_operation_candidates.yaml").read_text(encoding="utf-8"))["symbols"]
+    core_symbols = set(str(symbol) for symbol in core)
+    return [str(symbol) for symbol in candidates if str(symbol) not in core_symbols]
 
 
 def test_minute_probe_merge_deduplicates_with_core_priority():
